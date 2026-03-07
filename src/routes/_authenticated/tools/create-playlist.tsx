@@ -268,7 +268,7 @@ function CreatePlaylistPage() {
           />
           <div className="mt-1 text-right text-xs text-gray-400">{prompt.length}/500</div>
 
-          <div className="mt-4 flex items-center gap-3">
+          <div className="mt-4 flex items-center justify-end gap-3">
             <label htmlFor="song-count" className="text-sm text-gray-600">
               Number of songs
             </label>
