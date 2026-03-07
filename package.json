@@ -10,7 +10,7 @@
     "dev:docker": "docker compose up",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node .output/server/index.mjs",
+    "start": "npm run migrate && node .output/server/index.mjs",
     "migrate": "tsx src/db/migrate.ts",
     "format": "prettier --write .",
     "test": "vitest run"

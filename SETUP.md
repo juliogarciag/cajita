@@ -72,8 +72,8 @@ Edit `src/config/allowed-users.ts` to set the Google email addresses that are al
 4. Add a **service** from your GitHub repo. Railway will auto-detect it as a Node.js app.
 
 5. In the service settings, set:
-   - **Build command**: `npm run migrate && npm run build`
-   - **Start command**: `npm run start`
+   - **Build command**: `npm run build`
+   - **Start command**: `npm run start` (runs migrations automatically before starting)
 
 6. Railway automatically provides `DATABASE_URL` when the Postgres database is linked to your service. Set the remaining environment variables in the service's **Variables** tab:
    - `GOOGLE_CLIENT_ID` — from Google Cloud Console
