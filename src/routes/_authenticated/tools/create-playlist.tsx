@@ -48,8 +48,11 @@ function CreatePlaylistPage() {
 
       // Step 2: Generate songs with Claude
       setPhase('generating')
-      const { songs: generatedSongs, suggestedName, suggestedDescription } =
-        await generatePlaylistSongs({ data: { prompt, count: 50 } })
+      const {
+        songs: generatedSongs,
+        suggestedName,
+        suggestedDescription,
+      } = await generatePlaylistSongs({ data: { prompt, count: 50 } })
 
       setPlaylistName(suggestedName)
       setPlaylistDescription(suggestedDescription)
