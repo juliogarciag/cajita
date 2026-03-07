@@ -10,7 +10,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}
+      test: pg_isready -d cajita -U cajita
       interval: 10s
       timeout: 3s
       retries: 3
