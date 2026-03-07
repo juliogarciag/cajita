@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { Loader2, Music, Check, Sparkles } from 'lucide-react'
+import { Loader2, Music, Check, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
 import { SongCard } from '#/components/SongCard.js'
 import { getDeveloperToken } from '#/server/apple-music.js'
 import { generatePlaylistSongs, reloadSong } from '#/server/playlist-generator.js'
@@ -20,6 +20,8 @@ export const Route = createFileRoute('/_authenticated/tools/create-playlist')({
 
 type Phase = 'input' | 'authenticating' | 'generating' | 'searching' | 'review' | 'saving' | 'done'
 
+const SONGS_PER_PAGE = 10
+
 function CreatePlaylistPage() {
   const [prompt, setPrompt] = useState('')
   const [phase, setPhase] = useState<Phase>('input')
@@ -30,7 +32,14 @@ function CreatePlaylistPage() {
   const [error, setError] = useState<string | null>(null)
   const [userToken, setUserToken] = useState<string | null>(getStoredUserToken)
   const [playingIndex, setPlayingIndex] = useState<number | null>(null)
+  const [currentPage, setCurrentPage] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  const totalPages = Math.max(1, Math.ceil(songs.length / SONGS_PER_PAGE))
+  const paginatedSongs = songs.slice(
+    currentPage * SONGS_PER_PAGE,
+    (currentPage + 1) * SONGS_PER_PAGE,
+  )
 
   const handleCreate = useCallback(async () => {
     if (!prompt.trim()) return
@@ -107,9 +116,20 @@ function CreatePlaylistPage() {
     [songs, reloadingIndex, prompt],
   )
 
-  const handleDelete = useCallback((index: number) => {
-    setSongs((prev) => prev.filter((_, i) => i !== index))
-  }, [])
+  const handleDelete = useCallback(
+    (index: number) => {
+      setSongs((prev) => {
+        const updated = prev.filter((_, i) => i !== index)
+        // If current page would be out of bounds after deletion, go to last page
+        const newTotalPages = Math.max(1, Math.ceil(updated.length / SONGS_PER_PAGE))
+        if (currentPage >= newTotalPages) {
+          setCurrentPage(Math.max(0, newTotalPages - 1))
+        }
+        return updated
+      })
+    },
+    [currentPage],
+  )
 
   const handleSave = useCallback(async () => {
     const trackIds = songs.filter((s) => s.appleMusicId).map((s) => s.appleMusicId!)
@@ -151,6 +171,7 @@ function CreatePlaylistPage() {
   const handleReset = useCallback(() => {
     audioRef.current?.pause()
     setPlayingIndex(null)
+    setCurrentPage(0)
     setPrompt('')
     setSongs([])
     setPlaylistName('')
@@ -199,6 +220,22 @@ function CreatePlaylistPage() {
       handleDelete(index)
     },
     [handleDelete, playingIndex],
+  )
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      // Stop audio if the currently playing song won't be on the new page
+      if (playingIndex !== null) {
+        const newStart = page * SONGS_PER_PAGE
+        const newEnd = (page + 1) * SONGS_PER_PAGE
+        if (playingIndex < newStart || playingIndex >= newEnd) {
+          audioRef.current?.pause()
+          setPlayingIndex(null)
+        }
+      }
+      setCurrentPage(page)
+    },
+    [playingIndex],
   )
 
   const matchedCount = songs.filter((s) => s.status === 'matched').length
@@ -265,34 +302,14 @@ function CreatePlaylistPage() {
             />
           </div>
 
+          {/* Action buttons + song count — above the list */}
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-gray-500">
               {songs.length} songs ({matchedCount} found in Apple Music)
             </p>
           </div>
 
-          <div className="space-y-2">
-            {songs.map((song, index) => (
-              <SongCard
-                key={`${song.artist}-${song.title}-${index}`}
-                song={song}
-                index={index}
-                isReloading={reloadingIndex === index}
-                isPlaying={playingIndex === index}
-                onReload={() => handleReload(index)}
-                onDelete={() => handleDeleteWithStop(index)}
-                onTogglePreview={() => handleTogglePreview(index)}
-              />
-            ))}
-          </div>
-
-          {songs.length === 0 && (
-            <div className="mt-8 text-center text-sm text-gray-400">
-              All songs removed. Go back to generate new ones.
-            </div>
-          )}
-
-          <div className="mt-6 flex gap-3">
+          <div className="mb-4 flex gap-3">
             <button
               type="button"
               onClick={handleReset}
@@ -310,6 +327,56 @@ function CreatePlaylistPage() {
               Save to Apple Music ({matchedCount})
             </button>
           </div>
+
+          {/* Paginated song list */}
+          <div className="space-y-2">
+            {paginatedSongs.map((song, localIndex) => {
+              const absoluteIndex = currentPage * SONGS_PER_PAGE + localIndex
+              return (
+                <SongCard
+                  key={`${song.artist}-${song.title}-${absoluteIndex}`}
+                  song={song}
+                  index={absoluteIndex}
+                  isReloading={reloadingIndex === absoluteIndex}
+                  isPlaying={playingIndex === absoluteIndex}
+                  onReload={() => handleReload(absoluteIndex)}
+                  onDelete={() => handleDeleteWithStop(absoluteIndex)}
+                  onTogglePreview={() => handleTogglePreview(absoluteIndex)}
+                />
+              )
+            })}
+          </div>
+
+          {songs.length === 0 && (
+            <div className="mt-8 text-center text-sm text-gray-400">
+              All songs removed. Go back to generate new ones.
+            </div>
+          )}
+
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 0}
+                className="rounded-lg border border-gray-300 p-2 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-sm text-gray-500">
+                Page {currentPage + 1} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages - 1}
+                className="rounded-lg border border-gray-300 p-2 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
