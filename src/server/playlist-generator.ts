@@ -121,7 +121,8 @@ Example:
 
 export const generatePlaylistSongs = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .handler(async ({ data }: { data: { prompt: string; count?: number } }) => {
+  .inputValidator(z.object({ prompt: z.string(), count: z.number().optional() }))
+  .handler(async ({ data }) => {
     const { prompt, count = 50 } = data
     if (!prompt.trim()) {
       throw new Error('Prompt is required')
@@ -131,19 +132,16 @@ export const generatePlaylistSongs = createServerFn({ method: 'POST' })
     return { songs, suggestedName: meta.name, suggestedDescription: meta.description }
   })
 
+const reloadSongValidator = z.object({
+  prompt: z.string(),
+  currentSongs: z.array(z.object({ artist: z.string(), title: z.string() })),
+  rejectedSong: z.object({ artist: z.string(), title: z.string() }),
+})
+
 export const reloadSong = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .handler(
-    async ({
-      data,
-    }: {
-      data: {
-        prompt: string
-        currentSongs: Song[]
-        rejectedSong: Song
-      }
-    }) => {
-      const song = await generateReplacementSong(data.prompt, data.currentSongs, data.rejectedSong)
-      return { song }
-    },
-  )
+  .inputValidator(reloadSongValidator)
+  .handler(async ({ data }) => {
+    const song = await generateReplacementSong(data.prompt, data.currentSongs, data.rejectedSong)
+    return { song }
+  })

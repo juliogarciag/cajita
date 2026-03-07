@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { z } from 'zod'
 import { generateDeveloperToken } from './apple-music.js'
 import { authMiddleware } from './middleware.js'
 
@@ -101,24 +102,21 @@ async function createAppleMusicPlaylist(params: CreatePlaylistParams): Promise<{
 
 export const savePlaylist = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .handler(
-    async ({
-      data,
-    }: {
-      data: {
-        name: string
-        description?: string
-        trackIds: string[]
-        userToken: string
-      }
-    }) => {
-      if (!data.trackIds.length) {
-        throw new Error('At least one track is required')
-      }
-      if (!data.userToken) {
-        throw new Error('Apple Music user token is required')
-      }
-      const result = await createAppleMusicPlaylist(data)
-      return result
-    },
+  .inputValidator(
+    z.object({
+      name: z.string(),
+      description: z.string().optional(),
+      trackIds: z.array(z.string()),
+      userToken: z.string(),
+    }),
   )
+  .handler(async ({ data }) => {
+    if (!data.trackIds.length) {
+      throw new Error('At least one track is required')
+    }
+    if (!data.userToken) {
+      throw new Error('Apple Music user token is required')
+    }
+    const result = await createAppleMusicPlaylist(data)
+    return result
+  })

@@ -76,7 +76,7 @@ export function loadMusicKitScript(): Promise<void> {
     // Vite's dev server exposes a partial `process` global (for HMR)
     // without `versions`, which crashes MusicKit's environment detection.
     // Temporarily remove it so MusicKit sees a normal browser environment.
-    const win = window as Record<string, unknown>
+    const win = window as unknown as Record<string, unknown>
     const savedProcess = win.process
     delete win.process
 
