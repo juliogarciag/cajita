@@ -20,10 +20,16 @@ function authHeaders(developerToken: string, userToken: string) {
   }
 }
 
+// Cache folder ID per user token to avoid creating duplicates
+const folderCache = new Map<string, string>()
+
 async function getOrCreateCajitaFolder(
   developerToken: string,
   userToken: string,
 ): Promise<string> {
+  const cached = folderCache.get(userToken)
+  if (cached) return cached
+
   const headers = authHeaders(developerToken, userToken)
 
   // List existing top-level playlist folders
@@ -37,7 +43,10 @@ async function getOrCreateCajitaFolder(
       (f: { attributes?: { name?: string } }) =>
         f.attributes?.name?.toLowerCase() === FOLDER_NAME,
     )
-    if (existing) return existing.id
+    if (existing) {
+      folderCache.set(userToken, existing.id)
+      return existing.id
+    }
   }
 
   // Create the folder if it doesn't exist
@@ -54,7 +63,9 @@ async function getOrCreateCajitaFolder(
   }
 
   const createData = await createRes.json()
-  return createData?.data?.[0]?.id
+  const folderId = createData?.data?.[0]?.id
+  folderCache.set(userToken, folderId)
+  return folderId
 }
 
 async function createAppleMusicPlaylist(params: CreatePlaylistParams): Promise<{ id: string }> {
