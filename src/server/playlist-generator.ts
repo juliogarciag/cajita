@@ -22,7 +22,7 @@ type Song = z.infer<typeof songsSchema>['songs'][number]
 async function callClaude(systemPrompt: string, userPrompt: string): Promise<string> {
   const client = getAnthropicClient()
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-5-latest',
+    model: 'claude-sonnet-4-5-20250929',
     max_tokens: 2048,
     temperature: 0.7,
     system: systemPrompt,
