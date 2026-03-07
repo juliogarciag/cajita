@@ -24,6 +24,7 @@ const SONGS_PER_PAGE = 10
 
 function CreatePlaylistPage() {
   const [prompt, setPrompt] = useState('')
+  const [songCount, setSongCount] = useState(25)
   const [phase, setPhase] = useState<Phase>('input')
   const [songs, setSongs] = useState<CatalogSong[]>([])
   const [playlistName, setPlaylistName] = useState('')
@@ -63,7 +64,7 @@ function CreatePlaylistPage() {
         songs: generatedSongs,
         suggestedName,
         suggestedDescription,
-      } = await generatePlaylistSongs({ data: { prompt, count: 50 } })
+      } = await generatePlaylistSongs({ data: { prompt, count: songCount } })
 
       setPlaylistName(suggestedName)
       setPlaylistDescription(suggestedDescription)
@@ -79,7 +80,7 @@ function CreatePlaylistPage() {
       setError(err instanceof Error ? err.message : 'Something went wrong')
       setPhase('input')
     }
-  }, [prompt, userToken])
+  }, [prompt, songCount, userToken])
 
   const handleReload = useCallback(
     async (index: number) => {
@@ -173,6 +174,7 @@ function CreatePlaylistPage() {
     setPlayingIndex(null)
     setCurrentPage(0)
     setPrompt('')
+    setSongCount(25)
     setSongs([])
     setPlaylistName('')
     setPlaylistDescription('')
@@ -265,6 +267,25 @@ function CreatePlaylistPage() {
             maxLength={500}
           />
           <div className="mt-1 text-right text-xs text-gray-400">{prompt.length}/500</div>
+
+          <div className="mt-4 flex items-center gap-3">
+            <label htmlFor="song-count" className="text-sm text-gray-600">
+              Number of songs
+            </label>
+            <select
+              id="song-count"
+              value={songCount}
+              onChange={(e) => setSongCount(Number(e.target.value))}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+            >
+              {[10, 15, 25, 50, 75, 100].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             type="button"
             onClick={handleCreate}

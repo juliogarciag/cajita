@@ -121,9 +121,9 @@ Example:
 
 export const generatePlaylistSongs = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ prompt: z.string(), count: z.number().optional() }))
+  .inputValidator(z.object({ prompt: z.string(), count: z.number().min(1).max(100).optional() }))
   .handler(async ({ data }) => {
-    const { prompt, count = 50 } = data
+    const { prompt, count = 25 } = data
     if (!prompt.trim()) {
       throw new Error('Prompt is required')
     }
