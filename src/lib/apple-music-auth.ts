@@ -32,7 +32,9 @@ export function clearUserToken(): void {
 
 let musicKitInstance: MusicKit.MusicKitInstance | null = null
 
-export async function configureMusicKit(developerToken: string): Promise<MusicKit.MusicKitInstance> {
+export async function configureMusicKit(
+  developerToken: string,
+): Promise<MusicKit.MusicKitInstance> {
   if (musicKitInstance) return musicKitInstance
 
   musicKitInstance = await MusicKit.configure({
@@ -66,11 +68,29 @@ export function loadMusicKitScript(): Promise<void> {
       resolve()
       return
     }
+
+    // MusicKit JS v3 fires this event when it's fully initialized
+    document.addEventListener('musickitloaded', () => resolve(), { once: true })
+
+    // MusicKit JS checks process.versions.node to detect Node.js.
+    // Vite's dev server exposes a partial `process` global (for HMR)
+    // without `versions`, which crashes MusicKit's environment detection.
+    // Temporarily remove it so MusicKit sees a normal browser environment.
+    const win = window as Record<string, unknown>
+    const savedProcess = win.process
+    delete win.process
+
     const script = document.createElement('script')
     script.src = 'https://js-cdn.music.apple.com/musickit/v3/musickit.js'
     script.async = true
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Failed to load MusicKit JS'))
+    script.onload = () => {
+      // Restore process after MusicKit has initialized its env check
+      if (savedProcess !== undefined) win.process = savedProcess
+    }
+    script.onerror = () => {
+      if (savedProcess !== undefined) win.process = savedProcess
+      reject(new Error('Failed to load MusicKit JS'))
+    }
     document.head.appendChild(script)
   })
 }

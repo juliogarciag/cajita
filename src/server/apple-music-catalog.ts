@@ -69,7 +69,14 @@ async function searchSong(
 
     if (!res.ok) {
       console.error(`Apple Music search failed: ${res.status} for "${searchQuery}"`)
-      return { artist, title, appleMusicId: null, artworkUrl: null, previewUrl: null, status: 'not_found' }
+      return {
+        artist,
+        title,
+        appleMusicId: null,
+        artworkUrl: null,
+        previewUrl: null,
+        status: 'not_found',
+      }
     }
 
     const data = searchResponseSchema.parse(await res.json())
@@ -87,14 +94,28 @@ async function searchSong(
       })
 
       if (!fallbackRes.ok) {
-        return { artist, title, appleMusicId: null, artworkUrl: null, previewUrl: null, status: 'not_found' }
+        return {
+          artist,
+          title,
+          appleMusicId: null,
+          artworkUrl: null,
+          previewUrl: null,
+          status: 'not_found',
+        }
       }
 
       const fallbackData = searchResponseSchema.parse(await fallbackRes.json())
       const fallbackSongs = fallbackData.results.songs?.data
 
       if (!fallbackSongs || fallbackSongs.length === 0) {
-        return { artist, title, appleMusicId: null, artworkUrl: null, previewUrl: null, status: 'not_found' }
+        return {
+          artist,
+          title,
+          appleMusicId: null,
+          artworkUrl: null,
+          previewUrl: null,
+          status: 'not_found',
+        }
       }
 
       const match = fallbackSongs[0]
@@ -102,7 +123,9 @@ async function searchSong(
         artist: match.attributes.artistName,
         title: match.attributes.name,
         appleMusicId: match.id,
-        artworkUrl: match.attributes.artwork ? formatArtworkUrl(match.attributes.artwork.url) : null,
+        artworkUrl: match.attributes.artwork
+          ? formatArtworkUrl(match.attributes.artwork.url)
+          : null,
         previewUrl: match.attributes.previews?.[0]?.url ?? null,
         status: 'matched',
       }
@@ -119,7 +142,14 @@ async function searchSong(
     }
   } catch (error) {
     console.error(`Apple Music search error for "${searchQuery}":`, error)
-    return { artist, title, appleMusicId: null, artworkUrl: null, previewUrl: null, status: 'not_found' }
+    return {
+      artist,
+      title,
+      appleMusicId: null,
+      artworkUrl: null,
+      previewUrl: null,
+      status: 'not_found',
+    }
   }
 }
 

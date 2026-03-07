@@ -20,9 +20,7 @@ function ToolsPage() {
             </div>
             <div>
               <h2 className="font-semibold text-gray-900">Create Playlist</h2>
-              <p className="text-sm text-gray-500">
-                Generate an Apple Music playlist with AI
-              </p>
+              <p className="text-sm text-gray-500">Generate an Apple Music playlist with AI</p>
             </div>
           </div>
         </Link>
