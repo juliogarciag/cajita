@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Loader2, Music, Check, Sparkles } from 'lucide-react'
 import { SongCard } from '#/components/SongCard.js'
@@ -29,6 +29,8 @@ function CreatePlaylistPage() {
   const [reloadingIndex, setReloadingIndex] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [userToken, setUserToken] = useState<string | null>(getStoredUserToken)
+  const [playingIndex, setPlayingIndex] = useState<number | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const handleCreate = useCallback(async () => {
     if (!prompt.trim()) return
@@ -147,6 +149,8 @@ function CreatePlaylistPage() {
   }, [songs, playlistName, playlistDescription, userToken])
 
   const handleReset = useCallback(() => {
+    audioRef.current?.pause()
+    setPlayingIndex(null)
     setPrompt('')
     setSongs([])
     setPlaylistName('')
@@ -154,6 +158,48 @@ function CreatePlaylistPage() {
     setPhase('input')
     setError(null)
   }, [])
+
+  const handleTogglePreview = useCallback(
+    (index: number) => {
+      const song = songs[index]
+      if (!song?.previewUrl) return
+
+      // Create audio element on first use
+      if (!audioRef.current) {
+        audioRef.current = new Audio()
+        audioRef.current.addEventListener('ended', () => setPlayingIndex(null))
+      }
+
+      const audio = audioRef.current
+
+      if (playingIndex === index) {
+        // Pause current song
+        audio.pause()
+        setPlayingIndex(null)
+      } else {
+        // Play new song (stops previous automatically)
+        audio.src = song.previewUrl
+        audio.play()
+        setPlayingIndex(index)
+      }
+    },
+    [songs, playingIndex],
+  )
+
+  // Stop preview when leaving review phase or deleting the playing song
+  const handleDeleteWithStop = useCallback(
+    (index: number) => {
+      if (playingIndex === index) {
+        audioRef.current?.pause()
+        setPlayingIndex(null)
+      } else if (playingIndex !== null && index < playingIndex) {
+        // Adjust index if a song before the playing one is removed
+        setPlayingIndex(playingIndex - 1)
+      }
+      handleDelete(index)
+    },
+    [handleDelete, playingIndex],
+  )
 
   const matchedCount = songs.filter((s) => s.status === 'matched').length
 
@@ -232,8 +278,10 @@ function CreatePlaylistPage() {
                 song={song}
                 index={index}
                 isReloading={reloadingIndex === index}
+                isPlaying={playingIndex === index}
                 onReload={() => handleReload(index)}
-                onDelete={() => handleDelete(index)}
+                onDelete={() => handleDeleteWithStop(index)}
+                onTogglePreview={() => handleTogglePreview(index)}
               />
             ))}
           </div>
