@@ -22,19 +22,16 @@ export const Route = createFileRoute('/')({
 
 function LoginPage() {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-      }}
-    >
-      <h1>Cajita</h1>
-      <p>Sign in to continue.</p>
-      <a href="/api/auth/google">
-        <button type="button">Sign in with Google</button>
+    <div className="flex min-h-screen flex-col items-center justify-center">
+      <h1 className="text-3xl font-bold">Cajita</h1>
+      <p className="mt-2 text-gray-600">Sign in to continue.</p>
+      <a href="/api/auth/google" className="mt-6">
+        <button
+          type="button"
+          className="rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          Sign in with Google
+        </button>
       </a>
     </div>
   )

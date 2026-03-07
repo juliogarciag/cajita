@@ -9,21 +9,33 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedToolsIndexRouteImport } from './routes/_authenticated/tools/index'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
+import { Route as AuthenticatedToolsCreatePlaylistRouteImport } from './routes/_authenticated/tools/create-playlist'
 
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedToolsIndexRoute = AuthenticatedToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
   id: '/api/auth/logout',
@@ -40,56 +52,76 @@ const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
   path: '/api/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedToolsCreatePlaylistRoute =
+  AuthenticatedToolsCreatePlaylistRouteImport.update({
+    id: '/tools/create-playlist',
+    path: '/tools/create-playlist',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/tools/': typeof AuthenticatedToolsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/tools': typeof AuthenticatedToolsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/_authenticated/tools/': typeof AuthenticatedToolsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
+    | '/tools/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
+    | '/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
+    | '/tools'
   id:
     | '__root__'
     | '/'
-    | '/dashboard'
+    | '/_authenticated'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
+    | '/_authenticated/tools/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DashboardRoute: typeof DashboardRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
@@ -97,11 +129,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -110,6 +142,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/tools/': {
+      id: '/_authenticated/tools/'
+      path: '/tools'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof AuthenticatedToolsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/api/auth/logout': {
       id: '/api/auth/logout'
@@ -132,12 +178,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/tools/create-playlist': {
+      id: '/_authenticated/tools/create-playlist'
+      path: '/tools/create-playlist'
+      fullPath: '/tools/create-playlist'
+      preLoaderRoute: typeof AuthenticatedToolsCreatePlaylistRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
+interface AuthenticatedRouteChildren {
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedToolsCreatePlaylistRoute: typeof AuthenticatedToolsCreatePlaylistRoute
+  AuthenticatedToolsIndexRoute: typeof AuthenticatedToolsIndexRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedToolsCreatePlaylistRoute: AuthenticatedToolsCreatePlaylistRoute,
+  AuthenticatedToolsIndexRoute: AuthenticatedToolsIndexRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DashboardRoute: DashboardRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,

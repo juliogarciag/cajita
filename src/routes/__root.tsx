@@ -1,4 +1,6 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
+import appCss from '#/styles.css?url'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -7,19 +9,27 @@ export const Route = createRootRoute({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Cajita' },
     ],
+    links: [{ rel: 'stylesheet', href: appCss }],
   }),
-  shellComponent: RootDocument,
+  component: RootComponent,
 })
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootComponent() {
+  return (
+    <RootDocument>
+      <Outlet />
+    </RootDocument>
+  )
+}
+
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
         {children}
-        <Outlet />
         <Scripts />
       </body>
     </html>
