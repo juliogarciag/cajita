@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
+import { eq } from '@tanstack/db'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { budgetItemsCollection, type BudgetItem } from '#/lib/budget-items-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
@@ -37,7 +38,7 @@ export function BudgetDetail({ budget, categoryName, categoryColor, onBack }: Bu
   const { data: items } = useLiveQuery((q) =>
     q
       .from({ bi: budgetItemsCollection })
-      .where(({ bi }) => bi.budget_id === budget.id)
+      .where(({ bi }) => eq(bi.budget_id, budget.id))
       .orderBy(({ bi }) => bi.sort_position, 'asc'),
   )
 
