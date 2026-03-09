@@ -2,8 +2,6 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { db } from '#/db/index.js'
 import { authMiddleware } from './middleware.js'
-import { recalculateRemaining } from './budgets.js'
-import { isMovementFrozen } from './movements.js'
 
 export const createBudgetItem = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
@@ -38,6 +36,7 @@ export const createBudgetItem = createServerFn({ method: 'POST' })
       .returningAll()
       .executeTakeFirstOrThrow()
 
+    const { recalculateRemaining } = await import('./budget-helpers.js')
     await recalculateRemaining(data.budget_id)
 
     return { item }
@@ -64,6 +63,7 @@ export const updateBudgetItem = createServerFn({ method: 'POST' })
 
     // If synced and movement is frozen, block edit
     if (existing.movement_id) {
+      const { isMovementFrozen } = await import('./movements.js')
       if (await isMovementFrozen(existing.movement_id)) {
         throw new Error('Cannot edit: linked movement is frozen')
       }
@@ -99,7 +99,8 @@ export const updateBudgetItem = createServerFn({ method: 'POST' })
         .execute()
     }
 
-    await recalculateRemaining(existing.budget_id)
+    const { recalculateRemaining: recalcRemaining } = await import('./budget-helpers.js')
+    await recalcRemaining(existing.budget_id)
 
     return { item }
   })
@@ -116,7 +117,8 @@ export const deleteBudgetItem = createServerFn({ method: 'POST' })
 
     // If synced and frozen, block delete
     if (item.movement_id) {
-      if (await isMovementFrozen(item.movement_id)) {
+      const { isMovementFrozen: isFrozen } = await import('./movements.js')
+      if (await isFrozen(item.movement_id)) {
         throw new Error('Cannot delete: linked movement is frozen')
       }
       // Delete linked movement
@@ -125,7 +127,8 @@ export const deleteBudgetItem = createServerFn({ method: 'POST' })
 
     await db.deleteFrom('budget_items').where('id', '=', data.id).execute()
 
-    await recalculateRemaining(item.budget_id)
+    const { recalculateRemaining: recalcRem } = await import('./budget-helpers.js')
+    await recalcRem(item.budget_id)
 
     return { success: true }
   })
@@ -210,7 +213,8 @@ export const unsyncBudgetItem = createServerFn({ method: 'POST' })
       throw new Error('Item is not synced')
     }
 
-    if (await isMovementFrozen(item.movement_id)) {
+    const { isMovementFrozen: checkFrozen } = await import('./movements.js')
+    if (await checkFrozen(item.movement_id)) {
       throw new Error('Cannot unsync: movement is frozen')
     }
 
