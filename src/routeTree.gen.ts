@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedMovementsRouteImport } from './routes/_authenticated/movements'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedToolsIndexRouteImport } from './routes/_authenticated/tools/index'
+import { Route as ApiElectricTableRouteImport } from './routes/api/electric/$table'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
@@ -27,6 +29,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedMovementsRoute = AuthenticatedMovementsRouteImport.update({
+  id: '/movements',
+  path: '/movements',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -36,6 +43,11 @@ const AuthenticatedToolsIndexRoute = AuthenticatedToolsIndexRouteImport.update({
   id: '/tools/',
   path: '/tools/',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const ApiElectricTableRoute = ApiElectricTableRouteImport.update({
+  id: '/api/electric/$table',
+  path: '/api/electric/$table',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
   id: '/api/auth/logout',
@@ -62,19 +74,23 @@ const AuthenticatedToolsCreatePlaylistRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/movements': typeof AuthenticatedMovementsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/electric/$table': typeof ApiElectricTableRoute
   '/tools/': typeof AuthenticatedToolsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/movements': typeof AuthenticatedMovementsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/electric/$table': typeof ApiElectricTableRoute
   '/tools': typeof AuthenticatedToolsIndexRoute
 }
 export interface FileRoutesById {
@@ -82,10 +98,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/movements': typeof AuthenticatedMovementsRoute
   '/_authenticated/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/electric/$table': typeof ApiElectricTableRoute
   '/_authenticated/tools/': typeof AuthenticatedToolsIndexRoute
 }
 export interface FileRouteTypes {
@@ -93,29 +111,35 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/movements'
     | '/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
+    | '/api/electric/$table'
     | '/tools/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
+    | '/movements'
     | '/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
+    | '/api/electric/$table'
     | '/tools'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/_authenticated/dashboard'
+    | '/_authenticated/movements'
     | '/_authenticated/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
+    | '/api/electric/$table'
     | '/_authenticated/tools/'
   fileRoutesById: FileRoutesById
 }
@@ -125,6 +149,7 @@ export interface RootRouteChildren {
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
+  ApiElectricTableRoute: typeof ApiElectricTableRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -143,6 +168,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/movements': {
+      id: '/_authenticated/movements'
+      path: '/movements'
+      fullPath: '/movements'
+      preLoaderRoute: typeof AuthenticatedMovementsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -156,6 +188,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/tools/'
       preLoaderRoute: typeof AuthenticatedToolsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/api/electric/$table': {
+      id: '/api/electric/$table'
+      path: '/api/electric/$table'
+      fullPath: '/api/electric/$table'
+      preLoaderRoute: typeof ApiElectricTableRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/logout': {
       id: '/api/auth/logout'
@@ -190,12 +229,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedMovementsRoute: typeof AuthenticatedMovementsRoute
   AuthenticatedToolsCreatePlaylistRoute: typeof AuthenticatedToolsCreatePlaylistRoute
   AuthenticatedToolsIndexRoute: typeof AuthenticatedToolsIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedMovementsRoute: AuthenticatedMovementsRoute,
   AuthenticatedToolsCreatePlaylistRoute: AuthenticatedToolsCreatePlaylistRoute,
   AuthenticatedToolsIndexRoute: AuthenticatedToolsIndexRoute,
 }
@@ -210,6 +251,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
+  ApiElectricTableRoute: ApiElectricTableRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
