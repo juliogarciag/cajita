@@ -6,6 +6,8 @@ import { movementsCollection, type Movement } from '#/lib/movements-collection.j
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { EditableCell } from './EditableCell.js'
+import { DateRangeFilter, type DateRange } from './DateRangeFilter.js'
+import { CategoryFilter } from './CategoryFilter.js'
 
 const ROW_HEIGHT = 40
 
@@ -18,6 +20,18 @@ interface MovementWithTotal extends Movement {
 export function MovementsTable() {
   const parentRef = useRef<HTMLDivElement>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [dateRange, setDateRange] = useState<DateRange | null>(null)
+  const [categoryId, setCategoryId] = useState<string | null>(null)
+
+  const handleDateRangeChange = useCallback((range: DateRange | null) => {
+    setDateRange(range)
+    if (range) setCategoryId(null)
+  }, [])
+
+  const handleCategoryChange = useCallback((id: string | null) => {
+    setCategoryId(id)
+    if (id) setDateRange(null)
+  }, [])
 
   const { data: movements } = useLiveQuery((q) =>
     q
@@ -38,7 +52,8 @@ export function MovementsTable() {
     return map
   }, [categories])
 
-  const withTotals: MovementWithTotal[] = useMemo(() => {
+  // Compute running totals on ALL movements (absolute balance)
+  const allWithTotals: MovementWithTotal[] = useMemo(() => {
     let runningTotal = 0
     return movements.map((m: Movement) => {
       runningTotal += m.amount_cents
@@ -51,6 +66,18 @@ export function MovementsTable() {
       }
     })
   }, [movements, categoryMap])
+
+  // Apply filters after totals are computed
+  const isCategoryFilter = categoryId !== null
+  const withTotals = useMemo(() => {
+    if (dateRange) {
+      return allWithTotals.filter((m) => m.date >= dateRange.from && m.date <= dateRange.to)
+    }
+    if (categoryId) {
+      return allWithTotals.filter((m) => m.category_id === categoryId)
+    }
+    return allWithTotals
+  }, [allWithTotals, dateRange, categoryId])
 
   const virtualizer = useVirtualizer({
     count: withTotals.length,
@@ -106,20 +133,31 @@ export function MovementsTable() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Movements</h1>
-        <button
-          onClick={handleAdd}
-          className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          <Plus size={16} />
-          Add Movement
-        </button>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Movements</h1>
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            <Plus size={16} />
+            Add Movement
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
+          <div className="h-4 w-px bg-gray-300" />
+          <CategoryFilter value={categoryId} onChange={handleCategoryChange} />
+        </div>
       </div>
 
       {withTotals.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white px-6 py-12 text-center">
-          <p className="text-gray-500">No movements yet. Add your first one.</p>
+          <p className="text-gray-500">
+            {dateRange || categoryId
+              ? 'No movements match the current filter.'
+              : 'No movements yet. Add your first one.'}
+          </p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
@@ -128,7 +166,9 @@ export function MovementsTable() {
             <div className="w-[280px] shrink-0 px-3 py-2">Description</div>
             <div className="w-[120px] shrink-0 px-3 py-2">Date</div>
             <div className="w-[120px] shrink-0 px-3 py-2 text-right">Amount</div>
-            <div className="w-[120px] shrink-0 px-3 py-2 text-right">Total</div>
+            {!isCategoryFilter && (
+              <div className="w-[120px] shrink-0 px-3 py-2 text-right">Total</div>
+            )}
             <div className="flex-1 px-3 py-2">Category</div>
             <div className="w-[48px] shrink-0" />
           </div>
@@ -177,9 +217,11 @@ export function MovementsTable() {
                         onSave={(v) => handleUpdate(row.id, 'amount_cents', v)}
                       />
                     </div>
-                    <div className="w-[120px] shrink-0 px-3 py-1 text-right font-medium">
-                      {formatCents(row.total_cents)}
-                    </div>
+                    {!isCategoryFilter && (
+                      <div className="w-[120px] shrink-0 px-3 py-1 text-right font-medium">
+                        {formatCents(row.total_cents)}
+                      </div>
+                    )}
                     <div className="flex-1 px-1">
                       <EditableCell
                         value={row.category_name ?? ''}
