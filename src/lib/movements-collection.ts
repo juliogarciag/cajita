@@ -10,6 +10,7 @@ const movementSchema = z.object({
   amount_cents: z.coerce.number(),
   category_id: z.string().nullable(),
   sort_position: z.coerce.number(),
+  source: z.string().default('manual'),
   created_at: z.string(),
   updated_at: z.string(),
 })

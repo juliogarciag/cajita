@@ -31,6 +31,31 @@ export interface MovementsTable {
   amount_cents: number
   category_id: string | null
   sort_position: number
+  source: Generated<string>
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
+export interface BudgetsTable {
+  id: Generated<string>
+  category_id: string
+  year: number
+  annual_amount_cents: number
+  remaining_movement_id: string | null
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
+export interface BudgetItemsTable {
+  id: Generated<string>
+  budget_id: string
+  description: string
+  date: string
+  amount_local_cents: number | null
+  amount_cents: number
+  accounting_date: string | null
+  movement_id: string | null
+  sort_position: number
   created_at: Generated<Date>
   updated_at: Generated<Date>
 }
@@ -59,4 +84,6 @@ export interface Database {
   movements: MovementsTable
   snapshots: SnapshotsTable
   checkpoints: CheckpointsTable
+  budgets: BudgetsTable
+  budget_items: BudgetItemsTable
 }

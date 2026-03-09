@@ -1,7 +1,7 @@
 import { useRef, useMemo, useState, useCallback, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useLiveQuery } from '@tanstack/react-db'
-import { Plus, Trash2, History, Lock, Unlock } from 'lucide-react'
+import { Plus, Trash2, History, Lock, Unlock, Wallet } from 'lucide-react'
 import { movementsCollection, type Movement } from '#/lib/movements-collection.js'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { checkpointsCollection, type Checkpoint } from '#/lib/checkpoints-collection.js'
@@ -191,13 +191,15 @@ export function MovementsTable() {
   const rowCells = (row: MovementWithTotal) => {
     const isPositive = row.amount_cents > 0
     const frozen = row.frozen
+    const budgetManaged = row.source !== 'manual'
+    const disabled = frozen || budgetManaged
     return (
       <>
         <div className="w-[260px] shrink-0 px-1" data-cell="description">
           <EditableCell
             value={row.description}
             type="text"
-            disabled={frozen}
+            disabled={disabled}
             onSave={(v) => handleUpdate(row.id, 'description', v)}
           />
         </div>
@@ -205,7 +207,7 @@ export function MovementsTable() {
           <EditableCell
             value={row.date}
             type="date"
-            disabled={frozen}
+            disabled={disabled}
             onSave={(v) => handleUpdate(row.id, 'date', v)}
           />
         </div>
@@ -213,7 +215,7 @@ export function MovementsTable() {
           <EditableCell
             value={formatCents(row.amount_cents)}
             type="amount"
-            disabled={frozen}
+            disabled={disabled}
             className={`text-right ${isPositive ? 'text-green-700' : 'text-red-700'}`}
             onSave={(v) => handleUpdate(row.id, 'amount_cents', v)}
           />
@@ -226,12 +228,16 @@ export function MovementsTable() {
             value={row.category_name ?? ''}
             type="category"
             categoryId={row.category_id}
-            disabled={frozen}
+            disabled={disabled}
             onSave={(v) => handleUpdate(row.id, 'category_id', v)}
           />
         </div>
         <div className="w-[48px] shrink-0 flex items-center justify-center">
-          {frozen ? (
+          {budgetManaged ? (
+            <span title={`Managed by budget (${row.source})`}>
+              <Wallet size={14} className="text-blue-400" />
+            </span>
+          ) : frozen ? (
             <Lock size={14} className="text-gray-300" />
           ) : deletingId === row.id ? (
             <button
@@ -277,7 +283,7 @@ export function MovementsTable() {
       }}
       className={`flex w-full items-center border-b border-gray-100 text-sm ${
         row.frozen ? 'opacity-50' : 'hover:bg-gray-50'
-      }`}
+      } ${row.source === 'budget_remaining' ? 'italic text-gray-400' : ''}`}
       data-row-id={row.id}
     >
       {rowCells(row)}

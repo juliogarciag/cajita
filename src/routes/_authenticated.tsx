@@ -45,6 +45,12 @@ function AuthenticatedLayout() {
                 Movements
               </Link>
               <Link
+                to="/budgets"
+                className="text-sm text-gray-600 hover:text-gray-900 [&.active]:font-medium [&.active]:text-gray-900"
+              >
+                Budgets
+              </Link>
+              <Link
                 to="/tools"
                 className="text-sm text-gray-600 hover:text-gray-900 [&.active]:font-medium [&.active]:text-gray-900"
               >
