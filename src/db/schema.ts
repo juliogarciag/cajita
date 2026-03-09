@@ -44,10 +44,19 @@ export interface SnapshotsTable {
   created_at: Generated<Date>
 }
 
+export interface CheckpointsTable {
+  id: Generated<string>
+  movement_id: string
+  expected_cents: number
+  actual_cents: number
+  created_at: Generated<Date>
+}
+
 export interface Database {
   users: UsersTable
   sessions: SessionsTable
   categories: CategoriesTable
   movements: MovementsTable
   snapshots: SnapshotsTable
+  checkpoints: CheckpointsTable
 }

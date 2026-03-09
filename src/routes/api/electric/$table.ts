@@ -3,7 +3,7 @@ import { parseCookies } from '#/server/cookies.js'
 import { validateSession } from '#/server/session.js'
 
 const ELECTRIC_URL = process.env.ELECTRIC_URL ?? 'http://localhost:3060'
-const ALLOWED_TABLES = ['movements', 'categories']
+const ALLOWED_TABLES = ['movements', 'categories', 'checkpoints']
 
 // Electric protocol query params to forward
 const ELECTRIC_PARAMS = [

@@ -3,6 +3,33 @@ import { z } from 'zod'
 import { db } from '#/db/index.js'
 import { authMiddleware } from './middleware.js'
 
+// --- Helpers ---
+
+async function isMovementFrozen(movementId: string): Promise<boolean> {
+  // Get the latest checkpoint
+  const checkpoint = await db
+    .selectFrom('checkpoints')
+    .innerJoin('movements', 'movements.id', 'checkpoints.movement_id')
+    .select(['movements.date as cp_date', 'movements.sort_position as cp_sort_position'])
+    .orderBy('checkpoints.created_at', 'desc')
+    .executeTakeFirst()
+
+  if (!checkpoint) return false
+
+  // Get the movement being checked
+  const movement = await db
+    .selectFrom('movements')
+    .select(['date', 'sort_position'])
+    .where('id', '=', movementId)
+    .executeTakeFirstOrThrow()
+
+  // Frozen if at or before the checkpoint boundary
+  return (
+    movement.date < checkpoint.cp_date ||
+    (movement.date === checkpoint.cp_date && movement.sort_position <= checkpoint.cp_sort_position)
+  )
+}
+
 // --- Server Functions ---
 
 export const getMovements = createServerFn({ method: 'GET' })
@@ -78,6 +105,10 @@ export const updateMovement = createServerFn({ method: 'POST' })
     }),
   )
   .handler(async ({ data }) => {
+    if (await isMovementFrozen(data.id)) {
+      throw new Error('Cannot edit a frozen movement')
+    }
+
     const { id, ...updates } = data
     const toSet: Record<string, unknown> = { updated_at: new Date() }
 
@@ -101,6 +132,10 @@ export const deleteMovement = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
+    if (await isMovementFrozen(data.id)) {
+      throw new Error('Cannot delete a frozen movement')
+    }
+
     await db.deleteFrom('movements').where('id', '=', data.id).execute()
     return { success: true }
   })
