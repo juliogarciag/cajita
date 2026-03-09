@@ -10,13 +10,13 @@ import { DateRangeFilter, type DateRange } from './DateRangeFilter.js'
 import { CategoryFilter } from './CategoryFilter.js'
 import { SnapshotPanel } from './SnapshotPanel.js'
 
-const ROW_HEIGHT = 40
-
 interface MovementWithTotal extends Movement {
   total_cents: number
   category_name: string | null
   category_color: string | null
 }
+
+const ROW_HEIGHT = 40
 
 export function MovementsTable() {
   const parentRef = useRef<HTMLDivElement>(null)
@@ -25,6 +25,7 @@ export function MovementsTable() {
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [snapshotOpen, setSnapshotOpen] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const scrollToEnd = useRef(false)
   const [DndModule, setDndModule] = useState<typeof import('./DndWrapper.js') | null>(null)
   const [DragRowModule, setDragRowModule] = useState<typeof import('./DragRow.js') | null>(null)
 
@@ -96,29 +97,36 @@ export function MovementsTable() {
     count: withTotals.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => ROW_HEIGHT,
-    overscan: 10,
+    overscan: 20,
   })
 
-  const handleUpdate = useCallback(
-    (id: string, field: keyof Movement, rawValue: string) => {
-      const updates: Partial<Movement> = {}
+  // Scroll to bottom after data updates from an insert
+  useEffect(() => {
+    if (scrollToEnd.current && withTotals.length > 0) {
+      scrollToEnd.current = false
+      setTimeout(() => {
+        parentRef.current?.scrollTo({ top: parentRef.current.scrollHeight })
+      }, 200)
+    }
+  }, [withTotals])
 
-      if (field === 'amount_cents') {
-        const cents = parseDollarsTocents(rawValue)
-        if (cents === null) return
-        updates.amount_cents = cents
-      } else if (field === 'category_id') {
-        updates.category_id = rawValue || null
-      } else {
-        ;(updates as Record<string, string>)[field] = rawValue
-      }
+  const handleUpdate = useCallback((id: string, field: keyof Movement, rawValue: string) => {
+    const updates: Partial<Movement> = {}
 
-      movementsCollection.update(id, (draft) => {
-        Object.assign(draft, updates)
-      })
-    },
-    [],
-  )
+    if (field === 'amount_cents') {
+      const cents = parseDollarsTocents(rawValue)
+      if (cents === null) return
+      updates.amount_cents = cents
+    } else if (field === 'category_id') {
+      updates.category_id = rawValue || null
+    } else {
+      ;(updates as Record<string, string>)[field] = rawValue
+    }
+
+    movementsCollection.update(id, (draft) => {
+      Object.assign(draft, updates)
+    })
+  }, [])
 
   const handleAdd = useCallback(() => {
     const today = toISODate(new Date())
@@ -137,6 +145,8 @@ export function MovementsTable() {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
+
+    scrollToEnd.current = true
   }, [movements])
 
   const handleDelete = useCallback((id: string) => {
@@ -176,9 +186,7 @@ export function MovementsTable() {
       } else if (activeIdx < overIdx) {
         const after = sameDateRows[overIdx].sort_position
         const next =
-          overIdx + 1 < sameDateRows.length
-            ? sameDateRows[overIdx + 1].sort_position
-            : after + 1000
+          overIdx + 1 < sameDateRows.length ? sameDateRows[overIdx + 1].sort_position : after + 1000
         newPosition = Math.floor((after + next) / 2)
       } else {
         const before = sameDateRows[overIdx].sort_position
@@ -196,18 +204,11 @@ export function MovementsTable() {
   const activeRow = activeId ? withTotals.find((m) => m.id === activeId) : null
   const dndReady = DndModule && DragRowModule
 
-  const renderRow = (row: MovementWithTotal, virtualStart: number, virtualSize: number) => {
+  const rowCells = (row: MovementWithTotal) => {
     const isPositive = row.amount_cents > 0
-    const rowContent = (
+    return (
       <>
-        {dndReady ? (
-          <DragRowModule.DraggableRow id={row.id}>
-            <GripVertical size={14} className="text-gray-300" />
-          </DragRowModule.DraggableRow>
-        ) : (
-          <div className="w-[28px] shrink-0" />
-        )}
-        <div className="w-[260px] shrink-0 px-1">
+        <div className="w-[260px] shrink-0 px-1" data-cell="description">
           <EditableCell
             value={row.description}
             type="text"
@@ -261,8 +262,11 @@ export function MovementsTable() {
         </div>
       </>
     )
+  }
 
-    const style = {
+  const renderRow = (row: MovementWithTotal, virtualStart: number, virtualSize: number) => {
+    const rowClass = 'flex w-full items-center border-b border-gray-100 text-sm hover:bg-gray-50'
+    const virtualStyle = {
       position: 'absolute' as const,
       top: 0,
       left: 0,
@@ -273,20 +277,22 @@ export function MovementsTable() {
 
     if (dndReady) {
       return (
-        <DragRowModule.DroppableRow
+        <DragRowModule.SortableRow
           key={row.id}
           id={row.id}
-          style={style}
-          className="flex w-full items-center border-b border-gray-100 text-sm hover:bg-gray-50"
+          className={rowClass}
+          style={virtualStyle}
+          handle={<GripVertical size={14} className="text-gray-300" />}
         >
-          {rowContent}
-        </DragRowModule.DroppableRow>
+          {rowCells(row)}
+        </DragRowModule.SortableRow>
       )
     }
 
     return (
-      <div key={row.id} style={style} className="flex w-full items-center border-b border-gray-100 text-sm hover:bg-gray-50">
-        {rowContent}
+      <div key={row.id} style={virtualStyle} className={rowClass} data-row-id={row.id}>
+        <div className="w-[28px] shrink-0" />
+        {rowCells(row)}
       </div>
     )
   }
@@ -294,7 +300,7 @@ export function MovementsTable() {
   const dragOverlay = activeRow ? (
     <div
       className="flex items-center rounded border border-gray-300 bg-white text-sm shadow-lg"
-      style={{ height: ROW_HEIGHT }}
+      style={{ height: 40 }}
     >
       <div className="flex w-[28px] shrink-0 items-center justify-center">
         <GripVertical size={14} className="text-gray-400" />
@@ -319,15 +325,17 @@ export function MovementsTable() {
         <div className="w-[260px] shrink-0 px-3 py-2">Description</div>
         <div className="w-[120px] shrink-0 px-3 py-2">Date</div>
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Amount</div>
-        {!isCategoryFilter && (
-          <div className="w-[120px] shrink-0 px-3 py-2 text-right">Total</div>
-        )}
+        {!isCategoryFilter && <div className="w-[120px] shrink-0 px-3 py-2 text-right">Total</div>}
         <div className="flex-1 px-3 py-2">Category</div>
         <div className="w-[48px] shrink-0" />
       </div>
 
       {/* Virtualized body */}
-      <div ref={parentRef} className="max-h-[calc(100vh-260px)] overflow-auto">
+      <div
+        ref={parentRef}
+        className="overflow-auto"
+        style={{ height: Math.min(withTotals.length * ROW_HEIGHT, window.innerHeight - 260) }}
+      >
         <div
           style={{
             height: `${virtualizer.getTotalSize()}px`,
@@ -386,6 +394,7 @@ export function MovementsTable() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           overlay={dragOverlay}
+          items={withTotals.map((m) => m.id)}
         >
           {tableContent}
         </DndModule.DndWrapper>

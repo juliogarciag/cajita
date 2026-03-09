@@ -11,6 +11,7 @@ interface EditableCellProps {
   onTab?: (shift: boolean) => void
   onEnter?: () => void
   className?: string
+  autoEdit?: boolean
 }
 
 export function EditableCell({
@@ -21,10 +22,15 @@ export function EditableCell({
   onTab,
   onEnter,
   className = '',
+  autoEdit = false,
 }: EditableCellProps) {
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(autoEdit)
   const [draft, setDraft] = useState(value)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (autoEdit) setEditing(true)
+  }, [autoEdit])
 
   useEffect(() => {
     setDraft(value)

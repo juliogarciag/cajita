@@ -34,9 +34,9 @@ export const createMovement = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(
     z.object({
-      description: z.string().min(1).max(255),
+      description: z.string().max(255),
       date: z.string(),
-      amount_cents: z.number().int().refine((n) => n !== 0, 'Amount cannot be zero'),
+      amount_cents: z.number().int(),
       category_id: z.string().uuid().nullable().optional(),
     }),
   )
@@ -70,13 +70,9 @@ export const updateMovement = createServerFn({ method: 'POST' })
   .inputValidator(
     z.object({
       id: z.string().uuid(),
-      description: z.string().min(1).max(255).optional(),
+      description: z.string().max(255).optional(),
       date: z.string().optional(),
-      amount_cents: z
-        .number()
-        .int()
-        .refine((n) => n !== 0, 'Amount cannot be zero')
-        .optional(),
+      amount_cents: z.number().int().optional(),
       category_id: z.string().uuid().nullable().optional(),
       sort_position: z.number().int().optional(),
     }),
