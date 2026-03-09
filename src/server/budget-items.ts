@@ -63,7 +63,7 @@ export const updateBudgetItem = createServerFn({ method: 'POST' })
 
     // If synced and movement is frozen, block edit
     if (existing.movement_id) {
-      const { isMovementFrozen } = await import('./movements.js')
+      const { isMovementFrozen } = await import('./budget-helpers.js')
       if (await isMovementFrozen(existing.movement_id)) {
         throw new Error('Cannot edit: linked movement is frozen')
       }
@@ -117,7 +117,7 @@ export const deleteBudgetItem = createServerFn({ method: 'POST' })
 
     // If synced and frozen, block delete
     if (item.movement_id) {
-      const { isMovementFrozen: isFrozen } = await import('./movements.js')
+      const { isMovementFrozen: isFrozen } = await import('./budget-helpers.js')
       if (await isFrozen(item.movement_id)) {
         throw new Error('Cannot delete: linked movement is frozen')
       }
@@ -213,7 +213,7 @@ export const unsyncBudgetItem = createServerFn({ method: 'POST' })
       throw new Error('Item is not synced')
     }
 
-    const { isMovementFrozen: checkFrozen } = await import('./movements.js')
+    const { isMovementFrozen: checkFrozen } = await import('./budget-helpers.js')
     if (await checkFrozen(item.movement_id)) {
       throw new Error('Cannot unsync: movement is frozen')
     }

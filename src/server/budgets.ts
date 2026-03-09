@@ -125,7 +125,7 @@ export const deleteBudget = createServerFn({ method: 'POST' })
 
     // Check if any are frozen
     if (movementIds.length > 0) {
-      const { isMovementFrozen } = await import('./movements.js')
+      const { isMovementFrozen } = await import('./budget-helpers.js')
       for (const movId of movementIds) {
         if (await isMovementFrozen(movId)) {
           throw new Error('Cannot delete budget: some synced movements are frozen. Unfreeze first.')

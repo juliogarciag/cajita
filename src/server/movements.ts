@@ -5,7 +5,7 @@ import { authMiddleware } from './middleware.js'
 
 // --- Helpers ---
 
-export async function isMovementFrozen(movementId: string): Promise<boolean> {
+async function isMovementFrozen(movementId: string): Promise<boolean> {
   // Get the latest checkpoint
   const checkpoint = await db
     .selectFrom('checkpoints')

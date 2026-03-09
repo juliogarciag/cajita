@@ -1,5 +1,30 @@
 import { db } from '#/db/index.js'
 
+export async function isMovementFrozen(movementId: string): Promise<boolean> {
+  // Get the latest checkpoint
+  const checkpoint = await db
+    .selectFrom('checkpoints')
+    .innerJoin('movements', 'movements.id', 'checkpoints.movement_id')
+    .select(['movements.date as cp_date', 'movements.sort_position as cp_sort_position'])
+    .orderBy('checkpoints.created_at', 'desc')
+    .executeTakeFirst()
+
+  if (!checkpoint) return false
+
+  // Get the movement being checked
+  const movement = await db
+    .selectFrom('movements')
+    .select(['date', 'sort_position'])
+    .where('id', '=', movementId)
+    .executeTakeFirstOrThrow()
+
+  // Frozen if at or before the checkpoint boundary
+  return (
+    movement.date < checkpoint.cp_date ||
+    (movement.date === checkpoint.cp_date && movement.sort_position <= checkpoint.cp_sort_position)
+  )
+}
+
 export async function recalculateRemaining(budgetId: string): Promise<void> {
   const budget = await db
     .selectFrom('budgets')
@@ -10,7 +35,6 @@ export async function recalculateRemaining(budgetId: string): Promise<void> {
   if (!budget.remaining_movement_id) return
 
   // Check if the remaining movement is frozen
-  const { isMovementFrozen } = await import('./movements.js')
   if (await isMovementFrozen(budget.remaining_movement_id)) return // silently skip
 
   // Sum all items
