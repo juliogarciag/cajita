@@ -24,3 +24,14 @@ export function formatDate(dateStr: string): string {
 export function toISODate(date: Date): string {
   return date.toISOString().split('T')[0]
 }
+
+const solesFormatter = new Intl.NumberFormat('es-PE', {
+  style: 'currency',
+  currency: 'PEN',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+export function formatSoles(cents: number): string {
+  return solesFormatter.format(cents / 100)
+}
