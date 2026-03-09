@@ -7,6 +7,10 @@ services:
       POSTGRES_DB: cajita
       POSTGRES_USER: cajita
       POSTGRES_PASSWORD: cajita
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -14,6 +18,17 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+
+  electric:
+    image: electricsql/electric
+    ports:
+      - "3060:3000"
+    environment:
+      DATABASE_URL: postgresql://cajita:cajita@db:5432/cajita
+      ELECTRIC_INSECURE: "true"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   pgdata:
