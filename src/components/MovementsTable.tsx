@@ -398,7 +398,14 @@ export function MovementsTable() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Movements</h1>
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-2xl font-bold">Movements</h1>
+            {withTotals.length > 0 && (
+              <span className={`text-lg font-semibold ${withTotals[withTotals.length - 1].total_cents >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                {formatCents(withTotals[withTotals.length - 1].total_cents)}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSnapshotOpen(true)}
