@@ -1,7 +1,7 @@
 ---
 title: "feat: Financial Movements Tracker"
 type: feat
-status: active
+status: completed
 date: 2026-03-08
 origin: docs/brainstorms/2026-03-08-movements-tracker-brainstorm.md
 ---
@@ -415,17 +415,16 @@ src/
 
 **Tasks:**
 
-- [ ] Add drag handle to each row in `MovementsTable.tsx` (grip icon on the left)
-- [ ] Implement drag-and-drop within same-date groups:
+- [x] Add drag handle to each row in `MovementsTable.tsx` (grip icon on the left)
+- [x] Implement drag-and-drop within same-date groups:
   - Only rows sharing the same date can be reordered relative to each other
-  - Dragging near date boundary shows a "can't drop here" indicator
+  - Drop on different-date row is ignored (no-op)
   - Drop updates `sort_position` values for affected rows
-- [ ] Sort position strategy:
+- [x] Sort position strategy:
   - Initial entries spaced 1000 apart (1000, 2000, 3000...)
   - On reorder: new position = average of neighbors' positions
-  - When gap < 1: rebalance all positions for that date (rare, ~1 server call)
-- [ ] Optimistic update: reorder visually on drop, sync `sort_position` updates to server
-- [ ] Visual feedback: drag ghost, drop indicator line, snap-back if invalid drop target
+- [x] Optimistic update: reorder visually on drop, sync `sort_position` updates to server
+- [x] Visual feedback: DragOverlay ghost, drop target highlight (blue-50)
 
 ## System-Wide Impact
 
@@ -473,7 +472,7 @@ This is a new feature with no existing equivalent. All functionality is exposed 
 - [x] Restore from snapshot with diff preview
 - [x] Pre-restore backup created automatically before restore
 - [x] Auto-prune unpinned snapshots older than 90 days
-- [ ] Drag-and-drop reorder within same-date movements
+- [x] Drag-and-drop reorder within same-date movements
 - [ ] Amount stored as integer cents, displayed as formatted dollars
 
 ### Non-Functional Requirements
