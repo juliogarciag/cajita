@@ -12,6 +12,7 @@ interface EditableCellProps {
   onEnter?: () => void
   className?: string
   autoEdit?: boolean
+  disabled?: boolean
 }
 
 export function EditableCell({
@@ -23,6 +24,7 @@ export function EditableCell({
   onEnter,
   className = '',
   autoEdit = false,
+  disabled = false,
 }: EditableCellProps) {
   const [editing, setEditing] = useState(autoEdit)
   const [draft, setDraft] = useState(value)
@@ -72,11 +74,11 @@ export function EditableCell({
     [cancel, save, onTab, onEnter],
   )
 
-  if (!editing) {
+  if (disabled || !editing) {
     return (
       <div
-        className={`cursor-pointer rounded px-2 py-1 hover:bg-gray-100 ${className}`}
-        onClick={() => setEditing(true)}
+        className={`rounded px-2 py-1 ${disabled ? '' : 'cursor-pointer hover:bg-gray-100'} ${className}`}
+        onClick={disabled ? undefined : () => setEditing(true)}
       >
         {value || <span className="text-gray-400">—</span>}
       </div>

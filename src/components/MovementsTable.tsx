@@ -1,19 +1,21 @@
 import { useRef, useMemo, useState, useCallback, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useLiveQuery } from '@tanstack/react-db'
-import { Plus, Trash2, History, GripVertical } from 'lucide-react'
+import { Plus, Trash2, History, Lock, Unlock } from 'lucide-react'
 import { movementsCollection, type Movement } from '#/lib/movements-collection.js'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
+import { checkpointsCollection, type Checkpoint } from '#/lib/checkpoints-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
+import { createCheckpoint, deleteCheckpoint } from '#/server/checkpoints.js'
 import { EditableCell } from './EditableCell.js'
-import { DateRangeFilter, type DateRange } from './DateRangeFilter.js'
-import { CategoryFilter } from './CategoryFilter.js'
 import { SnapshotPanel } from './SnapshotPanel.js'
+import { CheckpointPopover } from './CheckpointPopover.js'
 
 interface MovementWithTotal extends Movement {
   total_cents: number
   category_name: string | null
   category_color: string | null
+  frozen: boolean
 }
 
 const ROW_HEIGHT = 40
@@ -21,31 +23,24 @@ const ROW_HEIGHT = 40
 export function MovementsTable() {
   const parentRef = useRef<HTMLDivElement>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [dateRange, setDateRange] = useState<DateRange | null>(null)
-  const [categoryId, setCategoryId] = useState<string | null>(null)
   const [snapshotOpen, setSnapshotOpen] = useState(false)
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [checkpointRowId, setCheckpointRowId] = useState<string | null>(null)
+  const [unfreezing, setUnfreezing] = useState(false)
   const scrollToEnd = useRef(false)
-  const [DndModule, setDndModule] = useState<typeof import('./DndWrapper.js') | null>(null)
-  const [DragRowModule, setDragRowModule] = useState<typeof import('./DragRow.js') | null>(null)
+  const initialScroll = useRef(true)
 
-  // Load dnd-kit only on client
+  // Dismiss delete confirmation on click-away
   useEffect(() => {
-    Promise.all([import('./DndWrapper.js'), import('./DragRow.js')]).then(([dnd, drag]) => {
-      setDndModule(dnd)
-      setDragRowModule(drag)
-    })
-  }, [])
-
-  const handleDateRangeChange = useCallback((range: DateRange | null) => {
-    setDateRange(range)
-    if (range) setCategoryId(null)
-  }, [])
-
-  const handleCategoryChange = useCallback((id: string | null) => {
-    setCategoryId(id)
-    if (id) setDateRange(null)
-  }, [])
+    if (!deletingId) return
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-confirm-delete]')) {
+        setDeletingId(null)
+      }
+    }
+    document.addEventListener('click', handler, { capture: true })
+    return () => document.removeEventListener('click', handler, { capture: true })
+  }, [deletingId])
 
   const { data: movements } = useLiveQuery((q) =>
     q
@@ -58,6 +53,10 @@ export function MovementsTable() {
     q.from({ c: categoriesCollection }).orderBy(({ c }) => c.sort_order, 'asc'),
   )
 
+  const { data: checkpoints } = useLiveQuery((q) =>
+    q.from({ c: checkpointsCollection }).orderBy(({ c }) => c.created_at, 'desc'),
+  )
+
   const categoryMap = useMemo(() => {
     const map = new Map<string, Category>()
     for (const cat of categories) {
@@ -66,32 +65,46 @@ export function MovementsTable() {
     return map
   }, [categories])
 
-  // Compute running totals on ALL movements (absolute balance)
+  // Find the latest checkpoint and its anchor movement
+  const activeCheckpoint: Checkpoint | null = checkpoints.length > 0 ? checkpoints[0] : null
+
+  const checkpointBoundary = useMemo(() => {
+    if (!activeCheckpoint) return null
+    const m = movements.find((mov: Movement) => mov.id === activeCheckpoint.movement_id)
+    if (!m) return null
+    return { date: m.date, sort_position: m.sort_position }
+  }, [activeCheckpoint, movements])
+
+  // Compute running totals and frozen state
   const allWithTotals: MovementWithTotal[] = useMemo(() => {
     let runningTotal = 0
     return movements.map((m: Movement) => {
       runningTotal += m.amount_cents
       const cat = m.category_id ? categoryMap.get(m.category_id) : null
+      const frozen = checkpointBoundary
+        ? m.date < checkpointBoundary.date ||
+          (m.date === checkpointBoundary.date &&
+            m.sort_position <= checkpointBoundary.sort_position)
+        : false
       return {
         ...m,
         total_cents: runningTotal,
         category_name: cat?.name ?? null,
         category_color: cat?.color ?? null,
+        frozen,
       }
     })
-  }, [movements, categoryMap])
+  }, [movements, categoryMap, checkpointBoundary])
 
-  // Apply filters after totals are computed
-  const isCategoryFilter = categoryId !== null
-  const withTotals = useMemo(() => {
-    if (dateRange) {
-      return allWithTotals.filter((m) => m.date >= dateRange.from && m.date <= dateRange.to)
+  const withTotals = allWithTotals
+
+  // Find the index of the last frozen row (for divider placement)
+  const lastFrozenIndex = useMemo(() => {
+    for (let i = withTotals.length - 1; i >= 0; i--) {
+      if (withTotals[i].frozen) return i
     }
-    if (categoryId) {
-      return allWithTotals.filter((m) => m.category_id === categoryId)
-    }
-    return allWithTotals
-  }, [allWithTotals, dateRange, categoryId])
+    return -1
+  }, [withTotals])
 
   const virtualizer = useVirtualizer({
     count: withTotals.length,
@@ -100,9 +113,11 @@ export function MovementsTable() {
     overscan: 20,
   })
 
-  // Scroll to bottom after data updates from an insert
+  // Scroll to bottom on initial load and after inserting a new row
   useEffect(() => {
-    if (scrollToEnd.current && withTotals.length > 0) {
+    if (withTotals.length === 0) return
+    if (initialScroll.current || scrollToEnd.current) {
+      initialScroll.current = false
       scrollToEnd.current = false
       setTimeout(() => {
         parentRef.current?.scrollTo({ top: parentRef.current.scrollHeight })
@@ -130,10 +145,15 @@ export function MovementsTable() {
 
   const handleAdd = useCallback(() => {
     const today = toISODate(new Date())
-    const maxPos = movements.reduce(
+    let maxPos = movements.reduce(
       (max: number, m: Movement) => (m.date === today ? Math.max(max, m.sort_position) : max),
       0,
     )
+
+    // Ensure new movement is after checkpoint if same date
+    if (checkpointBoundary && checkpointBoundary.date === today) {
+      maxPos = Math.max(maxPos, checkpointBoundary.sort_position)
+    }
 
     movementsCollection.insert({
       id: crypto.randomUUID(),
@@ -147,71 +167,37 @@ export function MovementsTable() {
     })
 
     scrollToEnd.current = true
-  }, [movements])
+  }, [movements, checkpointBoundary])
 
   const handleDelete = useCallback((id: string) => {
     movementsCollection.delete(id)
     setDeletingId(null)
   }, [])
 
-  const handleDragStart = useCallback((event: { active: { id: string | number } }) => {
-    setActiveId(event.active.id as string)
-  }, [])
-
-  const handleDragEnd = useCallback(
-    (event: { active: { id: string | number }; over: { id: string | number } | null }) => {
-      setActiveId(null)
-      const { active, over } = event
-      if (!over || active.id === over.id) return
-
-      const activeRow = withTotals.find((m) => m.id === active.id)
-      const overRow = withTotals.find((m) => m.id === over.id)
-      if (!activeRow || !overRow) return
-
-      // Only allow reorder within same date
-      if (activeRow.date !== overRow.date) return
-
-      // Get all rows for this date in current order
-      const sameDateRows = withTotals.filter((m) => m.date === activeRow.date)
-      const activeIdx = sameDateRows.findIndex((m) => m.id === active.id)
-      const overIdx = sameDateRows.findIndex((m) => m.id === over.id)
-      if (activeIdx === -1 || overIdx === -1) return
-
-      // Calculate new sort_position
-      let newPosition: number
-      if (overIdx === 0 && activeIdx > overIdx) {
-        newPosition = sameDateRows[0].sort_position - 500
-      } else if (overIdx === sameDateRows.length - 1 && activeIdx < overIdx) {
-        newPosition = sameDateRows[sameDateRows.length - 1].sort_position + 500
-      } else if (activeIdx < overIdx) {
-        const after = sameDateRows[overIdx].sort_position
-        const next =
-          overIdx + 1 < sameDateRows.length ? sameDateRows[overIdx + 1].sort_position : after + 1000
-        newPosition = Math.floor((after + next) / 2)
-      } else {
-        const before = sameDateRows[overIdx].sort_position
-        const prev = overIdx - 1 >= 0 ? sameDateRows[overIdx - 1].sort_position : before - 1000
-        newPosition = Math.floor((prev + before) / 2)
-      }
-
-      movementsCollection.update(activeRow.id, (draft) => {
-        draft.sort_position = newPosition
-      })
+  const handleCreateCheckpoint = useCallback(
+    async (movementId: string, actualCents: number) => {
+      await createCheckpoint({ data: { movement_id: movementId, actual_cents: actualCents } })
+      setCheckpointRowId(null)
     },
-    [withTotals],
+    [],
   )
 
-  const activeRow = activeId ? withTotals.find((m) => m.id === activeId) : null
-  const dndReady = DndModule && DragRowModule
+  const handleUnfreeze = useCallback(async () => {
+    if (!activeCheckpoint) return
+    await deleteCheckpoint({ data: { id: activeCheckpoint.id } })
+    setUnfreezing(false)
+  }, [activeCheckpoint])
 
   const rowCells = (row: MovementWithTotal) => {
     const isPositive = row.amount_cents > 0
+    const frozen = row.frozen
     return (
       <>
         <div className="w-[260px] shrink-0 px-1" data-cell="description">
           <EditableCell
             value={row.description}
             type="text"
+            disabled={frozen}
             onSave={(v) => handleUpdate(row.id, 'description', v)}
           />
         </div>
@@ -219,6 +205,7 @@ export function MovementsTable() {
           <EditableCell
             value={row.date}
             type="date"
+            disabled={frozen}
             onSave={(v) => handleUpdate(row.id, 'date', v)}
           />
         </div>
@@ -226,106 +213,152 @@ export function MovementsTable() {
           <EditableCell
             value={formatCents(row.amount_cents)}
             type="amount"
+            disabled={frozen}
             className={`text-right ${isPositive ? 'text-green-700' : 'text-red-700'}`}
             onSave={(v) => handleUpdate(row.id, 'amount_cents', v)}
           />
         </div>
-        {!isCategoryFilter && (
-          <div className="w-[120px] shrink-0 px-3 py-1 text-right font-medium">
-            {formatCents(row.total_cents)}
-          </div>
-        )}
+        <div className="w-[120px] shrink-0 px-3 py-1 text-right font-medium">
+          {formatCents(row.total_cents)}
+        </div>
         <div className="flex-1 px-1">
           <EditableCell
             value={row.category_name ?? ''}
             type="category"
             categoryId={row.category_id}
+            disabled={frozen}
             onSave={(v) => handleUpdate(row.id, 'category_id', v)}
           />
         </div>
         <div className="w-[48px] shrink-0 flex items-center justify-center">
-          {deletingId === row.id ? (
+          {frozen ? (
+            <Lock size={14} className="text-gray-300" />
+          ) : deletingId === row.id ? (
             <button
+              data-confirm-delete
               onClick={() => handleDelete(row.id)}
               className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
             >
               Yes
             </button>
           ) : (
-            <button
-              onClick={() => setDeletingId(row.id)}
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
-            >
-              <Trash2 size={14} />
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => setCheckpointRowId(row.id)}
+                className="rounded p-1 text-gray-300 hover:bg-amber-50 hover:text-amber-600"
+                title="Reconcile up to here"
+              >
+                <Lock size={14} />
+              </button>
+              <button
+                data-confirm-delete
+                onClick={() => setDeletingId(row.id)}
+                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           )}
         </div>
       </>
     )
   }
 
-  const renderRow = (row: MovementWithTotal, virtualStart: number, virtualSize: number) => {
-    const rowClass = 'flex w-full items-center border-b border-gray-100 text-sm hover:bg-gray-50'
-    const virtualStyle = {
-      position: 'absolute' as const,
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: `${virtualSize}px`,
-      transform: `translateY(${virtualStart}px)`,
-    }
-
-    if (dndReady) {
-      return (
-        <DragRowModule.SortableRow
-          key={row.id}
-          id={row.id}
-          className={rowClass}
-          style={virtualStyle}
-          handle={<GripVertical size={14} className="text-gray-300" />}
-        >
-          {rowCells(row)}
-        </DragRowModule.SortableRow>
-      )
-    }
-
-    return (
-      <div key={row.id} style={virtualStyle} className={rowClass} data-row-id={row.id}>
-        <div className="w-[28px] shrink-0" />
-        {rowCells(row)}
-      </div>
-    )
-  }
-
-  const dragOverlay = activeRow ? (
+  const renderRow = (row: MovementWithTotal, virtualStart: number, virtualSize: number) => (
     <div
-      className="flex items-center rounded border border-gray-300 bg-white text-sm shadow-lg"
-      style={{ height: 40 }}
+      key={row.id}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: `${virtualSize}px`,
+        transform: `translateY(${virtualStart}px)`,
+      }}
+      className={`flex w-full items-center border-b border-gray-100 text-sm ${
+        row.frozen ? 'opacity-50' : 'hover:bg-gray-50'
+      }`}
+      data-row-id={row.id}
     >
-      <div className="flex w-[28px] shrink-0 items-center justify-center">
-        <GripVertical size={14} className="text-gray-400" />
-      </div>
-      <div className="w-[260px] shrink-0 px-3 truncate">{activeRow.description}</div>
-      <div className="w-[120px] shrink-0 px-3">{activeRow.date}</div>
-      <div
-        className={`w-[120px] shrink-0 px-3 text-right ${
-          activeRow.amount_cents > 0 ? 'text-green-700' : 'text-red-700'
-        }`}
-      >
-        {formatCents(activeRow.amount_cents)}
-      </div>
+      {rowCells(row)}
     </div>
-  ) : null
+  )
+
+  // Checkpoint divider positioned after last frozen row
+  const checkpointDivider =
+    activeCheckpoint && lastFrozenIndex >= 0 ? (
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '32px',
+          transform: `translateY(${(lastFrozenIndex + 1) * ROW_HEIGHT}px)`,
+          zIndex: 10,
+        }}
+        className="flex items-center border-b-2 border-amber-300 bg-amber-50 px-3 text-xs"
+      >
+        <div className="flex items-center gap-1.5 font-medium text-amber-700">
+          <Lock size={12} />
+          Reconciled
+        </div>
+        <div className="ml-4 text-amber-600">
+          Expected: {formatCents(activeCheckpoint.expected_cents)} | Actual:{' '}
+          {formatCents(activeCheckpoint.actual_cents)} | Diff:{' '}
+          <span
+            className={
+              activeCheckpoint.actual_cents - activeCheckpoint.expected_cents === 0
+                ? 'text-green-600'
+                : 'text-red-600'
+            }
+          >
+            {formatCents(activeCheckpoint.actual_cents - activeCheckpoint.expected_cents)}
+          </span>
+        </div>
+        <div className="ml-auto">
+          {unfreezing ? (
+            <div className="flex items-center gap-2">
+              <span className="text-amber-700">
+                Unlock {lastFrozenIndex + 1} movements?
+              </span>
+              <button
+                onClick={handleUnfreeze}
+                className="rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setUnfreezing(false)}
+                className="rounded px-2 py-0.5 text-xs font-medium text-gray-500 hover:bg-gray-100"
+              >
+                No
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setUnfreezing(true)}
+              className="flex items-center gap-1 rounded px-2 py-0.5 text-amber-600 hover:bg-amber-100"
+            >
+              <Unlock size={12} />
+              Unfreeze
+            </button>
+          )}
+        </div>
+      </div>
+    ) : null
+
+  // Extra height for the divider row
+  const dividerHeight = activeCheckpoint && lastFrozenIndex >= 0 ? 32 : 0
 
   const tableContent = (
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
       {/* Header */}
       <div className="flex border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
-        <div className="w-[28px] shrink-0" />
         <div className="w-[260px] shrink-0 px-3 py-2">Description</div>
         <div className="w-[120px] shrink-0 px-3 py-2">Date</div>
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Amount</div>
-        {!isCategoryFilter && <div className="w-[120px] shrink-0 px-3 py-2 text-right">Total</div>}
+        <div className="w-[120px] shrink-0 px-3 py-2 text-right">Total</div>
         <div className="flex-1 px-3 py-2">Category</div>
         <div className="w-[48px] shrink-0" />
       </div>
@@ -334,23 +367,32 @@ export function MovementsTable() {
       <div
         ref={parentRef}
         className="overflow-auto"
-        style={{ height: Math.min(withTotals.length * ROW_HEIGHT, window.innerHeight - 260) }}
+        style={{ height: Math.min(withTotals.length * ROW_HEIGHT + dividerHeight, window.innerHeight - 260) }}
       >
         <div
           style={{
-            height: `${virtualizer.getTotalSize()}px`,
+            height: `${virtualizer.getTotalSize() + dividerHeight}px`,
             width: '100%',
             position: 'relative',
           }}
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const row = withTotals[virtualRow.index]
-            return renderRow(row, virtualRow.start, virtualRow.size)
+            // Offset rows after the divider
+            const offset =
+              dividerHeight > 0 && virtualRow.index > lastFrozenIndex ? dividerHeight : 0
+            return renderRow(row, virtualRow.start + offset, virtualRow.size)
           })}
+          {checkpointDivider}
         </div>
       </div>
     </div>
   )
+
+  // Find the row for the checkpoint popover
+  const checkpointRow = checkpointRowId
+    ? withTotals.find((m) => m.id === checkpointRowId)
+    : null
 
   return (
     <div className="flex flex-col gap-4">
@@ -374,32 +416,22 @@ export function MovementsTable() {
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
-          <div className="h-4 w-px bg-gray-300" />
-          <CategoryFilter value={categoryId} onChange={handleCategoryChange} />
-        </div>
       </div>
 
       {withTotals.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white px-6 py-12 text-center">
-          <p className="text-gray-500">
-            {dateRange || categoryId
-              ? 'No movements match the current filter.'
-              : 'No movements yet. Add your first one.'}
-          </p>
+          <p className="text-gray-500">No movements yet. Add your first one.</p>
         </div>
-      ) : dndReady ? (
-        <DndModule.DndWrapper
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          overlay={dragOverlay}
-          items={withTotals.map((m) => m.id)}
-        >
-          {tableContent}
-        </DndModule.DndWrapper>
       ) : (
         tableContent
+      )}
+
+      {checkpointRow && (
+        <CheckpointPopover
+          expectedCents={checkpointRow.total_cents}
+          onConfirm={(actualCents) => handleCreateCheckpoint(checkpointRow.id, actualCents)}
+          onClose={() => setCheckpointRowId(null)}
+        />
       )}
 
       <SnapshotPanel open={snapshotOpen} onClose={() => setSnapshotOpen(false)} />
