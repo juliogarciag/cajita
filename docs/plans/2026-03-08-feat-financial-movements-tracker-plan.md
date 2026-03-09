@@ -381,30 +381,29 @@ src/
 
 **Tasks:**
 
-- [ ] Create `src/server/snapshots.ts`:
+- [x] Create `src/server/snapshots.ts`:
   - `getSnapshots` (GET) — list all snapshots, sorted by created_at desc
   - `createSnapshot` (POST) — create manual snapshot with optional name
-  - `createAutoSnapshot` — create auto snapshot (called from page load check)
+  - `ensureTodaySnapshot` — create auto snapshot (called from page load check) + prune old ones
   - `pinSnapshot` (POST) — convert auto snapshot to pinned (permanent)
   - `deleteSnapshot` (POST) — only for unpinned auto snapshots
   - `getSnapshotData` (GET) — return full JSONB data for a specific snapshot
   - `restoreSnapshot` (POST) — transactional: create pre-restore backup snapshot, delete all movements, insert snapshot data
-  - `pruneOldSnapshots` — delete unpinned auto snapshots older than 90 days
-- [ ] Auto snapshot trigger: on page load, check if an auto snapshot exists for today. If not, create one. Also prune old snapshots.
-- [ ] Create `src/components/SnapshotPanel.tsx`:
-  - Accessible from the movements page (slide-out panel or section)
+- [x] Auto snapshot trigger: on panel open, check if an auto snapshot exists for today. If not, create one. Also prune old snapshots.
+- [x] Create `src/components/SnapshotPanel.tsx`:
+  - Accessible from the movements page (slide-out panel)
   - Lists snapshots with: name/date, type badge (auto/manual/pinned), action buttons
   - "Create Snapshot" button with optional name input
   - "Pin" button on auto snapshots (converts to permanent)
   - "Restore" button → opens diff view
   - "Delete" button on unpinned auto snapshots only
-- [ ] Create `src/components/SnapshotDiff.tsx`:
+- [x] Create `src/components/SnapshotDiff.tsx`:
   - Compares current movements against snapshot data
   - Summary: "X added, Y removed, Z modified since this snapshot"
-  - Expandable detailed diff showing individual row changes
+  - Detailed diff showing individual row changes
   - "Confirm Restore" and "Cancel" buttons
   - On confirm: calls `restoreSnapshot`, which first creates a "Pre-restore backup" auto snapshot, then replaces all movements
-- [ ] Restore is transactional (single DB transaction):
+- [x] Restore is transactional (single DB transaction):
   1. Insert pre-restore backup snapshot
   2. Delete all current movements
   3. Insert all movements from the target snapshot
@@ -466,14 +465,14 @@ This is a new feature with no existing equivalent. All functionality is exposed 
 - [ ] Add new movement at bottom with today's date
 - [ ] Delete movement with confirmation
 - [ ] Real-time sync: changes by one user appear for the other without refresh
-- [ ] Filter by time range with correct absolute running totals
-- [ ] Filter by category (hides Total column)
-- [ ] Automatic daily snapshots (created on first page load of the day)
-- [ ] Manual named snapshots
-- [ ] Pin automatic snapshots to keep them permanently
-- [ ] Restore from snapshot with diff preview
-- [ ] Pre-restore backup created automatically before restore
-- [ ] Auto-prune unpinned snapshots older than 90 days
+- [x] Filter by time range with correct absolute running totals
+- [x] Filter by category (hides Total column)
+- [x] Automatic daily snapshots (created on first panel open of the day)
+- [x] Manual named snapshots
+- [x] Pin automatic snapshots to keep them permanently
+- [x] Restore from snapshot with diff preview
+- [x] Pre-restore backup created automatically before restore
+- [x] Auto-prune unpinned snapshots older than 90 days
 - [ ] Drag-and-drop reorder within same-date movements
 - [ ] Amount stored as integer cents, displayed as formatted dollars
 

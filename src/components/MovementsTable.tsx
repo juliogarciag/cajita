@@ -1,13 +1,14 @@
 import { useRef, useMemo, useState, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useLiveQuery } from '@tanstack/react-db'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, History } from 'lucide-react'
 import { movementsCollection, type Movement } from '#/lib/movements-collection.js'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { EditableCell } from './EditableCell.js'
 import { DateRangeFilter, type DateRange } from './DateRangeFilter.js'
 import { CategoryFilter } from './CategoryFilter.js'
+import { SnapshotPanel } from './SnapshotPanel.js'
 
 const ROW_HEIGHT = 40
 
@@ -22,6 +23,7 @@ export function MovementsTable() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
   const [categoryId, setCategoryId] = useState<string | null>(null)
+  const [snapshotOpen, setSnapshotOpen] = useState(false)
 
   const handleDateRangeChange = useCallback((range: DateRange | null) => {
     setDateRange(range)
@@ -136,13 +138,22 @@ export function MovementsTable() {
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Movements</h1>
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            <Plus size={16} />
-            Add Movement
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSnapshotOpen(true)}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <History size={16} />
+              Snapshots
+            </button>
+            <button
+              onClick={handleAdd}
+              className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              <Plus size={16} />
+              Add Movement
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
@@ -254,6 +265,8 @@ export function MovementsTable() {
           </div>
         </div>
       )}
+
+      <SnapshotPanel open={snapshotOpen} onClose={() => setSnapshotOpen(false)} />
     </div>
   )
 }

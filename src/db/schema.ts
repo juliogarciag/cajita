@@ -39,7 +39,7 @@ export interface SnapshotsTable {
   id: Generated<string>
   name: string | null
   type: 'automatic' | 'manual'
-  data: unknown
+  data: string
   pinned: Generated<boolean>
   created_at: Generated<Date>
 }
