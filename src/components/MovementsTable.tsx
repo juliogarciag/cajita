@@ -1,10 +1,13 @@
 import { useRef, useMemo, useState, useCallback, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useLiveQuery } from '@tanstack/react-db'
-import { Plus, Trash2, History, Lock, Unlock, Wallet } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { Plus, Trash2, History, Lock, Unlock, Wallet, ExternalLink } from 'lucide-react'
 import { movementsCollection, type Movement } from '#/lib/movements-collection.js'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { checkpointsCollection, type Checkpoint } from '#/lib/checkpoints-collection.js'
+import { budgetItemsCollection } from '#/lib/budget-items-collection.js'
+import { budgetsCollection } from '#/lib/budgets-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { createCheckpoint, deleteCheckpoint } from '#/server/checkpoints.js'
 import { EditableCell } from './EditableCell.js'
@@ -20,12 +23,17 @@ interface MovementWithTotal extends Movement {
 
 const ROW_HEIGHT = 40
 
-export function MovementsTable() {
+interface MovementsTableProps {
+  highlightId?: string
+}
+
+export function MovementsTable({ highlightId }: MovementsTableProps) {
   const parentRef = useRef<HTMLDivElement>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [snapshotOpen, setSnapshotOpen] = useState(false)
   const [checkpointRowId, setCheckpointRowId] = useState<string | null>(null)
   const [unfreezing, setUnfreezing] = useState(false)
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const scrollToEnd = useRef(false)
   const initialScroll = useRef(true)
 
@@ -57,6 +65,14 @@ export function MovementsTable() {
     q.from({ c: checkpointsCollection }).orderBy(({ c }) => c.created_at, 'desc'),
   )
 
+  const { data: budgetItems } = useLiveQuery((q) =>
+    q.from({ bi: budgetItemsCollection }),
+  )
+
+  const { data: budgets } = useLiveQuery((q) =>
+    q.from({ b: budgetsCollection }),
+  )
+
   const categoryMap = useMemo(() => {
     const map = new Map<string, Category>()
     for (const cat of categories) {
@@ -64,6 +80,18 @@ export function MovementsTable() {
     }
     return map
   }, [categories])
+
+  // Map movement IDs to their budget IDs (for synced budget items and remaining movements)
+  const movementToBudgetId = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const item of budgetItems) {
+      if (item.movement_id) map.set(item.movement_id, item.budget_id)
+    }
+    for (const b of budgets) {
+      if (b.remaining_movement_id) map.set(b.remaining_movement_id, b.id)
+    }
+    return map
+  }, [budgetItems, budgets])
 
   // Find the latest checkpoint and its anchor movement
   const activeCheckpoint: Checkpoint | null = checkpoints.length > 0 ? checkpoints[0] : null
@@ -113,17 +141,32 @@ export function MovementsTable() {
     overscan: 20,
   })
 
-  // Scroll to bottom on initial load and after inserting a new row
+  // Scroll to highlighted row or bottom on initial load
   useEffect(() => {
     if (withTotals.length === 0) return
-    if (initialScroll.current || scrollToEnd.current) {
+    if (initialScroll.current) {
       initialScroll.current = false
+      if (highlightId) {
+        const idx = withTotals.findIndex((m) => m.id === highlightId)
+        if (idx >= 0) {
+          setTimeout(() => {
+            virtualizer.scrollToIndex(idx, { align: 'center' })
+            setHighlightedId(highlightId)
+            setTimeout(() => setHighlightedId(null), 2000)
+          }, 200)
+          return
+        }
+      }
+      setTimeout(() => {
+        parentRef.current?.scrollTo({ top: parentRef.current.scrollHeight })
+      }, 200)
+    } else if (scrollToEnd.current) {
       scrollToEnd.current = false
       setTimeout(() => {
         parentRef.current?.scrollTo({ top: parentRef.current.scrollHeight })
       }, 200)
     }
-  }, [withTotals])
+  }, [withTotals, highlightId, virtualizer])
 
   const handleUpdate = useCallback((id: string, field: keyof Movement, rawValue: string) => {
     const updates: Partial<Movement> = {}
@@ -240,6 +283,16 @@ export function MovementsTable() {
               <span title={`Managed by budget (${row.source})`}>
                 <Wallet size={14} className="text-blue-400" />
               </span>
+              {movementToBudgetId.has(row.id) && (
+                <Link
+                  to="/finances/budgets/$budgetId"
+                  params={{ budgetId: movementToBudgetId.get(row.id)! }}
+                  className="rounded p-1 text-gray-300 hover:bg-blue-50 hover:text-blue-600"
+                  title="View budget"
+                >
+                  <ExternalLink size={12} />
+                </Link>
+              )}
               <button
                 onClick={() => setCheckpointRowId(row.id)}
                 className="rounded p-1 text-gray-300 hover:bg-amber-50 hover:text-amber-600"
@@ -290,8 +343,8 @@ export function MovementsTable() {
         height: `${virtualSize}px`,
         transform: `translateY(${virtualStart}px)`,
       }}
-      className={`flex w-full items-center border-b border-gray-100 text-sm ${
-        row.frozen ? 'opacity-50' : 'hover:bg-gray-50'
+      className={`flex w-full items-center border-b border-gray-100 text-sm transition-colors duration-1000 ${
+        highlightedId === row.id ? 'bg-blue-100' : row.frozen ? 'opacity-50' : 'hover:bg-gray-50'
       } ${row.source === 'budget_remaining' ? 'italic text-gray-400' : ''}`}
       data-row-id={row.id}
     >

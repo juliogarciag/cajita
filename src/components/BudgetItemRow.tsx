@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
-import { Link as LinkIcon, Unlink, Lock, Trash2 } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { Link as LinkIcon, Unlink, Lock, Trash2, ExternalLink } from 'lucide-react'
 import type { BudgetItem } from '#/lib/budget-items-collection.js'
 import { formatCents, formatSoles, parseDollarsTocents } from '#/lib/format.js'
 import { EditableCell } from './EditableCell.js'
@@ -103,13 +104,23 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
         {frozen ? (
           <Lock size={14} className="text-gray-300" />
         ) : isSynced ? (
-          <button
-            onClick={onUnsync}
-            className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-orange-600"
-            title="Unsync from accounting"
-          >
-            <Unlink size={12} />
-          </button>
+          <div className="flex items-center gap-0.5">
+            <Link
+              to="/finances/movements"
+              search={{ highlight: item.movement_id! }}
+              className="rounded p-1 text-gray-300 hover:bg-blue-50 hover:text-blue-600"
+              title="View in movements"
+            >
+              <ExternalLink size={12} />
+            </Link>
+            <button
+              onClick={onUnsync}
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-orange-600"
+              title="Unsync from accounting"
+            >
+              <Unlink size={12} />
+            </button>
+          </div>
         ) : (
           <>
             <button
