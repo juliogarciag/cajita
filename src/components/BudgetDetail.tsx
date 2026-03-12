@@ -3,6 +3,7 @@ import { useLiveQuery } from '@tanstack/react-db'
 import { eq } from '@tanstack/db'
 import { Link, useParams } from '@tanstack/react-router'
 import { ArrowLeft, Plus } from 'lucide-react'
+import { toast } from 'sonner'
 import { budgetItemsCollection, type BudgetItem } from '#/lib/budget-items-collection.js'
 import { budgetsCollection } from '#/lib/budgets-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
@@ -98,32 +99,40 @@ export function BudgetDetail() {
     const usdCents = addAmountCents ? parseDollarsTocents(addAmountCents) : 0
     const localCents = addLocalCents ? parseDollarsTocents(addLocalCents) : null
 
-    await createBudgetItem({
-      data: {
-        budget_id: budget.id,
-        description: addDesc,
-        date: addDate,
-        amount_local_cents: localCents ? -Math.abs(localCents) : null,
-        amount_cents: usdCents ? -Math.abs(usdCents) : 0,
-      },
-    })
+    try {
+      await createBudgetItem({
+        data: {
+          budget_id: budget.id,
+          description: addDesc,
+          date: addDate,
+          amount_local_cents: localCents ? -Math.abs(localCents) : null,
+          amount_cents: usdCents ? -Math.abs(usdCents) : 0,
+        },
+      })
 
-    setShowAddForm(false)
-    setAddDesc('')
-    setAddDate(toISODate(new Date()))
-    setAddLocalCents('')
-    setAddAmountCents('')
+      setShowAddForm(false)
+      setAddDesc('')
+      setAddDate(toISODate(new Date()))
+      setAddLocalCents('')
+      setAddAmountCents('')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add item')
+    }
   }
 
   const handleUpdate = async (id: string, updates: Partial<Pick<BudgetItem, 'description' | 'date' | 'amount_local_cents' | 'amount_cents' | 'accounting_date'>>) => {
-    await updateBudgetItem({ data: { id, ...updates } })
+    try {
+      await updateBudgetItem({ data: { id, ...updates } })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update item')
+    }
   }
 
   const handleDelete = async (id: string) => {
     try {
       await deleteBudgetItem({ data: { id } })
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to delete')
+      toast.error(err instanceof Error ? err.message : 'Failed to delete')
     }
   }
 
@@ -133,7 +142,7 @@ export function BudgetDetail() {
     try {
       await syncBudgetItem({ data: { id, accounting_date: item.accounting_date } })
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to sync')
+      toast.error(err instanceof Error ? err.message : 'Failed to sync')
     }
   }
 
@@ -141,7 +150,7 @@ export function BudgetDetail() {
     try {
       await unsyncBudgetItem({ data: { id } })
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to unsync')
+      toast.error(err instanceof Error ? err.message : 'Failed to unsync')
     }
   }
 

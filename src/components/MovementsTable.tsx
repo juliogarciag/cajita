@@ -234,7 +234,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   const rowCells = (row: MovementWithTotal) => {
     const isPositive = row.amount_cents > 0
     const frozen = row.frozen
-    const budgetManaged = row.source !== 'manual'
+    const budgetManaged = row.source !== 'manual' && movementToBudgetId.has(row.id)
     const disabled = frozen || budgetManaged
     return (
       <>

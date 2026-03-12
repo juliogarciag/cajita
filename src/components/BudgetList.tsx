@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { Link } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
+import { toast } from 'sonner'
 import { budgetsCollection, type Budget } from '#/lib/budgets-collection.js'
 import { budgetItemsCollection } from '#/lib/budget-items-collection.js'
 import { formatCents } from '#/lib/format.js'
@@ -59,19 +60,23 @@ export function BudgetList() {
     const cents = Math.round(Number.parseFloat(addAmount) * 100)
     if (Number.isNaN(cents) || cents <= 0) return
 
-    await createBudget({
-      data: {
-        name: addName.trim(),
-        color: addColor,
-        year: addYear,
-        annual_amount_cents: cents,
-      },
-    })
+    try {
+      await createBudget({
+        data: {
+          name: addName.trim(),
+          color: addColor,
+          year: addYear,
+          annual_amount_cents: cents,
+        },
+      })
 
-    setShowAddForm(false)
-    setAddName('')
-    setAddColor(DEFAULT_BUDGET_COLOR)
-    setAddAmount('')
+      setShowAddForm(false)
+      setAddName('')
+      setAddColor(DEFAULT_BUDGET_COLOR)
+      setAddAmount('')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create budget')
+    }
   }, [addName, addColor, addAmount, addYear])
 
   const handleDelete = useCallback(async (id: string) => {
@@ -79,7 +84,7 @@ export function BudgetList() {
       await deleteBudget({ data: { id } })
       setDeletingId(null)
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to delete budget')
+      toast.error(err instanceof Error ? err.message : 'Failed to delete budget')
       setDeletingId(null)
     }
   }, [])

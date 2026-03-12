@@ -14,70 +14,78 @@ export const createBudget = createServerFn({ method: 'POST' })
     }),
   )
   .handler(async ({ data }) => {
-    // Auto-create a category for this budget
-    const maxOrder = await db
-      .selectFrom('categories')
-      .select(db.fn.max('sort_order').as('max_order'))
-      .executeTakeFirst()
+    try {
+      // Auto-create a category for this budget
+      const maxOrder = await db
+        .selectFrom('categories')
+        .select(db.fn.max('sort_order').as('max_order'))
+        .executeTakeFirst()
 
-    const sort_order = ((maxOrder?.max_order as number) ?? 0) + 1
+      const sort_order = ((maxOrder?.max_order as number) ?? 0) + 1
 
-    const category = await db
-      .insertInto('categories')
-      .values({
-        name: data.name,
-        color: data.color,
-        sort_order,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow()
+      const category = await db
+        .insertInto('categories')
+        .values({
+          name: data.name,
+          color: data.color,
+          sort_order,
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow()
 
-    // Create EOY remaining movement
-    const eoyDate = `${data.year}-12-31`
-    const maxPos = await db
-      .selectFrom('movements')
-      .select(db.fn.max('sort_position').as('max_pos'))
-      .where('date', '=', eoyDate)
-      .executeTakeFirst()
+      // Create EOY remaining movement
+      const eoyDate = `${data.year}-12-31`
+      const maxPos = await db
+        .selectFrom('movements')
+        .select(db.fn.max('sort_position').as('max_pos'))
+        .where('date', '=', eoyDate)
+        .executeTakeFirst()
 
-    const sort_position = ((maxPos?.max_pos as number) ?? 0) + 1000
-    const remainingCents = -data.annual_amount_cents
+      const sort_position = ((maxPos?.max_pos as number) ?? 0) + 1000
+      const remainingCents = -data.annual_amount_cents
 
-    const movement = await db
-      .insertInto('movements')
-      .values({
-        description: `[Remaining] ${data.name}`,
-        date: eoyDate,
-        amount_cents: remainingCents,
-        category_id: category.id,
-        sort_position,
-        source: 'budget_remaining',
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow()
+      const movement = await db
+        .insertInto('movements')
+        .values({
+          description: `[Remaining] ${data.name}`,
+          date: eoyDate,
+          amount_cents: remainingCents,
+          category_id: category.id,
+          sort_position,
+          source: 'budget_remaining',
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow()
 
-    // Create budget
-    const budget = await db
-      .insertInto('budgets')
-      .values({
-        category_id: category.id as string,
-        name: data.name,
-        color: data.color,
-        year: data.year,
-        annual_amount_cents: data.annual_amount_cents,
-        remaining_movement_id: movement.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow()
+      // Create budget
+      const budget = await db
+        .insertInto('budgets')
+        .values({
+          category_id: category.id as string,
+          name: data.name,
+          color: data.color,
+          year: data.year,
+          annual_amount_cents: data.annual_amount_cents,
+          remaining_movement_id: movement.id,
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow()
 
-    // Link category back to budget
-    await db
-      .updateTable('categories')
-      .set({ budget_id: budget.id as string })
-      .where('id', '=', category.id as string)
-      .execute()
+      // Link category back to budget
+      await db
+        .updateTable('categories')
+        .set({ budget_id: budget.id as string })
+        .where('id', '=', category.id as string)
+        .execute()
 
-    return { budget }
+      return { budget }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('budgets_name_year_key')) {
+        throw new Error(`A budget named "${data.name}" already exists for ${data.year}.`)
+      }
+      throw err
+    }
   })
 
 export const updateBudget = createServerFn({ method: 'POST' })
@@ -121,54 +129,35 @@ export const deleteBudget = createServerFn({ method: 'POST' })
 
     const budget = await db
       .selectFrom('budgets')
-      .select('remaining_movement_id')
+      .select(['remaining_movement_id', 'category_id'])
       .where('id', '=', data.id)
       .executeTakeFirstOrThrow()
 
-    // Collect all movement IDs to check/delete
-    const movementIds = syncedItems
-      .map((i) => i.movement_id)
-      .filter((id): id is string => id !== null)
-
+    // Check if remaining movement is frozen
     if (budget.remaining_movement_id) {
-      movementIds.push(budget.remaining_movement_id)
-    }
-
-    // Check if any are frozen
-    if (movementIds.length > 0) {
       const { isMovementFrozen } = await import('./budget-helpers.js')
-      for (const movId of movementIds) {
-        if (await isMovementFrozen(movId)) {
-          throw new Error('Cannot delete budget: some synced movements are frozen. Unfreeze first.')
-        }
+      if (await isMovementFrozen(budget.remaining_movement_id)) {
+        throw new Error('Cannot delete budget: remaining movement is frozen.')
       }
     }
 
-    // Get the budget's category_id and check if it's budget-owned
-    const fullBudget = await db
-      .selectFrom('budgets')
-      .select('category_id')
-      .where('id', '=', data.id)
-      .executeTakeFirstOrThrow()
-
+    // Check if category is budget-owned (save before deletion)
     const ownedCategory = await db
       .selectFrom('categories')
       .select('id')
-      .where('id', '=', fullBudget.category_id)
+      .where('id', '=', budget.category_id)
       .where('budget_id', '=', data.id)
       .executeTakeFirst()
 
-    // Delete budget (CASCADE deletes items), then clean up movements
+    // Delete budget (CASCADE deletes budget_items)
     await db.deleteFrom('budgets').where('id', '=', data.id).execute()
 
-    // Delete linked movements
-    if (movementIds.length > 0) {
-      await db.deleteFrom('movements').where('id', 'in', movementIds).execute()
+    // Delete the remaining movement
+    if (budget.remaining_movement_id) {
+      await db.deleteFrom('movements').where('id', '=', budget.remaining_movement_id).execute()
     }
 
-    // Delete the budget-owned category if it exists
-    // (must happen after budget deletion since budgets.category_id has onDelete('restrict'))
-    // (budget_id was set to null by onDelete('set null'), so we use the id we saved)
+    // Delete the budget-owned category
     if (ownedCategory) {
       await db.deleteFrom('categories').where('id', '=', ownedCategory.id).execute()
     }

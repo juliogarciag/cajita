@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { Plus } from 'lucide-react'
+import { toast } from 'sonner'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { createCategory, updateCategory, deleteCategory } from '#/server/categories.js'
 import { budgetColors } from '#/lib/budget-colors.js'
@@ -20,10 +21,14 @@ export function CategoriesList() {
 
   const handleAdd = useCallback(async () => {
     if (!addName.trim()) return
-    await createCategory({ data: { name: addName.trim(), color: addColor } })
-    setShowAddForm(false)
-    setAddName('')
-    setAddColor(budgetColors[0].value)
+    try {
+      await createCategory({ data: { name: addName.trim(), color: addColor } })
+      setShowAddForm(false)
+      setAddName('')
+      setAddColor(budgetColors[0].value)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create category')
+    }
   }, [addName, addColor])
 
   const handleStartEdit = useCallback((cat: Category) => {
@@ -38,7 +43,7 @@ export function CategoriesList() {
       await updateCategory({ data: { id: editingId, name: editName.trim(), color: editColor } })
       setEditingId(null)
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to update')
+      toast.error(err instanceof Error ? err.message : 'Failed to update')
     }
   }, [editingId, editName, editColor])
 
@@ -47,7 +52,7 @@ export function CategoriesList() {
       await deleteCategory({ data: { id } })
       setDeletingId(null)
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to delete')
+      toast.error(err instanceof Error ? err.message : 'Failed to delete')
       setDeletingId(null)
     }
   }, [])
