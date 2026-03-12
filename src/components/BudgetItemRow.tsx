@@ -84,11 +84,12 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
         />
       </div>
       <div className="w-[110px] shrink-0 px-1">
-        {isSynced ? (
-          <span className="px-2 py-1 text-xs text-gray-500">{item.accounting_date}</span>
-        ) : (
-          <span className="px-2 py-1 text-xs text-gray-300">—</span>
-        )}
+        <EditableCell
+          value={item.accounting_date ?? ''}
+          type="date"
+          disabled={disabled}
+          onSave={(v) => handleFieldSave('accounting_date', v)}
+        />
       </div>
       <div className="w-[80px] shrink-0 flex items-center justify-center">
         {isSynced ? (
@@ -125,8 +126,11 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
           <>
             <button
               onClick={onSync}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-400 hover:bg-blue-50 hover:text-blue-600"
-              title="Sync to accounting"
+              disabled={!item.description || item.amount_cents === 0 || !item.accounting_date}
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-400 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+              title={!item.description || item.amount_cents === 0 || !item.accounting_date
+                ? 'Fill description, USD amount, and accounting date to sync'
+                : 'Sync to accounting'}
             >
               <LinkIcon size={12} />
               Sync

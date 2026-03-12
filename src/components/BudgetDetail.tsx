@@ -17,7 +17,6 @@ import {
 } from '#/server/budget-items.js'
 import { updateBudget } from '#/server/budgets.js'
 import { BudgetItemRow } from './BudgetItemRow.js'
-import { SyncPopover } from './SyncPopover.js'
 
 export function BudgetDetail() {
   const { budgetId } = useParams({ strict: false }) as { budgetId: string }
@@ -27,7 +26,6 @@ export function BudgetDetail() {
   const [addDate, setAddDate] = useState(toISODate(new Date()))
   const [addLocalCents, setAddLocalCents] = useState('')
   const [addAmountCents, setAddAmountCents] = useState('')
-  const [syncingItemId, setSyncingItemId] = useState<string | null>(null)
   const [editingAnnual, setEditingAnnual] = useState(false)
   const [annualDraft, setAnnualDraft] = useState('')
 
@@ -129,10 +127,11 @@ export function BudgetDetail() {
     }
   }
 
-  const handleSync = async (id: string, accountingDate: string) => {
+  const handleSync = async (id: string) => {
+    const item = items.find((i) => i.id === id)
+    if (!item?.accounting_date) return
     try {
-      await syncBudgetItem({ data: { id, accounting_date: accountingDate } })
-      setSyncingItemId(null)
+      await syncBudgetItem({ data: { id, accounting_date: item.accounting_date } })
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to sync')
     }
@@ -252,7 +251,7 @@ export function BudgetDetail() {
                 frozen={isFrozen}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
-                onSync={() => setSyncingItemId(item.id)}
+                onSync={() => handleSync(item.id)}
                 onUnsync={() => handleUnsync(item.id)}
               />
             )
@@ -330,13 +329,6 @@ export function BudgetDetail() {
         </button>
       )}
 
-      {/* Sync popover */}
-      {syncingItemId && (
-        <SyncPopover
-          onConfirm={(accountingDate) => handleSync(syncingItemId, accountingDate)}
-          onClose={() => setSyncingItemId(null)}
-        />
-      )}
     </div>
   )
 }
