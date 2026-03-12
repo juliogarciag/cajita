@@ -233,12 +233,21 @@ export function MovementsTable() {
           />
         </div>
         <div className="w-[48px] shrink-0 flex items-center justify-center">
-          {budgetManaged ? (
-            <span title={`Managed by budget (${row.source})`}>
-              <Wallet size={14} className="text-blue-400" />
-            </span>
-          ) : frozen ? (
+          {frozen ? (
             <Lock size={14} className="text-gray-300" />
+          ) : budgetManaged ? (
+            <div className="flex items-center gap-0.5">
+              <span title={`Managed by budget (${row.source})`}>
+                <Wallet size={14} className="text-blue-400" />
+              </span>
+              <button
+                onClick={() => setCheckpointRowId(row.id)}
+                className="rounded p-1 text-gray-300 hover:bg-amber-50 hover:text-amber-600"
+                title="Reconcile up to here"
+              >
+                <Lock size={14} />
+              </button>
+            </div>
           ) : deletingId === row.id ? (
             <button
               data-confirm-delete

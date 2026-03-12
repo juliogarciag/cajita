@@ -1,15 +1,14 @@
 import { useMemo, useState, useCallback } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
+import { Link } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { budgetsCollection, type Budget } from '#/lib/budgets-collection.js'
 import { budgetItemsCollection } from '#/lib/budget-items-collection.js'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { formatCents } from '#/lib/format.js'
 import { createBudget, deleteBudget } from '#/server/budgets.js'
-import { BudgetDetail } from './BudgetDetail.js'
 
 export function BudgetList() {
-  const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [addCategoryId, setAddCategoryId] = useState('')
   const [addAmount, setAddAmount] = useState('')
@@ -41,6 +40,15 @@ export function BudgetList() {
       map.set(item.budget_id, (map.get(item.budget_id) ?? 0) + item.amount_cents)
     }
     return map
+  }, [budgetItems])
+
+  // Budgets that have synced movements (cannot be deleted)
+  const budgetsWithSyncedItems = useMemo(() => {
+    const set = new Set<string>()
+    for (const item of budgetItems) {
+      if (item.movement_id) set.add(item.budget_id)
+    }
+    return set
   }, [budgetItems])
 
   // Categories that already have a budget for the selected year
@@ -89,28 +97,11 @@ export function BudgetList() {
     try {
       await deleteBudget({ data: { id } })
       setDeletingId(null)
-      if (selectedBudgetId === id) setSelectedBudgetId(null)
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to delete budget')
       setDeletingId(null)
     }
-  }, [selectedBudgetId])
-
-  const selectedBudget = selectedBudgetId
-    ? budgets.find((b: Budget) => b.id === selectedBudgetId)
-    : null
-
-  if (selectedBudget) {
-    const cat = categoryMap.get(selectedBudget.category_id)
-    return (
-      <BudgetDetail
-        budget={selectedBudget}
-        categoryName={cat?.name ?? 'Unknown'}
-        categoryColor={cat?.color ?? null}
-        onBack={() => setSelectedBudgetId(null)}
-      />
-    )
-  }
+  }, [])
 
   return (
     <div className="flex flex-col gap-4">
@@ -192,18 +183,21 @@ export function BudgetList() {
               {yearBudgets.map((budget: Budget) => {
                 const cat = categoryMap.get(budget.category_id)
                 const itemsTotal = budgetTotals.get(budget.id) ?? 0
-                // items are negative, so spent = abs(itemsTotal)
                 const spentCents = Math.abs(itemsTotal)
                 const annualCents = budget.annual_amount_cents
-                const remainingCents = annualCents + itemsTotal // annual + negative items
+                const remainingCents = annualCents + itemsTotal
                 const pct = annualCents > 0 ? Math.min((spentCents / annualCents) * 100, 100) : 0
 
                 return (
                   <div
                     key={budget.id}
-                    className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
-                    onClick={() => setSelectedBudgetId(budget.id)}
+                    className="relative rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
                   >
+                    <Link
+                      to="/finances/budgets/$budgetId"
+                      params={{ budgetId: budget.id }}
+                      className="absolute inset-0 rounded-lg"
+                    />
                     <div className="mb-2 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         {cat?.color && (
@@ -216,31 +210,33 @@ export function BudgetList() {
                           {cat?.name ?? 'Unknown'}
                         </span>
                       </div>
-                      {deletingId === budget.id ? (
-                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      {!budgetsWithSyncedItems.has(budget.id) && (
+                        deletingId === budget.id ? (
+                          <div className="relative z-10 flex items-center gap-1">
+                            <button
+                              onClick={() => handleDelete(budget.id)}
+                              className="rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                            >
+                              Delete
+                            </button>
+                            <button
+                              onClick={() => setDeletingId(null)}
+                              className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
                           <button
-                            onClick={() => handleDelete(budget.id)}
-                            className="rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              setDeletingId(budget.id)
+                            }}
+                            className="relative z-10 rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
                           >
-                            Delete
+                            ×
                           </button>
-                          <button
-                            onClick={() => setDeletingId(null)}
-                            className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDeletingId(budget.id)
-                          }}
-                          className="rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
-                        >
-                          ×
-                        </button>
+                        )
                       )}
                     </div>
 
@@ -248,7 +244,6 @@ export function BudgetList() {
                       Budget: {formatCents(annualCents)}
                     </div>
 
-                    {/* Progress bar */}
                     <div className="mb-2 h-2 overflow-hidden rounded-full bg-gray-100">
                       <div
                         className={`h-full rounded-full transition-all ${pct > 90 ? 'bg-red-500' : pct > 70 ? 'bg-amber-500' : 'bg-green-500'}`}

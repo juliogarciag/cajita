@@ -1,15 +1,15 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 
-const MovementsTable = lazy(() =>
-  import('#/components/MovementsTable.js').then((m) => ({ default: m.MovementsTable })),
+const BudgetList = lazy(() =>
+  import('#/components/BudgetList.js').then((m) => ({ default: m.BudgetList })),
 )
 
-export const Route = createFileRoute('/_authenticated/movements')({
-  component: MovementsPage,
+export const Route = createFileRoute('/_authenticated/finances/budgets/')({
+  component: BudgetsPage,
 })
 
-function MovementsPage() {
+function BudgetsPage() {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
@@ -17,7 +17,7 @@ function MovementsPage() {
 
   return (
     <Suspense>
-      <MovementsTable />
+      <BudgetList />
     </Suspense>
   )
 }

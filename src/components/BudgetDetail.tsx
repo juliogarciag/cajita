@@ -1,11 +1,13 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { eq } from '@tanstack/db'
+import { Link, useParams } from '@tanstack/react-router'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { budgetItemsCollection, type BudgetItem } from '#/lib/budget-items-collection.js'
+import { budgetsCollection } from '#/lib/budgets-collection.js'
+import { categoriesCollection } from '#/lib/categories-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
 import { checkpointsCollection, type Checkpoint } from '#/lib/checkpoints-collection.js'
-import type { Budget } from '#/lib/budgets-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import {
   createBudgetItem,
@@ -18,14 +20,9 @@ import { updateBudget } from '#/server/budgets.js'
 import { BudgetItemRow } from './BudgetItemRow.js'
 import { SyncPopover } from './SyncPopover.js'
 
-interface BudgetDetailProps {
-  budget: Budget
-  categoryName: string
-  categoryColor: string | null
-  onBack: () => void
-}
+export function BudgetDetail() {
+  const { budgetId } = useParams({ strict: false }) as { budgetId: string }
 
-export function BudgetDetail({ budget, categoryName, categoryColor, onBack }: BudgetDetailProps) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [addDesc, setAddDesc] = useState('')
   const [addDate, setAddDate] = useState(toISODate(new Date()))
@@ -35,10 +32,23 @@ export function BudgetDetail({ budget, categoryName, categoryColor, onBack }: Bu
   const [editingAnnual, setEditingAnnual] = useState(false)
   const [annualDraft, setAnnualDraft] = useState('')
 
+  const { data: budgets } = useLiveQuery((q) =>
+    q.from({ b: budgetsCollection }),
+  )
+
+  const { data: categories } = useLiveQuery((q) =>
+    q.from({ c: categoriesCollection }),
+  )
+
+  const budget = budgets.find((b) => b.id === budgetId)
+  const category = budget ? categories.find((c) => c.id === budget.category_id) : null
+  const categoryName = category?.name ?? 'Unknown'
+  const categoryColor = category?.color ?? null
+
   const { data: items } = useLiveQuery((q) =>
     q
       .from({ bi: budgetItemsCollection })
-      .where(({ bi }) => eq(bi.budget_id, budget.id))
+      .where(({ bi }) => eq(bi.budget_id, budgetId))
       .orderBy(({ bi }) => bi.sort_position, 'asc'),
   )
 
@@ -72,17 +82,28 @@ export function BudgetDetail({ budget, categoryName, categoryColor, onBack }: Bu
     return set
   }, [movements, checkpointBoundary])
 
+  if (!budget) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-12">
+        <p className="text-gray-500">Budget not found.</p>
+        <Link
+          to="/finances/budgets"
+          className="text-sm text-blue-600 hover:underline"
+        >
+          Back to budgets
+        </Link>
+      </div>
+    )
+  }
+
   // Totals
-  const itemsTotal = useMemo(
-    () => items.reduce((sum: number, i: BudgetItem) => sum + i.amount_cents, 0),
-    [items],
-  )
+  const itemsTotal = items.reduce((sum: number, i: BudgetItem) => sum + i.amount_cents, 0)
   const spentCents = Math.abs(itemsTotal)
   const annualCents = budget.annual_amount_cents
   const remainingCents = annualCents + itemsTotal
   const pct = annualCents > 0 ? Math.min((spentCents / annualCents) * 100, 100) : 0
 
-  const handleAdd = useCallback(async () => {
+  const handleAdd = async () => {
     if (!addDesc) return
     const usdCents = addAmountCents ? parseDollarsTocents(addAmountCents) : 0
     const localCents = addLocalCents ? parseDollarsTocents(addLocalCents) : null
@@ -102,57 +123,54 @@ export function BudgetDetail({ budget, categoryName, categoryColor, onBack }: Bu
     setAddDate(toISODate(new Date()))
     setAddLocalCents('')
     setAddAmountCents('')
-  }, [budget.id, addDesc, addDate, addLocalCents, addAmountCents])
+  }
 
-  const handleUpdate = useCallback(
-    async (id: string, updates: Partial<Pick<BudgetItem, 'description' | 'date' | 'amount_local_cents' | 'amount_cents' | 'accounting_date'>>) => {
-      await updateBudgetItem({ data: { id, ...updates } })
-    },
-    [],
-  )
+  const handleUpdate = async (id: string, updates: Partial<Pick<BudgetItem, 'description' | 'date' | 'amount_local_cents' | 'amount_cents' | 'accounting_date'>>) => {
+    await updateBudgetItem({ data: { id, ...updates } })
+  }
 
-  const handleDelete = useCallback(async (id: string) => {
+  const handleDelete = async (id: string) => {
     try {
       await deleteBudgetItem({ data: { id } })
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
     }
-  }, [])
+  }
 
-  const handleSync = useCallback(async (id: string, accountingDate: string) => {
+  const handleSync = async (id: string, accountingDate: string) => {
     try {
       await syncBudgetItem({ data: { id, accounting_date: accountingDate } })
       setSyncingItemId(null)
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to sync')
     }
-  }, [])
+  }
 
-  const handleUnsync = useCallback(async (id: string) => {
+  const handleUnsync = async (id: string) => {
     try {
       await unsyncBudgetItem({ data: { id } })
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to unsync')
     }
-  }, [])
+  }
 
-  const handleUpdateAnnual = useCallback(async () => {
+  const handleUpdateAnnual = async () => {
     const cents = parseDollarsTocents(annualDraft)
     if (cents === null || cents <= 0) return
     await updateBudget({ data: { id: budget.id, annual_amount_cents: cents } })
     setEditingAnnual(false)
-  }, [budget.id, annualDraft])
+  }
 
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={onBack}
+        <Link
+          to="/finances/budgets"
           className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
         >
           <ArrowLeft size={20} />
-        </button>
+        </Link>
         <div className="flex items-center gap-2">
           {categoryColor && (
             <div className="h-4 w-4 rounded-full" style={{ backgroundColor: categoryColor }} />

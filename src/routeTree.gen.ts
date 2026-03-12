@@ -11,15 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedMovementsRouteImport } from './routes/_authenticated/movements'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedBudgetsRouteImport } from './routes/_authenticated/budgets'
 import { Route as AuthenticatedToolsIndexRouteImport } from './routes/_authenticated/tools/index'
 import { Route as ApiElectricTableRouteImport } from './routes/api/electric/$table'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 import { Route as AuthenticatedToolsCreatePlaylistRouteImport } from './routes/_authenticated/tools/create-playlist'
+import { Route as AuthenticatedFinancesMovementsRouteImport } from './routes/_authenticated/finances/movements'
+import { Route as AuthenticatedFinancesBudgetsIndexRouteImport } from './routes/_authenticated/finances/budgets/index'
+import { Route as AuthenticatedFinancesBudgetsBudgetIdRouteImport } from './routes/_authenticated/finances/budgets/$budgetId'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -30,19 +31,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedMovementsRoute = AuthenticatedMovementsRouteImport.update({
-  id: '/movements',
-  path: '/movements',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedBudgetsRoute = AuthenticatedBudgetsRouteImport.update({
-  id: '/budgets',
-  path: '/budgets',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedToolsIndexRoute = AuthenticatedToolsIndexRouteImport.update({
@@ -76,83 +67,107 @@ const AuthenticatedToolsCreatePlaylistRoute =
     path: '/tools/create-playlist',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedFinancesMovementsRoute =
+  AuthenticatedFinancesMovementsRouteImport.update({
+    id: '/finances/movements',
+    path: '/finances/movements',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedFinancesBudgetsIndexRoute =
+  AuthenticatedFinancesBudgetsIndexRouteImport.update({
+    id: '/finances/budgets/',
+    path: '/finances/budgets/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedFinancesBudgetsBudgetIdRoute =
+  AuthenticatedFinancesBudgetsBudgetIdRouteImport.update({
+    id: '/finances/budgets/$budgetId',
+    path: '/finances/budgets/$budgetId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/budgets': typeof AuthenticatedBudgetsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/movements': typeof AuthenticatedMovementsRoute
+  '/finances/movements': typeof AuthenticatedFinancesMovementsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/electric/$table': typeof ApiElectricTableRoute
   '/tools/': typeof AuthenticatedToolsIndexRoute
+  '/finances/budgets/$budgetId': typeof AuthenticatedFinancesBudgetsBudgetIdRoute
+  '/finances/budgets/': typeof AuthenticatedFinancesBudgetsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/budgets': typeof AuthenticatedBudgetsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/movements': typeof AuthenticatedMovementsRoute
+  '/finances/movements': typeof AuthenticatedFinancesMovementsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/electric/$table': typeof ApiElectricTableRoute
   '/tools': typeof AuthenticatedToolsIndexRoute
+  '/finances/budgets/$budgetId': typeof AuthenticatedFinancesBudgetsBudgetIdRoute
+  '/finances/budgets': typeof AuthenticatedFinancesBudgetsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
-  '/_authenticated/budgets': typeof AuthenticatedBudgetsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/movements': typeof AuthenticatedMovementsRoute
+  '/_authenticated/finances/movements': typeof AuthenticatedFinancesMovementsRoute
   '/_authenticated/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/electric/$table': typeof ApiElectricTableRoute
   '/_authenticated/tools/': typeof AuthenticatedToolsIndexRoute
+  '/_authenticated/finances/budgets/$budgetId': typeof AuthenticatedFinancesBudgetsBudgetIdRoute
+  '/_authenticated/finances/budgets/': typeof AuthenticatedFinancesBudgetsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/budgets'
     | '/dashboard'
-    | '/movements'
+    | '/finances/movements'
     | '/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
     | '/api/electric/$table'
     | '/tools/'
+    | '/finances/budgets/$budgetId'
+    | '/finances/budgets/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/budgets'
     | '/dashboard'
-    | '/movements'
+    | '/finances/movements'
     | '/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
     | '/api/electric/$table'
     | '/tools'
+    | '/finances/budgets/$budgetId'
+    | '/finances/budgets'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/_authenticated/budgets'
     | '/_authenticated/dashboard'
-    | '/_authenticated/movements'
+    | '/_authenticated/finances/movements'
     | '/_authenticated/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
     | '/api/electric/$table'
     | '/_authenticated/tools/'
+    | '/_authenticated/finances/budgets/$budgetId'
+    | '/_authenticated/finances/budgets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -180,25 +195,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/movements': {
-      id: '/_authenticated/movements'
-      path: '/movements'
-      fullPath: '/movements'
-      preLoaderRoute: typeof AuthenticatedMovementsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/budgets': {
-      id: '/_authenticated/budgets'
-      path: '/budgets'
-      fullPath: '/budgets'
-      preLoaderRoute: typeof AuthenticatedBudgetsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/tools/': {
@@ -243,23 +244,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedToolsCreatePlaylistRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/finances/movements': {
+      id: '/_authenticated/finances/movements'
+      path: '/finances/movements'
+      fullPath: '/finances/movements'
+      preLoaderRoute: typeof AuthenticatedFinancesMovementsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/finances/budgets/': {
+      id: '/_authenticated/finances/budgets/'
+      path: '/finances/budgets'
+      fullPath: '/finances/budgets/'
+      preLoaderRoute: typeof AuthenticatedFinancesBudgetsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/finances/budgets/$budgetId': {
+      id: '/_authenticated/finances/budgets/$budgetId'
+      path: '/finances/budgets/$budgetId'
+      fullPath: '/finances/budgets/$budgetId'
+      preLoaderRoute: typeof AuthenticatedFinancesBudgetsBudgetIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedBudgetsRoute: typeof AuthenticatedBudgetsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedMovementsRoute: typeof AuthenticatedMovementsRoute
+  AuthenticatedFinancesMovementsRoute: typeof AuthenticatedFinancesMovementsRoute
   AuthenticatedToolsCreatePlaylistRoute: typeof AuthenticatedToolsCreatePlaylistRoute
   AuthenticatedToolsIndexRoute: typeof AuthenticatedToolsIndexRoute
+  AuthenticatedFinancesBudgetsBudgetIdRoute: typeof AuthenticatedFinancesBudgetsBudgetIdRoute
+  AuthenticatedFinancesBudgetsIndexRoute: typeof AuthenticatedFinancesBudgetsIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedBudgetsRoute: AuthenticatedBudgetsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedMovementsRoute: AuthenticatedMovementsRoute,
+  AuthenticatedFinancesMovementsRoute: AuthenticatedFinancesMovementsRoute,
   AuthenticatedToolsCreatePlaylistRoute: AuthenticatedToolsCreatePlaylistRoute,
   AuthenticatedToolsIndexRoute: AuthenticatedToolsIndexRoute,
+  AuthenticatedFinancesBudgetsBudgetIdRoute:
+    AuthenticatedFinancesBudgetsBudgetIdRoute,
+  AuthenticatedFinancesBudgetsIndexRoute:
+    AuthenticatedFinancesBudgetsIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

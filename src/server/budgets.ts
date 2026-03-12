@@ -108,6 +108,10 @@ export const deleteBudget = createServerFn({ method: 'POST' })
       .where('movement_id', 'is not', null)
       .execute()
 
+    if (syncedItems.length > 0) {
+      throw new Error('Cannot delete budget: unsync all items first.')
+    }
+
     const budget = await db
       .selectFrom('budgets')
       .select('remaining_movement_id')

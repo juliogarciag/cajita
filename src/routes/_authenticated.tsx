@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, redirect, useMatches } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { authMiddleware } from '#/server/middleware.js'
 
@@ -20,8 +20,16 @@ export const Route = createFileRoute('/_authenticated')({
   component: AuthenticatedLayout,
 })
 
+const navLinkClass =
+  'text-sm text-gray-600 hover:text-gray-900 [&.active]:font-medium [&.active]:text-gray-900'
+
+const subNavLinkClass =
+  'text-sm px-3 py-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-50 [&.active]:font-medium [&.active]:text-gray-900 [&.active]:bg-gray-100'
+
 function AuthenticatedLayout() {
   const { user } = Route.useRouteContext()
+  const matches = useMatches()
+  const isFinancesRoute = matches.some((m) => m.fullPath.startsWith('/finances'))
 
   return (
     <div className="min-h-screen">
@@ -32,28 +40,17 @@ function AuthenticatedLayout() {
               Cajita
             </Link>
             <div className="flex items-center gap-4">
-              <Link
-                to="/dashboard"
-                className="text-sm text-gray-600 hover:text-gray-900 [&.active]:font-medium [&.active]:text-gray-900"
-              >
+              <Link to="/dashboard" className={navLinkClass}>
                 Dashboard
               </Link>
               <Link
-                to="/movements"
-                className="text-sm text-gray-600 hover:text-gray-900 [&.active]:font-medium [&.active]:text-gray-900"
+                to="/finances/movements"
+                className={isFinancesRoute ? `${navLinkClass} font-medium !text-gray-900` : navLinkClass}
+                activeOptions={{ exact: false }}
               >
-                Movements
+                Finances
               </Link>
-              <Link
-                to="/budgets"
-                className="text-sm text-gray-600 hover:text-gray-900 [&.active]:font-medium [&.active]:text-gray-900"
-              >
-                Budgets
-              </Link>
-              <Link
-                to="/tools"
-                className="text-sm text-gray-600 hover:text-gray-900 [&.active]:font-medium [&.active]:text-gray-900"
-              >
+              <Link to="/tools" className={navLinkClass}>
                 Tools
               </Link>
             </div>
@@ -80,6 +77,18 @@ function AuthenticatedLayout() {
           </div>
         </div>
       </nav>
+      {isFinancesRoute && (
+        <div className="border-b border-gray-200 bg-white">
+          <div className="mx-auto flex max-w-5xl items-center gap-1 px-4 py-1.5">
+            <Link to="/finances/movements" className={subNavLinkClass}>
+              Movements
+            </Link>
+            <Link to="/finances/budgets" className={subNavLinkClass} activeOptions={{ exact: false }}>
+              Budgets
+            </Link>
+          </div>
+        </div>
+      )}
       <main className="mx-auto max-w-5xl px-4 py-6">
         <Outlet />
       </main>
