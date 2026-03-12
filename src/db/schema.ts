@@ -20,6 +20,7 @@ export interface CategoriesTable {
   id: Generated<string>
   name: string
   color: string | null
+  budget_id: string | null
   sort_order: number
   created_at: Generated<Date>
 }
@@ -39,6 +40,8 @@ export interface MovementsTable {
 export interface BudgetsTable {
   id: Generated<string>
   category_id: string
+  name: string
+  color: string
   year: number
   annual_amount_cents: number
   remaining_movement_id: string | null

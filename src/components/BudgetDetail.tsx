@@ -5,7 +5,6 @@ import { Link, useParams } from '@tanstack/react-router'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { budgetItemsCollection, type BudgetItem } from '#/lib/budget-items-collection.js'
 import { budgetsCollection } from '#/lib/budgets-collection.js'
-import { categoriesCollection } from '#/lib/categories-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
 import { checkpointsCollection, type Checkpoint } from '#/lib/checkpoints-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
@@ -36,14 +35,7 @@ export function BudgetDetail() {
     q.from({ b: budgetsCollection }),
   )
 
-  const { data: categories } = useLiveQuery((q) =>
-    q.from({ c: categoriesCollection }),
-  )
-
   const budget = budgets.find((b) => b.id === budgetId)
-  const category = budget ? categories.find((c) => c.id === budget.category_id) : null
-  const categoryName = category?.name ?? 'Unknown'
-  const categoryColor = category?.color ?? null
 
   const { data: items } = useLiveQuery((q) =>
     q
@@ -172,10 +164,8 @@ export function BudgetDetail() {
           <ArrowLeft size={20} />
         </Link>
         <div className="flex items-center gap-2">
-          {categoryColor && (
-            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: categoryColor }} />
-          )}
-          <h1 className="text-2xl font-bold">{categoryName}</h1>
+          <div className="h-4 w-4 rounded-full" style={{ backgroundColor: budget.color }} />
+          <h1 className="text-2xl font-bold">{budget.name}</h1>
           <span className="text-lg text-gray-500">{budget.year}</span>
         </div>
       </div>
@@ -228,8 +218,8 @@ export function BudgetDetail() {
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-gray-100">
           <div
-            className={`h-full rounded-full transition-all ${pct > 90 ? 'bg-red-500' : pct > 70 ? 'bg-amber-500' : 'bg-green-500'}`}
-            style={{ width: `${pct}%` }}
+            className="h-full rounded-full transition-all"
+            style={{ width: `${pct}%`, backgroundColor: budget.color }}
           />
         </div>
       </div>

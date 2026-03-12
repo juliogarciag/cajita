@@ -19,6 +19,7 @@ import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 import { Route as AuthenticatedToolsCreatePlaylistRouteImport } from './routes/_authenticated/tools/create-playlist'
 import { Route as AuthenticatedFinancesMovementsRouteImport } from './routes/_authenticated/finances/movements'
+import { Route as AuthenticatedFinancesCategoriesRouteImport } from './routes/_authenticated/finances/categories'
 import { Route as AuthenticatedFinancesBudgetsIndexRouteImport } from './routes/_authenticated/finances/budgets/index'
 import { Route as AuthenticatedFinancesBudgetsBudgetIdRouteImport } from './routes/_authenticated/finances/budgets/$budgetId'
 
@@ -73,6 +74,12 @@ const AuthenticatedFinancesMovementsRoute =
     path: '/finances/movements',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedFinancesCategoriesRoute =
+  AuthenticatedFinancesCategoriesRouteImport.update({
+    id: '/finances/categories',
+    path: '/finances/categories',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedFinancesBudgetsIndexRoute =
   AuthenticatedFinancesBudgetsIndexRouteImport.update({
     id: '/finances/budgets/',
@@ -89,6 +96,7 @@ const AuthenticatedFinancesBudgetsBudgetIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/finances/categories': typeof AuthenticatedFinancesCategoriesRoute
   '/finances/movements': typeof AuthenticatedFinancesMovementsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -102,6 +110,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/finances/categories': typeof AuthenticatedFinancesCategoriesRoute
   '/finances/movements': typeof AuthenticatedFinancesMovementsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -117,6 +126,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/finances/categories': typeof AuthenticatedFinancesCategoriesRoute
   '/_authenticated/finances/movements': typeof AuthenticatedFinancesMovementsRoute
   '/_authenticated/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/finances/categories'
     | '/finances/movements'
     | '/tools/create-playlist'
     | '/api/auth/callback'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/finances/categories'
     | '/finances/movements'
     | '/tools/create-playlist'
     | '/api/auth/callback'
@@ -159,6 +171,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/_authenticated/dashboard'
+    | '/_authenticated/finances/categories'
     | '/_authenticated/finances/movements'
     | '/_authenticated/tools/create-playlist'
     | '/api/auth/callback'
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFinancesMovementsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/finances/categories': {
+      id: '/_authenticated/finances/categories'
+      path: '/finances/categories'
+      fullPath: '/finances/categories'
+      preLoaderRoute: typeof AuthenticatedFinancesCategoriesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/finances/budgets/': {
       id: '/_authenticated/finances/budgets/'
       path: '/finances/budgets'
@@ -270,6 +290,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedFinancesCategoriesRoute: typeof AuthenticatedFinancesCategoriesRoute
   AuthenticatedFinancesMovementsRoute: typeof AuthenticatedFinancesMovementsRoute
   AuthenticatedToolsCreatePlaylistRoute: typeof AuthenticatedToolsCreatePlaylistRoute
   AuthenticatedToolsIndexRoute: typeof AuthenticatedToolsIndexRoute
@@ -279,6 +300,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedFinancesCategoriesRoute: AuthenticatedFinancesCategoriesRoute,
   AuthenticatedFinancesMovementsRoute: AuthenticatedFinancesMovementsRoute,
   AuthenticatedToolsCreatePlaylistRoute: AuthenticatedToolsCreatePlaylistRoute,
   AuthenticatedToolsIndexRoute: AuthenticatedToolsIndexRoute,

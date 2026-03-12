@@ -1,0 +1,221 @@
+import { useState, useCallback } from 'react'
+import { useLiveQuery } from '@tanstack/react-db'
+import { Plus } from 'lucide-react'
+import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
+import { createCategory, updateCategory, deleteCategory } from '#/server/categories.js'
+import { budgetColors } from '#/lib/budget-colors.js'
+
+export function CategoriesList() {
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addName, setAddName] = useState('')
+  const [addColor, setAddColor] = useState<string | null>(budgetColors[0].value)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editColor, setEditColor] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const { data: categories } = useLiveQuery((q) =>
+    q.from({ c: categoriesCollection }).orderBy(({ c }) => c.sort_order, 'asc'),
+  )
+
+  const handleAdd = useCallback(async () => {
+    if (!addName.trim()) return
+    await createCategory({ data: { name: addName.trim(), color: addColor } })
+    setShowAddForm(false)
+    setAddName('')
+    setAddColor(budgetColors[0].value)
+  }, [addName, addColor])
+
+  const handleStartEdit = useCallback((cat: Category) => {
+    setEditingId(cat.id)
+    setEditName(cat.name)
+    setEditColor(cat.color)
+  }, [])
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!editingId || !editName.trim()) return
+    try {
+      await updateCategory({ data: { id: editingId, name: editName.trim(), color: editColor } })
+      setEditingId(null)
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to update')
+    }
+  }, [editingId, editName, editColor])
+
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      await deleteCategory({ data: { id } })
+      setDeletingId(null)
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to delete')
+      setDeletingId(null)
+    }
+  }, [])
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Categories</h1>
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          <Plus size={16} />
+          Add Category
+        </button>
+      </div>
+
+      {showAddForm && (
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <h3 className="mb-3 text-sm font-medium text-gray-700">New Category</h3>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-end gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Name</label>
+                <input
+                  type="text"
+                  placeholder="Category name"
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  autoFocus
+                  className="w-48 rounded border border-gray-300 px-2 py-1.5 text-sm"
+                />
+              </div>
+              <button
+                onClick={handleAdd}
+                disabled={!addName.trim()}
+                className="rounded-lg bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Create
+              </button>
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500">Color</label>
+              <div className="flex gap-1.5">
+                {budgetColors.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    title={c.name}
+                    onClick={() => setAddColor(c.value)}
+                    className={`h-6 w-6 rounded-full border-2 transition-transform ${addColor === c.value ? 'scale-110 border-gray-900' : 'border-transparent hover:scale-105'}`}
+                    style={{ backgroundColor: c.value }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-lg border border-gray-200 bg-white">
+        {categories.length === 0 ? (
+          <div className="px-6 py-12 text-center text-gray-500">
+            No categories yet. Create your first one.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {categories.map((cat: Category) => {
+              const isBudgetOwned = !!cat.budget_id
+              const isEditing = editingId === cat.id
+
+              return (
+                <div key={cat.id} className="flex items-center gap-3 px-4 py-3">
+                  {isEditing ? (
+                    <>
+                      <div className="flex gap-1.5">
+                        {budgetColors.map((c) => (
+                          <button
+                            key={c.value}
+                            type="button"
+                            onClick={() => setEditColor(c.value)}
+                            className={`h-5 w-5 rounded-full border-2 transition-transform ${editColor === c.value ? 'scale-110 border-gray-900' : 'border-transparent hover:scale-105'}`}
+                            style={{ backgroundColor: c.value }}
+                          />
+                        ))}
+                      </div>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEdit()
+                          if (e.key === 'Escape') setEditingId(null)
+                        }}
+                        autoFocus
+                        className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+                      />
+                      <button
+                        onClick={handleSaveEdit}
+                        className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        className="h-4 w-4 shrink-0 rounded-full"
+                        style={{ backgroundColor: cat.color ?? '#6b7280' }}
+                      />
+                      <span className="flex-1 text-sm font-medium text-gray-900">{cat.name}</span>
+                      {isBudgetOwned ? (
+                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                          Budget
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleStartEdit(cat)}
+                            className="rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                          >
+                            Edit
+                          </button>
+                          {deletingId === cat.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleDelete(cat.id)}
+                                className="rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                              >
+                                Delete
+                              </button>
+                              <button
+                                onClick={() => setDeletingId(null)}
+                                className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setDeletingId(cat.id)}
+                              className="rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

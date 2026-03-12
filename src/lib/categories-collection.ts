@@ -6,6 +6,7 @@ const categorySchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string().nullable(),
+  budget_id: z.string().nullable(),
   sort_order: z.coerce.number(),
   created_at: z.string(),
 })

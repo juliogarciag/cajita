@@ -5,6 +5,8 @@ import { z } from 'zod'
 const budgetSchema = z.object({
   id: z.string(),
   category_id: z.string(),
+  name: z.string(),
+  color: z.string(),
   year: z.coerce.number(),
   annual_amount_cents: z.coerce.number(),
   remaining_movement_id: z.string().nullable(),

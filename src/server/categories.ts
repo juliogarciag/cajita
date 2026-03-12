@@ -45,3 +45,58 @@ export const createCategory = createServerFn({ method: 'POST' })
 
     return { category }
   })
+
+export const updateCategory = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      id: z.string().uuid(),
+      name: z.string().min(1).max(100).optional(),
+      color: z.string().nullable().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    // Check if budget-owned
+    const existing = await db
+      .selectFrom('categories')
+      .select('budget_id')
+      .where('id', '=', data.id)
+      .executeTakeFirstOrThrow()
+
+    if (existing.budget_id) {
+      throw new Error('Cannot edit a budget-owned category. Edit the budget instead.')
+    }
+
+    const updates: Record<string, unknown> = {}
+    if (data.name !== undefined) updates.name = data.name
+    if (data.color !== undefined) updates.color = data.color
+
+    const category = await db
+      .updateTable('categories')
+      .set(updates)
+      .where('id', '=', data.id)
+      .returningAll()
+      .executeTakeFirstOrThrow()
+
+    return { category }
+  })
+
+export const deleteCategory = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    // Check if budget-owned
+    const existing = await db
+      .selectFrom('categories')
+      .select('budget_id')
+      .where('id', '=', data.id)
+      .executeTakeFirstOrThrow()
+
+    if (existing.budget_id) {
+      throw new Error('Cannot delete a budget-owned category. Delete the budget instead.')
+    }
+
+    await db.deleteFrom('categories').where('id', '=', data.id).execute()
+
+    return { success: true }
+  })

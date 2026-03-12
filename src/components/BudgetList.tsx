@@ -4,13 +4,14 @@ import { Link } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { budgetsCollection, type Budget } from '#/lib/budgets-collection.js'
 import { budgetItemsCollection } from '#/lib/budget-items-collection.js'
-import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { formatCents } from '#/lib/format.js'
 import { createBudget, deleteBudget } from '#/server/budgets.js'
+import { budgetColors, DEFAULT_BUDGET_COLOR } from '#/lib/budget-colors.js'
 
 export function BudgetList() {
   const [showAddForm, setShowAddForm] = useState(false)
-  const [addCategoryId, setAddCategoryId] = useState('')
+  const [addName, setAddName] = useState('')
+  const [addColor, setAddColor] = useState(DEFAULT_BUDGET_COLOR)
   const [addAmount, setAddAmount] = useState('')
   const [addYear, setAddYear] = useState(new Date().getFullYear())
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -22,16 +23,6 @@ export function BudgetList() {
   const { data: budgetItems } = useLiveQuery((q) =>
     q.from({ bi: budgetItemsCollection }),
   )
-
-  const { data: categories } = useLiveQuery((q) =>
-    q.from({ c: categoriesCollection }).orderBy(({ c }) => c.sort_order, 'asc'),
-  )
-
-  const categoryMap = useMemo(() => {
-    const map = new Map<string, Category>()
-    for (const cat of categories) map.set(cat.id, cat)
-    return map
-  }, [categories])
 
   // Sum items per budget
   const budgetTotals = useMemo(() => {
@@ -51,20 +42,6 @@ export function BudgetList() {
     return set
   }, [budgetItems])
 
-  // Categories that already have a budget for the selected year
-  const usedCategoryIds = useMemo(() => {
-    return new Set(
-      budgets
-        .filter((b: Budget) => b.year === addYear)
-        .map((b: Budget) => b.category_id),
-    )
-  }, [budgets, addYear])
-
-  const availableCategories = useMemo(
-    () => categories.filter((c: Category) => !usedCategoryIds.has(c.id)),
-    [categories, usedCategoryIds],
-  )
-
   // Group by year
   const budgetsByYear = useMemo(() => {
     const map = new Map<number, Budget[]>()
@@ -75,23 +52,27 @@ export function BudgetList() {
     return [...map.entries()].sort((a, b) => b[0] - a[0])
   }, [budgets])
 
+  const canCreate = addName.trim() && addAmount
+
   const handleAdd = useCallback(async () => {
-    if (!addCategoryId || !addAmount) return
+    if (!addName.trim() || !addAmount) return
     const cents = Math.round(Number.parseFloat(addAmount) * 100)
     if (Number.isNaN(cents) || cents <= 0) return
 
     await createBudget({
       data: {
-        category_id: addCategoryId,
+        name: addName.trim(),
+        color: addColor,
         year: addYear,
         annual_amount_cents: cents,
       },
     })
 
     setShowAddForm(false)
-    setAddCategoryId('')
+    setAddName('')
+    setAddColor(DEFAULT_BUDGET_COLOR)
     setAddAmount('')
-  }, [addCategoryId, addAmount, addYear])
+  }, [addName, addColor, addAmount, addYear])
 
   const handleDelete = useCallback(async (id: string) => {
     try {
@@ -119,54 +100,67 @@ export function BudgetList() {
       {showAddForm && (
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <h3 className="mb-3 text-sm font-medium text-gray-700">New Budget</h3>
-          <div className="flex items-end gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">Year</label>
-              <input
-                type="number"
-                value={addYear}
-                onChange={(e) => setAddYear(Number(e.target.value))}
-                className="w-24 rounded border border-gray-300 px-2 py-1.5 text-sm"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">Category</label>
-              <select
-                value={addCategoryId}
-                onChange={(e) => setAddCategoryId(e.target.value)}
-                className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+          <div className="flex flex-col gap-3">
+            <div className="flex items-end gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Year</label>
+                <input
+                  type="number"
+                  value={addYear}
+                  onChange={(e) => setAddYear(Number(e.target.value))}
+                  className="w-24 rounded border border-gray-300 px-2 py-1.5 text-sm"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Name</label>
+                <input
+                  type="text"
+                  placeholder="Budget name"
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  className="w-40 rounded border border-gray-300 px-2 py-1.5 text-sm"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Annual Amount (USD)</label>
+                <input
+                  type="text"
+                  placeholder="500.00"
+                  value={addAmount}
+                  onChange={(e) => setAddAmount(e.target.value)}
+                  inputMode="decimal"
+                  className="w-32 rounded border border-gray-300 px-2 py-1.5 text-sm"
+                />
+              </div>
+              <button
+                onClick={handleAdd}
+                disabled={!canCreate}
+                className="rounded-lg bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <option value="">Select category...</option>
-                {availableCategories.map((c: Category) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
+                Create
+              </button>
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500">Color</label>
+              <div className="flex gap-1.5">
+                {budgetColors.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    title={c.name}
+                    onClick={() => setAddColor(c.value)}
+                    className={`h-6 w-6 rounded-full border-2 transition-transform ${addColor === c.value ? 'scale-110 border-gray-900' : 'border-transparent hover:scale-105'}`}
+                    style={{ backgroundColor: c.value }}
+                  />
                 ))}
-              </select>
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">Annual Amount (USD)</label>
-              <input
-                type="text"
-                placeholder="500.00"
-                value={addAmount}
-                onChange={(e) => setAddAmount(e.target.value)}
-                inputMode="decimal"
-                className="w-32 rounded border border-gray-300 px-2 py-1.5 text-sm"
-              />
-            </div>
-            <button
-              onClick={handleAdd}
-              className="rounded-lg bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-            >
-              Create
-            </button>
-            <button
-              onClick={() => setShowAddForm(false)}
-              className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
-            >
-              Cancel
-            </button>
           </div>
         </div>
       )}
@@ -181,7 +175,6 @@ export function BudgetList() {
             <h2 className="text-lg font-semibold text-gray-700">{year}</h2>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {yearBudgets.map((budget: Budget) => {
-                const cat = categoryMap.get(budget.category_id)
                 const itemsTotal = budgetTotals.get(budget.id) ?? 0
                 const spentCents = Math.abs(itemsTotal)
                 const annualCents = budget.annual_amount_cents
@@ -200,14 +193,12 @@ export function BudgetList() {
                     />
                     <div className="mb-2 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {cat?.color && (
-                          <div
-                            className="h-3 w-3 rounded-full"
-                            style={{ backgroundColor: cat.color }}
-                          />
-                        )}
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: budget.color }}
+                        />
                         <span className="font-medium text-gray-900">
-                          {cat?.name ?? 'Unknown'}
+                          {budget.name}
                         </span>
                       </div>
                       {!budgetsWithSyncedItems.has(budget.id) && (
@@ -246,8 +237,8 @@ export function BudgetList() {
 
                     <div className="mb-2 h-2 overflow-hidden rounded-full bg-gray-100">
                       <div
-                        className={`h-full rounded-full transition-all ${pct > 90 ? 'bg-red-500' : pct > 70 ? 'bg-amber-500' : 'bg-green-500'}`}
-                        style={{ width: `${pct}%` }}
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, backgroundColor: budget.color }}
                       />
                     </div>
 
