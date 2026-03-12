@@ -1,0 +1,61 @@
+/* Compact, gray-toned overrides for react-day-picker */
+.rdp-root {
+  --rdp-accent-color: #111827; /* gray-900 */
+  --rdp-accent-background-color: #f3f4f6; /* gray-100 */
+
+  --rdp-day-height: 28px;
+  --rdp-day-width: 28px;
+  --rdp-day_button-border-radius: 4px;
+  --rdp-day_button-border: none;
+  --rdp-day_button-height: 28px;
+  --rdp-day_button-width: 28px;
+
+  --rdp-selected-border: none;
+  --rdp-today-color: #111827;
+
+  --rdp-nav_button-height: 1.75rem;
+  --rdp-nav_button-width: 1.75rem;
+  --rdp-nav-height: 2.25rem;
+
+  --rdp-weekday-padding: 0.25rem 0;
+
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.25rem;
+}
+
+.rdp-month_caption {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  height: var(--rdp-nav-height);
+}
+
+.rdp-chevron {
+  fill: #6b7280; /* gray-500 */
+  width: 16px;
+  height: 16px;
+}
+
+.rdp-weekday {
+  font-size: 0.6875rem; /* 11px */
+  color: #9ca3af; /* gray-400 */
+  font-weight: 500;
+}
+
+.rdp-day_button:hover {
+  background-color: #f3f4f6; /* gray-100 */
+}
+
+.rdp-today:not(.rdp-selected) .rdp-day_button {
+  font-weight: 600;
+  color: #111827;
+}
+
+.rdp-selected {
+  font-weight: 500;
+  font-size: inherit;
+}
+
+.rdp-selected .rdp-day_button {
+  background-color: #111827; /* gray-900 */
+  color: white;
+}
