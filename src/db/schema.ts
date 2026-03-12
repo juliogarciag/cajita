@@ -80,6 +80,14 @@ export interface CheckpointsTable {
   created_at: Generated<Date>
 }
 
+export interface UserPreferencesTable {
+  id: Generated<string>
+  user_id: string
+  date_format: string
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
 export interface Database {
   users: UsersTable
   sessions: SessionsTable
@@ -89,4 +97,5 @@ export interface Database {
   checkpoints: CheckpointsTable
   budgets: BudgetsTable
   budget_items: BudgetItemsTable
+  user_preferences: UserPreferencesTable
 }

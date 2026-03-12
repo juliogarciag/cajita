@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect, useMatches } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { authMiddleware } from '#/server/middleware.js'
+import { DateFormatProvider } from '#/lib/date-format.js'
 
 const getAuthenticatedUser = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
@@ -89,11 +90,16 @@ function AuthenticatedLayout() {
             <Link to="/finances/categories" className={subNavLinkClass}>
               Categories
             </Link>
+            <Link to="/finances/settings" className={subNavLinkClass}>
+              Settings
+            </Link>
           </div>
         </div>
       )}
       <main className="mx-auto max-w-5xl px-4 py-6">
-        <Outlet />
+        <DateFormatProvider>
+          <Outlet />
+        </DateFormatProvider>
       </main>
     </div>
   )

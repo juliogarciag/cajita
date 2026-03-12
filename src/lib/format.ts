@@ -16,9 +16,17 @@ export function parseDollarsTocents(input: string): number | null {
   return Math.round(num * 100)
 }
 
-export function formatDate(dateStr: string): string {
+export type DateFormatOption = 'DD/MM/YYYY' | 'YYYY-MM-DD'
+
+export function formatDisplayDate(dateStr: string, fmt: DateFormatOption = 'DD/MM/YYYY'): string {
+  if (!dateStr) return ''
+  if (fmt === 'YYYY-MM-DD') return dateStr
   const [year, month, day] = dateStr.split('-')
-  return `${month}/${day}/${year}`
+  return `${day}/${month}/${year}`
+}
+
+export function toDateFnsFormat(fmt: DateFormatOption): string {
+  return fmt === 'DD/MM/YYYY' ? 'dd/MM/yyyy' : 'yyyy-MM-dd'
 }
 
 export function toISODate(date: Date): string {

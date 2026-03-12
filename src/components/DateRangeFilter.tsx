@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { toISODate } from '#/lib/format.js'
+import { DateInput } from './DateInput.js'
 
 export interface DateRange {
   from: string
@@ -67,24 +68,22 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
         ))}
       </div>
       <div className="flex items-center gap-1">
-        <input
-          type="date"
+        <DateInput
           value={value?.from ?? ''}
-          onChange={(e) =>
-            onChange(e.target.value ? { from: e.target.value, to: value?.to ?? '9999-12-31' } : null)
+          onChange={(v) =>
+            onChange(v ? { from: v, to: value?.to ?? '9999-12-31' } : null)
           }
-          className="rounded border border-gray-300 px-2 py-1 text-xs"
+          className="w-28 text-xs"
         />
         <span className="text-xs text-gray-400">to</span>
-        <input
-          type="date"
+        <DateInput
           value={value?.to ?? ''}
-          onChange={(e) =>
+          onChange={(v) =>
             onChange(
-              e.target.value ? { from: value?.from ?? '0000-01-01', to: e.target.value } : null,
+              v ? { from: value?.from ?? '0000-01-01', to: v } : null,
             )
           }
-          className="rounded border border-gray-300 px-2 py-1 text-xs"
+          className="w-28 text-xs"
         />
       </div>
       {value && (

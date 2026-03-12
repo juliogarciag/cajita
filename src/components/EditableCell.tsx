@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { CategorySelect } from './CategorySelect.js'
+import { DatePickerCell } from './DatePickerCell.js'
+import { useDateFormat } from '#/lib/date-format.js'
 
 type CellType = 'text' | 'date' | 'amount' | 'category'
 
@@ -29,6 +31,7 @@ export function EditableCell({
   const [editing, setEditing] = useState(autoEdit)
   const [draft, setDraft] = useState(value)
   const inputRef = useRef<HTMLInputElement>(null)
+  const { formatDate } = useDateFormat()
 
   useEffect(() => {
     if (autoEdit) setEditing(true)
@@ -74,13 +77,16 @@ export function EditableCell({
     [cancel, save, onTab, onEnter],
   )
 
+  // Display value: format dates using user preference
+  const displayValue = type === 'date' ? formatDate(value) : value
+
   if (disabled || !editing) {
     return (
       <div
         className={`rounded px-2 py-1 ${disabled ? '' : 'cursor-pointer hover:bg-gray-100'} ${className}`}
         onClick={disabled ? undefined : () => setEditing(true)}
       >
-        {value || <span className="text-gray-400">—</span>}
+        {displayValue || <span className="text-gray-400">—</span>}
       </div>
     )
   }
@@ -100,10 +106,28 @@ export function EditableCell({
     )
   }
 
+  if (type === 'date') {
+    return (
+      <DatePickerCell
+        value={value}
+        onSave={(v) => {
+          onSave(v)
+          setEditing(false)
+        }}
+        onCancel={() => {
+          setDraft(value)
+          setEditing(false)
+        }}
+        onTab={onTab}
+        onEnter={onEnter}
+      />
+    )
+  }
+
   return (
     <input
       ref={inputRef}
-      type={type === 'date' ? 'date' : type === 'amount' ? 'text' : 'text'}
+      type="text"
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={save}

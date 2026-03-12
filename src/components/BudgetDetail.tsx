@@ -18,6 +18,7 @@ import {
 } from '#/server/budget-items.js'
 import { updateBudget } from '#/server/budgets.js'
 import { BudgetItemRow } from './BudgetItemRow.js'
+import { DateInput } from './DateInput.js'
 
 export function BudgetDetail() {
   const { budgetId } = useParams({ strict: false }) as { budgetId: string }
@@ -285,11 +286,9 @@ export function BudgetDetail() {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500">Date</label>
-              <input
-                type="date"
+              <DateInput
                 value={addDate}
-                onChange={(e) => setAddDate(e.target.value)}
-                className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+                onChange={setAddDate}
               />
             </div>
             <div className="flex flex-col gap-1">
