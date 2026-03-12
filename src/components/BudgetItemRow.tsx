@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Link as LinkIcon, Unlink, Lock, Trash2, ExternalLink } from 'lucide-react'
 import type { BudgetItem } from '#/lib/budget-items-collection.js'
@@ -21,6 +21,19 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
   const [deletingId, setDeletingId] = useState(false)
   const isSynced = !!item.movement_id
   const disabled = frozen
+
+  // Dismiss delete confirmation on click-away
+  useEffect(() => {
+    if (!deletingId) return
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-confirm-delete]')) {
+        setDeletingId(false)
+      }
+    }
+    document.addEventListener('click', handler, { capture: true })
+    return () => document.removeEventListener('click', handler, { capture: true })
+  }, [deletingId])
 
   const handleFieldSave = useCallback(
     (field: string, rawValue: string) => {
@@ -137,6 +150,7 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
             </button>
             {deletingId ? (
               <button
+                data-confirm-delete
                 onClick={() => {
                   onDelete(item.id)
                   setDeletingId(false)
