@@ -251,7 +251,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
         <div className="w-[120px] shrink-0 px-3 py-1 text-right font-medium">
           {formatCents(row.total_cents)}
         </div>
-        <div className="flex-1 px-1">
+        <div className="w-[160px] shrink-0 px-1">
           <EditableCell
             value={row.category_name ?? ''}
             type="category"
@@ -260,7 +260,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
             onSave={(v) => handleUpdate(row.id, 'category_id', v)}
           />
         </div>
-        <div className="w-[64px] shrink-0 flex items-center justify-end gap-1 pr-2">
+        <div className="w-[56px] shrink-0 flex items-center justify-end gap-1 pr-2">
           {movementToBudgetId.has(row.id) && (
             <Tooltip content="View budget">
               <Link
@@ -388,8 +388,8 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
         <div className="w-[120px] shrink-0 px-3 py-2">Date</div>
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Amount</div>
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Total</div>
-        <div className="flex-1 px-3 py-2">Category</div>
-        <div className="w-[64px] shrink-0" />
+        <div className="w-[160px] shrink-0 px-3 py-2">Category</div>
+        <div className="w-[56px] shrink-0" />
       </div>
 
       {/* Virtualized body */}
