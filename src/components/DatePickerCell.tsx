@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { DayPicker, getDefaultClassNames } from 'react-day-picker'
+import { DayPicker } from 'react-day-picker'
 import { format, parse, isValid } from 'date-fns'
 import { useDateFormat } from '#/lib/date-format.js'
 import 'react-day-picker/style.css'
+import './calendar.css'
 
 interface DatePickerCellProps {
   value: string // ISO YYYY-MM-DD
@@ -148,8 +149,6 @@ export function DatePickerCell({ value, onSave, onCancel, onTab, onEnter }: Date
     [selectedDate, onSave, onCancel, onTab, onEnter],
   )
 
-  const defaultClassNames = getDefaultClassNames()
-
   return (
     <>
       <input
@@ -166,7 +165,7 @@ export function DatePickerCell({ value, onSave, onCancel, onTab, onEnter }: Date
         createPortal(
           <div
             ref={dropdownRef}
-            className="fixed z-[9999] rounded-lg border border-gray-200 bg-white p-2 shadow-xl"
+            className="fixed z-[9999] rounded-lg border border-gray-200 bg-white p-2 shadow-lg"
             style={{ top: dropdownPos.top, left: dropdownPos.left }}
           >
             <DayPicker
@@ -175,12 +174,6 @@ export function DatePickerCell({ value, onSave, onCancel, onTab, onEnter }: Date
               onSelect={handleDaySelect}
               month={month}
               onMonthChange={setMonth}
-              classNames={{
-                root: `${defaultClassNames.root} text-sm`,
-                today: 'font-bold text-blue-600',
-                selected: 'bg-gray-900 text-white rounded-full',
-                chevron: `${defaultClassNames.chevron} fill-gray-600`,
-              }}
             />
           </div>,
           document.body,
