@@ -52,7 +52,7 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
         frozen ? 'opacity-50' : 'hover:bg-gray-50'
       }`}
     >
-      <div className="w-[200px] shrink-0 px-1">
+      <div className="min-w-[200px] flex-1 px-1">
         <EditableCell
           value={item.description}
           type="text"
@@ -104,7 +104,7 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
           <span className="text-xs text-gray-400">Pending</span>
         )}
       </div>
-      <div className="flex flex-1 items-center justify-end gap-1 px-2">
+      <div className="flex w-[56px] shrink-0 items-center justify-end gap-1 px-2">
         {frozen ? (
           <Lock size={14} className="text-gray-300" />
         ) : isSynced ? (

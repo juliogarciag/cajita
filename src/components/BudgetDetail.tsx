@@ -217,13 +217,13 @@ export function BudgetDetail() {
       {/* Items table */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="flex border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
-          <div className="w-[200px] shrink-0 px-3 py-2">Description</div>
+          <div className="min-w-[200px] flex-1 px-3 py-2">Description</div>
           <div className="w-[110px] shrink-0 px-3 py-2">Date</div>
           <div className="w-[110px] shrink-0 px-3 py-2 text-right">Soles</div>
           <div className="w-[110px] shrink-0 px-3 py-2 text-right">USD</div>
           <div className="w-[110px] shrink-0 px-3 py-2">Acct. Date</div>
           <div className="w-[80px] shrink-0 px-3 py-2 text-center">Status</div>
-          <div className="flex-1" />
+          <div className="w-[56px] shrink-0" />
         </div>
 
         {items.length === 0 ? (
