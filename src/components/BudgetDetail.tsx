@@ -6,6 +6,7 @@ import { ArrowLeft, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { budgetItemsCollection, type BudgetItem } from '#/lib/budget-items-collection.js'
 import { budgetsCollection } from '#/lib/budgets-collection.js'
+import { categoriesCollection } from '#/lib/categories-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
@@ -37,6 +38,14 @@ export function BudgetDetail() {
   )
 
   const budget = budgets.find((b) => b.id === budgetId)
+
+  const { data: categories } = useLiveQuery((q) =>
+    q.from({ c: categoriesCollection }),
+  )
+
+  const budgetColor = budget
+    ? (categories.find((c) => c.id === budget.category_id)?.color ?? '#6b7280')
+    : '#6b7280'
 
   const { data: items } = useLiveQuery((q) =>
     q
@@ -154,7 +163,7 @@ export function BudgetDetail() {
           <ArrowLeft size={20} />
         </Link>
         <div className="flex items-center gap-2">
-          <div className="h-4 w-4 rounded-full" style={{ backgroundColor: budget.color }} />
+          <div className="h-4 w-4 rounded-full" style={{ backgroundColor: budgetColor }} />
           <h1 className="text-2xl font-bold">{budget.name}</h1>
           <span className="text-lg text-gray-500">{budget.year}</span>
         </div>
@@ -209,7 +218,7 @@ export function BudgetDetail() {
         <div className="h-2 overflow-hidden rounded-full bg-gray-100">
           <div
             className="h-full rounded-full transition-all"
-            style={{ width: `${pct}%`, backgroundColor: budget.color }}
+            style={{ width: `${pct}%`, backgroundColor: budgetColor }}
           />
         </div>
       </div>

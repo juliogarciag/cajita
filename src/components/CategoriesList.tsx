@@ -9,10 +9,10 @@ import { budgetColors } from '#/lib/budget-colors.js'
 export function CategoriesList() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [addName, setAddName] = useState('')
-  const [addColor, setAddColor] = useState<string | null>(budgetColors[0].value)
+  const [addColor, setAddColor] = useState(budgetColors[0].value)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
-  const [editColor, setEditColor] = useState<string | null>(null)
+  const [editColor, setEditColor] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const { data: categories } = useLiveQuery((q) =>
@@ -173,7 +173,7 @@ export function CategoriesList() {
                     <>
                       <div
                         className="h-4 w-4 shrink-0 rounded-full"
-                        style={{ backgroundColor: cat.color ?? '#6b7280' }}
+                        style={{ backgroundColor: cat.color }}
                       />
                       <span className="flex-1 text-sm font-medium text-gray-900">{cat.name}</span>
                       {isBudgetOwned ? (

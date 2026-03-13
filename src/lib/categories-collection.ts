@@ -5,7 +5,7 @@ import { z } from 'zod'
 const categorySchema = z.object({
   id: z.string(),
   name: z.string(),
-  color: z.string().nullable(),
+  color: z.string(),
   budget_id: z.string().nullable(),
   sort_order: z.coerce.number(),
   created_at: z.string(),

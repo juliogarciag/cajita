@@ -63,7 +63,6 @@ export const createBudget = createServerFn({ method: 'POST' })
         .values({
           category_id: category.id as string,
           name: data.name,
-          color: data.color,
           year: data.year,
           annual_amount_cents: data.annual_amount_cents,
           remaining_movement_id: movement.id,

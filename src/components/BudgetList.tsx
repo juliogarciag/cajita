@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { budgetsCollection, type Budget } from '#/lib/budgets-collection.js'
 import { budgetItemsCollection } from '#/lib/budget-items-collection.js'
+import { categoriesCollection } from '#/lib/categories-collection.js'
 import { formatCents } from '#/lib/format.js'
 import { createBudget, deleteBudget } from '#/server/budgets.js'
 import { budgetColors, DEFAULT_BUDGET_COLOR } from '#/lib/budget-colors.js'
@@ -21,9 +22,20 @@ export function BudgetList() {
     q.from({ b: budgetsCollection }).orderBy(({ b }) => b.year, 'desc'),
   )
 
+  const { data: categories } = useLiveQuery((q) =>
+    q.from({ c: categoriesCollection }),
+  )
+
   const { data: budgetItems } = useLiveQuery((q) =>
     q.from({ bi: budgetItemsCollection }),
   )
+
+  // Category color lookup
+  const categoryColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const c of categories) map.set(c.id, c.color)
+    return map
+  }, [categories])
 
   // Sum items per budget
   const budgetTotals = useMemo(() => {
@@ -185,6 +197,7 @@ export function BudgetList() {
                 const annualCents = budget.annual_amount_cents
                 const remainingCents = annualCents + itemsTotal
                 const pct = annualCents > 0 ? Math.min((spentCents / annualCents) * 100, 100) : 0
+                const color = categoryColorMap.get(budget.category_id) ?? '#6b7280'
 
                 return (
                   <div
@@ -200,7 +213,7 @@ export function BudgetList() {
                       <div className="flex items-center gap-2">
                         <div
                           className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: budget.color }}
+                          style={{ backgroundColor: color }}
                         />
                         <span className="font-medium text-gray-900">
                           {budget.name}
@@ -243,7 +256,7 @@ export function BudgetList() {
                     <div className="mb-2 h-2 overflow-hidden rounded-full bg-gray-100">
                       <div
                         className="h-full rounded-full transition-all"
-                        style={{ width: `${pct}%`, backgroundColor: budget.color }}
+                        style={{ width: `${pct}%`, backgroundColor: color }}
                       />
                     </div>
 

@@ -22,7 +22,7 @@ export const createCategory = createServerFn({ method: 'POST' })
   .inputValidator(
     z.object({
       name: z.string().min(1).max(100),
-      color: z.string().nullable().optional(),
+      color: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -37,7 +37,7 @@ export const createCategory = createServerFn({ method: 'POST' })
       .insertInto('categories')
       .values({
         name: data.name,
-        color: data.color ?? null,
+        color: data.color ?? '#6b7280',
         sort_order,
       })
       .returningAll()
@@ -52,7 +52,7 @@ export const updateCategory = createServerFn({ method: 'POST' })
     z.object({
       id: z.string().uuid(),
       name: z.string().min(1).max(100).optional(),
-      color: z.string().nullable().optional(),
+      color: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
