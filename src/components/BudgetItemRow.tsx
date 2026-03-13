@@ -51,6 +51,7 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
       className={`flex items-center border-b border-gray-100 text-sm ${
         frozen ? 'opacity-50' : 'hover:bg-gray-50'
       }`}
+      style={{ height: 40 }}
     >
       <div className="min-w-[200px] flex-1 px-1">
         <EditableCell
