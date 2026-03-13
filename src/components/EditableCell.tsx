@@ -83,7 +83,7 @@ export function EditableCell({
   if (disabled || !editing) {
     return (
       <div
-        className={`rounded px-2 py-1 ${disabled ? '' : 'cursor-pointer hover:bg-gray-100'} ${className}`}
+        className={`rounded border border-transparent px-2 py-1 ${disabled ? '' : 'cursor-pointer hover:bg-gray-100'} ${className}`}
         onClick={disabled ? undefined : () => setEditing(true)}
       >
         {displayValue || <span className="text-gray-400">—</span>}

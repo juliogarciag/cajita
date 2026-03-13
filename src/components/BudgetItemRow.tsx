@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Link as LinkIcon, Unlink, Lock, Trash2, ExternalLink } from 'lucide-react'
 import type { BudgetItem } from '#/lib/budget-items-collection.js'
 import { formatCents, formatSoles, parseDollarsTocents } from '#/lib/format.js'
+import { useClickAwayDismiss } from '#/lib/use-click-away-dismiss.js'
 import { EditableCell } from './EditableCell.js'
 
 interface BudgetItemRowProps {
@@ -18,22 +19,11 @@ interface BudgetItemRowProps {
 }
 
 export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsync }: BudgetItemRowProps) {
-  const [deletingId, setDeletingId] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const isSynced = !!item.movement_id
   const disabled = frozen
 
-  // Dismiss delete confirmation on click-away
-  useEffect(() => {
-    if (!deletingId) return
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (!target.closest('[data-confirm-delete]')) {
-        setDeletingId(false)
-      }
-    }
-    document.addEventListener('click', handler, { capture: true })
-    return () => document.removeEventListener('click', handler, { capture: true })
-  }, [deletingId])
+  useClickAwayDismiss(isDeleting, useCallback(() => setIsDeleting(false), []))
 
   const handleFieldSave = useCallback(
     (field: string, rawValue: string) => {
@@ -148,12 +138,12 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
               <LinkIcon size={12} />
               Sync
             </button>
-            {deletingId ? (
+            {isDeleting ? (
               <button
                 data-confirm-delete
                 onClick={() => {
                   onDelete(item.id)
-                  setDeletingId(false)
+                  setIsDeleting(false)
                 }}
                 className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
               >
@@ -161,7 +151,7 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
               </button>
             ) : (
               <button
-                onClick={() => setDeletingId(true)}
+                onClick={() => setIsDeleting(true)}
                 className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
               >
                 <Trash2 size={12} />

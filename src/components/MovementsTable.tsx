@@ -5,10 +5,12 @@ import { Link } from '@tanstack/react-router'
 import { Plus, Trash2, History, Lock, Unlock, Wallet, ExternalLink } from 'lucide-react'
 import { movementsCollection, type Movement } from '#/lib/movements-collection.js'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
-import { checkpointsCollection, type Checkpoint } from '#/lib/checkpoints-collection.js'
+import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
 import { budgetItemsCollection } from '#/lib/budget-items-collection.js'
 import { budgetsCollection } from '#/lib/budgets-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
+import { useClickAwayDismiss } from '#/lib/use-click-away-dismiss.js'
+import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import { createCheckpoint, deleteCheckpoint } from '#/server/checkpoints.js'
 import { EditableCell } from './EditableCell.js'
 import { SnapshotPanel } from './SnapshotPanel.js'
@@ -37,18 +39,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   const scrollToEnd = useRef(false)
   const initialScroll = useRef(true)
 
-  // Dismiss delete confirmation on click-away
-  useEffect(() => {
-    if (!deletingId) return
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (!target.closest('[data-confirm-delete]')) {
-        setDeletingId(null)
-      }
-    }
-    document.addEventListener('click', handler, { capture: true })
-    return () => document.removeEventListener('click', handler, { capture: true })
-  }, [deletingId])
+  useClickAwayDismiss(!!deletingId, useCallback(() => setDeletingId(null), []))
 
   const { data: movements } = useLiveQuery((q) =>
     q
@@ -93,15 +84,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     return map
   }, [budgetItems, budgets])
 
-  // Find the latest checkpoint and its anchor movement
-  const activeCheckpoint: Checkpoint | null = checkpoints.length > 0 ? checkpoints[0] : null
-
-  const checkpointBoundary = useMemo(() => {
-    if (!activeCheckpoint) return null
-    const m = movements.find((mov: Movement) => mov.id === activeCheckpoint.movement_id)
-    if (!m) return null
-    return { date: m.date, sort_position: m.sort_position }
-  }, [activeCheckpoint, movements])
+  const { activeCheckpoint, boundary: checkpointBoundary } = useCheckpointBoundary(checkpoints, movements)
 
   // Compute running totals and frozen state
   const allWithTotals: MovementWithTotal[] = useMemo(() => {

@@ -4,3 +4,4 @@ dist
 .vinxi
 .env
 *.local
+.DS_Store

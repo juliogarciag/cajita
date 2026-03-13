@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { eq } from '@tanstack/db'
 import { Link, useParams } from '@tanstack/react-router'
@@ -7,8 +7,9 @@ import { toast } from 'sonner'
 import { budgetItemsCollection, type BudgetItem } from '#/lib/budget-items-collection.js'
 import { budgetsCollection } from '#/lib/budgets-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
-import { checkpointsCollection, type Checkpoint } from '#/lib/checkpoints-collection.js'
+import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
+import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import {
   createBudgetItem,
   updateBudgetItem,
@@ -52,27 +53,7 @@ export function BudgetDetail() {
     q.from({ c: checkpointsCollection }).orderBy(({ c }) => c.created_at, 'desc'),
   )
 
-  // Determine checkpoint boundary for frozen detection
-  const checkpointBoundary = useMemo(() => {
-    const cp: Checkpoint | null = checkpoints.length > 0 ? checkpoints[0] : null
-    if (!cp) return null
-    const m = movements.find((mov) => mov.id === cp.movement_id)
-    if (!m) return null
-    return { date: m.date, sort_position: m.sort_position }
-  }, [checkpoints, movements])
-
-  // Build a set of frozen movement IDs
-  const frozenMovementIds = useMemo(() => {
-    if (!checkpointBoundary) return new Set<string>()
-    const set = new Set<string>()
-    for (const m of movements) {
-      const frozen =
-        m.date < checkpointBoundary.date ||
-        (m.date === checkpointBoundary.date && m.sort_position <= checkpointBoundary.sort_position)
-      if (frozen) set.add(m.id)
-    }
-    return set
-  }, [movements, checkpointBoundary])
+  const { frozenMovementIds } = useCheckpointBoundary(checkpoints, movements)
 
   if (!budget) {
     return (
