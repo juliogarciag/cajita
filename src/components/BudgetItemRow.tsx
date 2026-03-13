@@ -5,25 +5,41 @@ import type { BudgetItem } from '#/lib/budget-items-collection.js'
 import { formatCents, formatSoles, parseDollarsTocents } from '#/lib/format.js'
 import { useClickAwayDismiss } from '#/lib/use-click-away-dismiss.js'
 import { EditableCell } from './EditableCell.js'
+import { TableRow } from './TableRow.js'
 
 interface BudgetItemRowProps {
   item: BudgetItem
   frozen: boolean
   onUpdate: (
     id: string,
-    updates: Partial<Pick<BudgetItem, 'description' | 'date' | 'amount_local_cents' | 'amount_cents' | 'accounting_date'>>,
+    updates: Partial<
+      Pick<
+        BudgetItem,
+        'description' | 'date' | 'amount_local_cents' | 'amount_cents' | 'accounting_date'
+      >
+    >,
   ) => void
   onDelete: (id: string) => void
   onSync: () => void
   onUnsync: () => void
 }
 
-export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsync }: BudgetItemRowProps) {
+export function BudgetItemRow({
+  item,
+  frozen,
+  onUpdate,
+  onDelete,
+  onSync,
+  onUnsync,
+}: BudgetItemRowProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const isSynced = !!item.movement_id
   const disabled = frozen
 
-  useClickAwayDismiss(isDeleting, useCallback(() => setIsDeleting(false), []))
+  useClickAwayDismiss(
+    isDeleting,
+    useCallback(() => setIsDeleting(false), []),
+  )
 
   const handleFieldSave = useCallback(
     (field: string, rawValue: string) => {
@@ -47,12 +63,7 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
   )
 
   return (
-    <div
-      className={`flex items-center border-b border-gray-100 text-sm ${
-        frozen ? 'opacity-50' : 'hover:bg-gray-50'
-      }`}
-      style={{ height: 40 }}
-    >
+    <TableRow frozen={frozen}>
       <div className="min-w-[200px] flex-1 px-1">
         <EditableCell
           value={item.description}
@@ -71,7 +82,9 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
       </div>
       <div className="w-[110px] shrink-0 px-1">
         <EditableCell
-          value={item.amount_local_cents != null ? formatSoles(Math.abs(item.amount_local_cents)) : ''}
+          value={
+            item.amount_local_cents != null ? formatSoles(Math.abs(item.amount_local_cents)) : ''
+          }
           type="amount"
           disabled={disabled}
           className="text-right text-gray-500"
@@ -132,9 +145,11 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
               onClick={onSync}
               disabled={!item.description || item.amount_cents === 0 || !item.accounting_date}
               className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-400 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
-              title={!item.description || item.amount_cents === 0 || !item.accounting_date
-                ? 'Fill description, USD amount, and accounting date to sync'
-                : 'Sync to accounting'}
+              title={
+                !item.description || item.amount_cents === 0 || !item.accounting_date
+                  ? 'Fill description, USD amount, and accounting date to sync'
+                  : 'Sync to accounting'
+              }
             >
               <LinkIcon size={12} />
               Sync
@@ -161,6 +176,6 @@ export function BudgetItemRow({ item, frozen, onUpdate, onDelete, onSync, onUnsy
           </>
         )}
       </div>
-    </div>
+    </TableRow>
   )
 }

@@ -17,6 +17,7 @@ import { createCheckpoint, deleteCheckpoint } from '#/server/checkpoints.js'
 import { EditableCell } from './EditableCell.js'
 import { SnapshotPanel } from './SnapshotPanel.js'
 import { CheckpointPopover } from './CheckpointPopover.js'
+import { TableRow, ROW_HEIGHT } from './TableRow.js'
 
 interface MovementWithTotal extends Movement {
   total_cents: number
@@ -24,8 +25,6 @@ interface MovementWithTotal extends Movement {
   category_color: string | null
   frozen: boolean
 }
-
-const ROW_HEIGHT = 40
 
 interface MovementsTableProps {
   highlightId?: string
@@ -294,23 +293,23 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   }
 
   const renderRow = (row: MovementWithTotal, virtualStart: number, virtualSize: number) => (
-    <div
+    <TableRow
       key={row.id}
+      frozen={row.frozen}
+      highlight={highlightedId === row.id}
+      className={`w-full transition-colors duration-1000 ${row.source === 'budget_remaining' ? 'italic text-gray-400' : ''}`}
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
         width: '100%',
-        height: `${virtualSize}px`,
+        height: virtualSize,
         transform: `translateY(${virtualStart}px)`,
       }}
-      className={`flex w-full items-center border-b border-gray-100 text-sm transition-colors duration-1000 ${
-        highlightedId === row.id ? 'bg-blue-100' : row.frozen ? 'opacity-50' : 'hover:bg-gray-50'
-      } ${row.source === 'budget_remaining' ? 'italic text-gray-400' : ''}`}
       data-row-id={row.id}
     >
       {rowCells(row)}
-    </div>
+    </TableRow>
   )
 
   // Checkpoint divider positioned after last frozen row
