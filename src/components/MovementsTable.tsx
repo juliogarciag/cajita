@@ -4,6 +4,7 @@ import { useLiveQuery } from '@tanstack/react-db'
 import { Link } from '@tanstack/react-router'
 import { Plus, History, Lock, Unlock, ExternalLink } from 'lucide-react'
 import { RowActionsMenu } from './RowActionsMenu.js'
+import { Tooltip } from './Tooltip.js'
 import { movementsCollection, type Movement } from '#/lib/movements-collection.js'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
@@ -264,14 +265,15 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
             <Lock size={14} className="text-gray-300" />
           ) : budgetManaged ? (
             <>
-              <Link
-                to="/finances/budgets/$budgetId"
-                params={{ budgetId: movementToBudgetId.get(row.id)! }}
-                className="rounded p-1 text-gray-300 hover:bg-blue-50 hover:text-blue-600"
-                title="View budget"
-              >
-                <ExternalLink size={12} />
-              </Link>
+              <Tooltip content="View budget">
+                <Link
+                  to="/finances/budgets/$budgetId"
+                  params={{ budgetId: movementToBudgetId.get(row.id)! }}
+                  className="rounded p-1 text-gray-300 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  <ExternalLink size={12} />
+                </Link>
+              </Tooltip>
               <RowActionsMenu
                 onReconcile={() => setCheckpointRowId(row.id)}
               />

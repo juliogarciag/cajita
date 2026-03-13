@@ -1,6 +1,7 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { Toaster } from 'sonner'
+import { TooltipProvider } from '#/components/Tooltip.js'
 import appCss from '#/styles.css?url'
 
 export const Route = createRootRoute({
@@ -30,7 +31,9 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
-        {children}
+        <TooltipProvider>
+          {children}
+        </TooltipProvider>
         <Toaster position="bottom-right" richColors />
         <Scripts />
       </body>
