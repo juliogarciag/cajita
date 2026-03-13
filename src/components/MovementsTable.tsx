@@ -2,7 +2,8 @@ import { useRef, useMemo, useState, useCallback, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useLiveQuery } from '@tanstack/react-db'
 import { Link } from '@tanstack/react-router'
-import { Plus, Trash2, History, Lock, Unlock, Wallet, ExternalLink } from 'lucide-react'
+import { Plus, History, Lock, Unlock, ExternalLink } from 'lucide-react'
+import { RowActionsMenu } from './RowActionsMenu.js'
 import { movementsCollection, type Movement } from '#/lib/movements-collection.js'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
@@ -258,57 +259,36 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
             onSave={(v) => handleUpdate(row.id, 'category_id', v)}
           />
         </div>
-        <div className="w-[48px] shrink-0 flex items-center justify-center">
+        <div className="w-[64px] shrink-0 flex items-center justify-end gap-1 pr-2">
           {frozen ? (
             <Lock size={14} className="text-gray-300" />
           ) : budgetManaged ? (
-            <div className="flex items-center gap-0.5">
-              <span title={`Managed by budget (${row.source})`}>
-                <Wallet size={14} className="text-blue-400" />
-              </span>
-              {movementToBudgetId.has(row.id) && (
-                <Link
-                  to="/finances/budgets/$budgetId"
-                  params={{ budgetId: movementToBudgetId.get(row.id)! }}
-                  className="rounded p-1 text-gray-300 hover:bg-blue-50 hover:text-blue-600"
-                  title="View budget"
-                >
-                  <ExternalLink size={12} />
-                </Link>
-              )}
-              <button
-                onClick={() => setCheckpointRowId(row.id)}
-                className="rounded p-1 text-gray-300 hover:bg-amber-50 hover:text-amber-600"
-                title="Reconcile up to here"
+            <>
+              <Link
+                to="/finances/budgets/$budgetId"
+                params={{ budgetId: movementToBudgetId.get(row.id)! }}
+                className="rounded p-1 text-gray-300 hover:bg-blue-50 hover:text-blue-600"
+                title="View budget"
               >
-                <Lock size={14} />
-              </button>
-            </div>
+                <ExternalLink size={12} />
+              </Link>
+              <RowActionsMenu
+                onReconcile={() => setCheckpointRowId(row.id)}
+              />
+            </>
           ) : deletingId === row.id ? (
             <button
               data-confirm-delete
               onClick={() => handleDelete(row.id)}
               className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
             >
-              Yes
+              Confirm?
             </button>
           ) : (
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={() => setCheckpointRowId(row.id)}
-                className="rounded p-1 text-gray-300 hover:bg-amber-50 hover:text-amber-600"
-                title="Reconcile up to here"
-              >
-                <Lock size={14} />
-              </button>
-              <button
-                data-confirm-delete
-                onClick={() => setDeletingId(row.id)}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
+            <RowActionsMenu
+              onReconcile={() => setCheckpointRowId(row.id)}
+              onDelete={() => setDeletingId(row.id)}
+            />
           )}
         </div>
       </>
@@ -411,7 +391,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Amount</div>
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Total</div>
         <div className="flex-1 px-3 py-2">Category</div>
-        <div className="w-[48px] shrink-0" />
+        <div className="w-[64px] shrink-0" />
       </div>
 
       {/* Virtualized body */}
