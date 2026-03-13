@@ -15,3 +15,7 @@
 ### Tools
 
 - Tax calculator tracker.
+
+### Very far in the future
+
+- Create teams and isolate movements/tools from each other.
