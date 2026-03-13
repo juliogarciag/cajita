@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
-import { createCategory, updateCategory, deleteCategory } from '#/server/categories.js'
+import { createCategory, updateCategory, deleteCategory, archiveCategory } from '#/server/categories.js'
 import { budgetColors } from '#/lib/budget-colors.js'
 
 export function CategoriesList() {
@@ -14,9 +14,20 @@ export function CategoriesList() {
   const [editName, setEditName] = useState('')
   const [editColor, setEditColor] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
 
   const { data: categories } = useLiveQuery((q) =>
     q.from({ c: categoriesCollection }).orderBy(({ c }) => c.sort_order, 'asc'),
+  )
+
+  const archivedCount = useMemo(
+    () => categories.filter((c) => c.archived).length,
+    [categories],
+  )
+
+  const visibleCategories = useMemo(
+    () => (showArchived ? categories : categories.filter((c) => !c.archived)),
+    [categories, showArchived],
   )
 
   const handleAdd = useCallback(async () => {
@@ -54,6 +65,14 @@ export function CategoriesList() {
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete')
       setDeletingId(null)
+    }
+  }, [])
+
+  const handleArchive = useCallback(async (id: string, archived: boolean) => {
+    try {
+      await archiveCategory({ data: { id, archived } })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to archive category')
     }
   }, [])
 
@@ -120,18 +139,32 @@ export function CategoriesList() {
       )}
 
       <div className="rounded-lg border border-gray-200 bg-white">
-        {categories.length === 0 ? (
+        {archivedCount > 0 && (
+          <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-2">
+            <label className="flex items-center gap-2 text-xs text-gray-500">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              Show archived ({archivedCount})
+            </label>
+          </div>
+        )}
+
+        {visibleCategories.length === 0 ? (
           <div className="px-6 py-12 text-center text-gray-500">
             No categories yet. Create your first one.
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {categories.map((cat: Category) => {
+            {visibleCategories.map((cat: Category) => {
               const isBudgetOwned = !!cat.budget_id
               const isEditing = editingId === cat.id
 
               return (
-                <div key={cat.id} className="flex items-center gap-3 px-4 py-3">
+                <div key={cat.id} className={`flex items-center gap-3 px-4 py-3 ${cat.archived ? 'opacity-50' : ''}`}>
                   {isEditing ? (
                     <>
                       <div className="flex gap-1.5">
@@ -180,6 +213,13 @@ export function CategoriesList() {
                         <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
                           Budget
                         </span>
+                      ) : cat.archived ? (
+                        <button
+                          onClick={() => handleArchive(cat.id, false)}
+                          className="rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                        >
+                          Unarchive
+                        </button>
                       ) : (
                         <div className="flex items-center gap-1">
                           <button
@@ -187,6 +227,12 @@ export function CategoriesList() {
                             className="rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                           >
                             Edit
+                          </button>
+                          <button
+                            onClick={() => handleArchive(cat.id, true)}
+                            className="rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                          >
+                            Archive
                           </button>
                           {deletingId === cat.id ? (
                             <div className="flex items-center gap-1">

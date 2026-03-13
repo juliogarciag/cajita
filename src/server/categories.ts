@@ -81,6 +81,35 @@ export const updateCategory = createServerFn({ method: 'POST' })
     return { category }
   })
 
+export const archiveCategory = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      id: z.string().uuid(),
+      archived: z.boolean(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const existing = await db
+      .selectFrom('categories')
+      .select('budget_id')
+      .where('id', '=', data.id)
+      .executeTakeFirstOrThrow()
+
+    if (existing.budget_id) {
+      throw new Error('Cannot archive a budget-owned category.')
+    }
+
+    const category = await db
+      .updateTable('categories')
+      .set({ archived: data.archived })
+      .where('id', '=', data.id)
+      .returningAll()
+      .executeTakeFirstOrThrow()
+
+    return { category }
+  })
+
 export const deleteCategory = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid() }))

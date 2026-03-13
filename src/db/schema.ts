@@ -22,6 +22,7 @@ export interface CategoriesTable {
   color: string
   budget_id: string | null
   sort_order: number
+  archived: Generated<boolean>
   created_at: Generated<Date>
 }
 
