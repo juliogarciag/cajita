@@ -1,5 +1,5 @@
 ---
-title: "feat: Improve movement table row actions with dropdown menu"
+title: 'feat: Improve movement table row actions with dropdown menu'
 type: feat
 status: completed
 date: 2026-03-13
@@ -24,11 +24,11 @@ The current row actions have usability issues:
 
 Restructure the actions column into two zones:
 
-| Row state | Always visible | Behind `⋯` dropdown |
-|-----------|---------------|---------------------|
-| **Frozen** | Lock icon (no change) | — (no dropdown) |
-| **Budget-managed** | Budget link (`View budget →`) | Reconcile |
-| **Normal** | — | Reconcile, Delete |
+| Row state          | Always visible                | Behind `⋯` dropdown |
+| ------------------ | ----------------------------- | ------------------- |
+| **Frozen**         | Lock icon (no change)         | — (no dropdown)     |
+| **Budget-managed** | Budget link (`View budget →`) | Reconcile           |
+| **Normal**         | —                             | Reconcile, Delete   |
 
 **Key changes:**
 
@@ -42,7 +42,7 @@ Restructure the actions column into two zones:
 ### Install `@radix-ui/react-dropdown-menu`
 
 ```bash
-pnpm add @radix-ui/react-dropdown-menu
+npm install @radix-ui/react-dropdown-menu
 ```
 
 Radix is the right choice here: accessible, unstyled (works with Tailwind), handles positioning/portals/keyboard navigation, and is the de facto standard for React dropdown menus. The project already uses `react-day-picker` as a third-party UI primitive, so this isn't the first.
@@ -57,7 +57,7 @@ import { MoreHorizontal } from 'lucide-react'
 
 interface RowActionsMenuProps {
   onReconcile: () => void
-  onDelete?: () => void  // undefined for budget-managed rows
+  onDelete?: () => void // undefined for budget-managed rows
 }
 
 export function RowActionsMenu({ onReconcile, onDelete }: RowActionsMenuProps) {
@@ -114,9 +114,7 @@ Replace the current actions block (lines 260–312) with:
       >
         Budget →
       </Link>
-      <RowActionsMenu
-        onReconcile={() => setCheckpointRowId(row.id)}
-      />
+      <RowActionsMenu onReconcile={() => setCheckpointRowId(row.id)} />
     </>
   ) : deletingId === row.id ? (
     <button
@@ -145,7 +143,7 @@ Remove `Wallet` and `ExternalLink` from the lucide-react import in `MovementsTab
 
 ## Acceptance Criteria
 
-- [x] `pnpm add @radix-ui/react-dropdown-menu` installed
+- [x] `npm install @radix-ui/react-dropdown-menu` installed
 - [x] `RowActionsMenu` component created at `src/components/RowActionsMenu.tsx`
 - [x] Frozen rows: unchanged (lock icon)
 - [x] Budget-managed rows: "Budget →" link always visible + ellipsis dropdown with "Reconcile"

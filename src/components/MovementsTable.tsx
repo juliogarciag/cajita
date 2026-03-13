@@ -261,23 +261,19 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           />
         </div>
         <div className="w-[64px] shrink-0 flex items-center justify-end gap-1 pr-2">
+          {movementToBudgetId.has(row.id) && (
+            <Tooltip content="View budget">
+              <Link
+                to="/finances/budgets/$budgetId"
+                params={{ budgetId: movementToBudgetId.get(row.id)! }}
+                className="rounded p-1 text-gray-300 hover:bg-blue-50 hover:text-blue-600"
+              >
+                <ExternalLink size={12} />
+              </Link>
+            </Tooltip>
+          )}
           {frozen ? (
             <Lock size={14} className="text-gray-300" />
-          ) : budgetManaged ? (
-            <>
-              <Tooltip content="View budget">
-                <Link
-                  to="/finances/budgets/$budgetId"
-                  params={{ budgetId: movementToBudgetId.get(row.id)! }}
-                  className="rounded p-1 text-gray-300 hover:bg-blue-50 hover:text-blue-600"
-                >
-                  <ExternalLink size={12} />
-                </Link>
-              </Tooltip>
-              <RowActionsMenu
-                onReconcile={() => setCheckpointRowId(row.id)}
-              />
-            </>
           ) : deletingId === row.id ? (
             <button
               data-confirm-delete
@@ -289,7 +285,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           ) : (
             <RowActionsMenu
               onReconcile={() => setCheckpointRowId(row.id)}
-              onDelete={() => setDeletingId(row.id)}
+              onDelete={budgetManaged ? undefined : () => setDeletingId(row.id)}
             />
           )}
         </div>

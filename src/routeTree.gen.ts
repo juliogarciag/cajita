@@ -16,6 +16,7 @@ import { Route as AuthenticatedToolsIndexRouteImport } from './routes/_authentic
 import { Route as ApiElectricTableRouteImport } from './routes/api/electric/$table'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
+import { Route as ApiAuthDevLoginRouteImport } from './routes/api/auth/dev-login'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 import { Route as AuthenticatedToolsCreatePlaylistRouteImport } from './routes/_authenticated/tools/create-playlist'
 import { Route as AuthenticatedFinancesSettingsRouteImport } from './routes/_authenticated/finances/settings'
@@ -56,6 +57,11 @@ const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
 const ApiAuthGoogleRoute = ApiAuthGoogleRouteImport.update({
   id: '/api/auth/google',
   path: '/api/auth/google',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthDevLoginRoute = ApiAuthDevLoginRouteImport.update({
+  id: '/api/auth/dev-login',
+  path: '/api/auth/dev-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/dev-login': typeof ApiAuthDevLoginRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/electric/$table': typeof ApiElectricTableRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/dev-login': typeof ApiAuthDevLoginRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/electric/$table': typeof ApiElectricTableRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/_authenticated/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/_authenticated/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/dev-login': typeof ApiAuthDevLoginRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/electric/$table': typeof ApiElectricTableRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/finances/settings'
     | '/tools/create-playlist'
     | '/api/auth/callback'
+    | '/api/auth/dev-login'
     | '/api/auth/google'
     | '/api/auth/logout'
     | '/api/electric/$table'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/finances/settings'
     | '/tools/create-playlist'
     | '/api/auth/callback'
+    | '/api/auth/dev-login'
     | '/api/auth/google'
     | '/api/auth/logout'
     | '/api/electric/$table'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/_authenticated/finances/settings'
     | '/_authenticated/tools/create-playlist'
     | '/api/auth/callback'
+    | '/api/auth/dev-login'
     | '/api/auth/google'
     | '/api/auth/logout'
     | '/api/electric/$table'
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
+  ApiAuthDevLoginRoute: typeof ApiAuthDevLoginRoute
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
   ApiElectricTableRoute: typeof ApiElectricTableRoute
@@ -254,6 +267,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/google'
       fullPath: '/api/auth/google'
       preLoaderRoute: typeof ApiAuthGoogleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/dev-login': {
+      id: '/api/auth/dev-login'
+      path: '/api/auth/dev-login'
+      fullPath: '/api/auth/dev-login'
+      preLoaderRoute: typeof ApiAuthDevLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/callback': {
@@ -340,6 +360,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
+  ApiAuthDevLoginRoute: ApiAuthDevLoginRoute,
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
   ApiElectricTableRoute: ApiElectricTableRoute,
