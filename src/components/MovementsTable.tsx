@@ -250,7 +250,13 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
         <div className="w-[120px] shrink-0 px-3 py-1 text-right font-medium">
           {formatCents(row.total_cents)}
         </div>
-        <div className="w-[160px] shrink-0 px-1">
+        <div className="w-[160px] shrink-0 flex items-center pl-2">
+          {row.category_color && (
+            <span
+              className="inline-block h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: row.category_color }}
+            />
+          )}
           <EditableCell
             value={row.category_name ?? ''}
             type="category"
