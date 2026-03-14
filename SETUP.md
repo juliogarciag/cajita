@@ -111,3 +111,28 @@ Edit `src/config/allowed-users.ts` to set the Google email addresses that are al
    `https://your-app.up.railway.app/api/auth/callback`
 
 8. Deploy. Railway will build and start your app automatically.
+
+## ElectricSQL on Railway
+
+The app uses [ElectricSQL](https://electric-sql.com/) for real-time sync. Locally it runs via `docker compose`, but on Railway you need a separate service.
+
+1. In your Railway project, click **New > Docker Image**.
+
+2. Set the image to `electricsql/electric`.
+
+3. In the Electric service's **Variables** tab, add:
+   - `DATABASE_URL` — use the **internal** connection string from your Railway Postgres service (e.g., `postgresql://postgres:password@postgres.railway.internal:5432/railway`). You can reference this with Railway's variable referencing: `${{Postgres.DATABASE_URL}}`.
+   - `ELECTRIC_INSECURE` — set to `true`. This is safe because the Electric service is only reachable internally via Railway's private network (not exposed publicly).
+
+4. Your Railway Postgres must have `wal_level=logical`. Copy the `DATABASE_PUBLIC_URL` from the Postgres service's **Variables** tab, connect via `psql`, and run:
+
+   ```sql
+   ALTER SYSTEM SET wal_level = 'logical';
+   ```
+
+   Then restart the Postgres service from the Railway dashboard for the change to take effect.
+
+5. In your **app service's** Variables tab, add:
+   - `ELECTRIC_URL` — the **internal** URL of the Electric service (e.g., `http://electric.railway.internal:3000`). You can use Railway's private networking since the app server proxies Electric requests to the client.
+
+6. Redeploy both the Electric service and your app. The app's `/api/electric/:table` proxy endpoint will forward shape requests to Electric internally.
