@@ -3,6 +3,8 @@ import { test, expect, type Page } from "@playwright/test";
 // Budget tests modify shared state (categories, movements) and must run serially
 test.describe.configure({ mode: "serial" });
 
+// Single timestamp shared across all serial tests — budget tests create one budget
+// in "can create" and progressively build on it (add item → sync → unsync → delete).
 const UNIQUE = Date.now();
 
 /** Navigate to a budget's detail page */
@@ -127,12 +129,11 @@ test.describe("Budgets", () => {
   test("can delete a budget", async ({ page }) => {
     const budgetName = `TestBudget-${UNIQUE}`;
 
-    // Budget card: find the × button near the budget name text.
-    // The ConfirmButton has z-10, so it's above the link overlay.
-    const deleteBtn = page
-      .getByText(budgetName, { exact: true })
-      .locator("xpath=ancestor::div[contains(@class,'rounded-lg')]")
-      .getByRole("button", { name: "×" });
+    // Use data-budget-card attribute for stable targeting instead of XPath
+    const budgetCard = page.locator(`[data-budget-card]`, {
+      has: page.getByText(budgetName, { exact: true }),
+    });
+    const deleteBtn = budgetCard.getByRole("button", { name: "×" });
     await expect(deleteBtn).toBeVisible({ timeout: 5000 });
     await deleteBtn.click({ force: true });
     await page.getByRole("button", { name: "Sure?" }).click({ force: true });

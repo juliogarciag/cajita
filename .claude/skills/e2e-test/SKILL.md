@@ -112,6 +112,8 @@ The codebase already uses these data attributes — prefer them for stable locat
 - `data-disabled` — on frozen/disabled editable cells
 - `data-cell="description"` — on the description cell div
 - `data-confirm-delete` — on ConfirmButton elements
+- `data-category-row={id}` — on category rows in CategoriesList
+- `data-budget-card={id}` — on budget cards in BudgetList
 
 ## TEST FILE CONVENTIONS
 
@@ -123,7 +125,7 @@ The codebase already uses these data attributes — prefer them for stable locat
 - Use `data-*` attributes as fallback when role-based locators are ambiguous
 - Add `await expect(...)` assertions — playwright-cli shows actions, YOU add the verification
 
-## HANDLING ELECTICSQL SYNC
+## HANDLING ELECTRICSQL SYNC
 
 After mutations, data syncs from server → Postgres → ElectricSQL → client. Don't use `waitForTimeout()`. Instead, use Playwright's auto-waiting:
 

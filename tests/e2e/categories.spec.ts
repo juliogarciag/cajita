@@ -2,11 +2,12 @@ import { test, expect, type Page, type Locator } from "@playwright/test";
 
 /**
  * Get the category row that contains the given name.
- * Structure: div > [div(color+name), div([Edit, Archive, ×])]
- * We find the text, then go to the parent row div.
+ * Uses the data-category-row attribute for stable targeting.
  */
 function getCategoryRow(page: Page, name: string): Locator {
-  return page.getByText(name, { exact: true }).locator("..");
+  return page.locator("[data-category-row]", {
+    has: page.getByText(name, { exact: true }),
+  });
 }
 
 /** Delete a category using the ConfirmButton (two clicks: × → Sure?) */
@@ -109,7 +110,6 @@ test.describe("Categories CRUD", () => {
       .getByRole("button", { name: "Unarchive" })
       .click();
 
-    // Re-query the checkbox (DOM may have re-rendered)
     // After unarchiving, if there are no more archived categories,
     // the checkbox may disappear. The category should now be visible
     // in the main list regardless.

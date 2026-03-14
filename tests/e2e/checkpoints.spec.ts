@@ -1,61 +1,9 @@
 import { test, expect, type Page, type Locator } from "@playwright/test";
+import { addMovement, deleteMovement } from "./helpers";
 
 // Checkpoints share global state (only one active checkpoint at a time)
 // so tests must run serially to avoid interference.
 test.describe.configure({ mode: "serial" });
-
-/**
- * Helper: Add a new movement and set its description + amount.
- * Uses the same pattern as movements.spec.ts (locator('[data-row-id]').last())
- * and returns a locator identified by unique description text.
- */
-async function addMovement(page: Page, description: string, amount: string) {
-  await page.getByRole("button", { name: "Add Movement" }).click();
-
-  // The new row appears scrolled into view with "—" as description placeholder.
-  // Click the last visible editable description cell with "—".
-  const emptyDescCell = page
-    .locator(
-      '[data-cell="description"] [data-editable-cell]:not([data-disabled])',
-    )
-    .filter({ hasText: "—" })
-    .last();
-  await expect(emptyDescCell).toBeVisible({ timeout: 5000 });
-  await emptyDescCell.click({ force: true });
-
-  // Use keyboard.type() — sends keystrokes to whatever has focus, avoiding
-  // the need for a stable DOM element reference that fill() requires.
-  // Small delay to ensure the click registered and edit mode activated.
-  await page.waitForTimeout(200);
-  await page.keyboard.type(description, { delay: 10 });
-  await page.keyboard.press("Enter");
-
-  // Locate the row by its unique description
-  const row = page.locator("[data-row-id]", {
-    has: page.getByText(description, { exact: true }),
-  });
-  await expect(row).toBeVisible({ timeout: 10000 });
-
-  // Set amount — use fill() on the row's textbox (more stable than keyboard.type)
-  const amountCell = row
-    .locator("[data-editable-cell]")
-    .filter({ hasText: "$0.00" })
-    .first();
-  await expect(amountCell).toBeVisible();
-  await amountCell.click({ force: true });
-  await row.getByRole("textbox").fill(amount);
-  await page.keyboard.press("Enter");
-
-  return row;
-}
-
-/** Helper: Delete a movement via row actions menu */
-async function deleteMovement(page: Page, row: Locator) {
-  // Use force:true because ElectricSQL sync can detach elements
-  await row.getByRole("button").last().click({ force: true });
-  await page.getByRole("menuitem", { name: "Delete" }).click({ force: true });
-  await page.getByRole("button", { name: "Sure?" }).click({ force: true });
-}
 
 /** Helper: Create a checkpoint on a row by entering the actual balance */
 async function createCheckpoint(
@@ -96,16 +44,16 @@ async function unfreeze(page: Page) {
   // Use force:true because the divider is absolutely positioned with z-index
   await page.getByRole("button", { name: "Unfreeze" }).click({ force: true });
 
-  // Wait for the ConfirmButton to switch to "Sure?" state
+  // Wait for the ConfirmButton to switch to "Sure?" state.
+  // Use data-confirm-delete selector — more stable than matching button text
+  // because the ConfirmButton conditionally renders a different element.
   const sureBtn = page.locator("[data-confirm-delete]");
   await expect(sureBtn).toBeVisible({ timeout: 3000 });
 
-  // Small delay to ensure React has finished the state transition and
-  // useClickAwayDismiss capture handler is attached before we click
-  await page.waitForTimeout(200);
-
-  // Click "Sure?" using data-confirm-delete selector with force:true
-  // to avoid interception by the absolutely positioned divider
+  // Click "Sure?" with force:true to avoid interception by the absolutely
+  // positioned divider. The ConfirmButton's useClickAwayDismiss attaches a
+  // capture-phase handler on the same render — clicking too fast can race
+  // with the handler attachment, so we wait for visibility first.
   await sureBtn.click({ force: true });
 
   // Wait for the checkpoint divider to disappear (ElectricSQL sync).
@@ -210,7 +158,8 @@ test.describe("Checkpoints", () => {
     // With a checkpoint active, the DOM has a divider that can interfere.
     // Click Add Movement, then reload to get a clean DOM, then find the new row.
     await page.getByRole("button", { name: "Add Movement" }).click();
-    // Wait briefly for the server to process, then reload for a clean state
+    // Brief wait for the server to process before reload — unavoidable because
+    // we need the insert to reach Postgres before we can reload and see it.
     await page.waitForTimeout(500);
     await page.reload();
     await expect(page.getByText("Checkpointed")).toBeVisible({ timeout: 10000 });

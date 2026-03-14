@@ -162,7 +162,7 @@ export function CategoriesList() {
               const isEditing = editingId === cat.id
 
               return (
-                <div key={cat.id} className={`flex items-center gap-3 px-4 py-3 ${cat.archived ? 'opacity-50' : ''}`}>
+                <div key={cat.id} data-category-row={cat.id} className={`flex items-center gap-3 px-4 py-3 ${cat.archived ? 'opacity-50' : ''}`}>
                   {isEditing ? (
                     <>
                       <div className="flex gap-1.5">
