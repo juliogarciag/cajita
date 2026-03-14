@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { createCategory, updateCategory, deleteCategory, archiveCategory } from '#/server/categories.js'
 import { budgetColors } from '#/lib/budget-colors.js'
+import { ConfirmButton } from './ConfirmButton.js'
 
 export function CategoriesList() {
   const [showAddForm, setShowAddForm] = useState(false)
@@ -13,7 +14,6 @@ export function CategoriesList() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editColor, setEditColor] = useState('')
-  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
 
   const { data: categories } = useLiveQuery((q) =>
@@ -61,10 +61,8 @@ export function CategoriesList() {
   const handleDelete = useCallback(async (id: string) => {
     try {
       await deleteCategory({ data: { id } })
-      setDeletingId(null)
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete')
-      setDeletingId(null)
     }
   }, [])
 
@@ -234,29 +232,12 @@ export function CategoriesList() {
                           >
                             Archive
                           </button>
-                          {deletingId === cat.id ? (
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => handleDelete(cat.id)}
-                                className="rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                              >
-                                Delete
-                              </button>
-                              <button
-                                onClick={() => setDeletingId(null)}
-                                className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setDeletingId(cat.id)}
-                              className="rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
-                            >
-                              ×
-                            </button>
-                          )}
+                          <ConfirmButton
+                            onConfirm={() => handleDelete(cat.id)}
+                            className="rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                          >
+                            ×
+                          </ConfirmButton>
                         </div>
                       )}
                     </>

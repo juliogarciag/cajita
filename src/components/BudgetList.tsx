@@ -9,6 +9,7 @@ import { categoriesCollection } from '#/lib/categories-collection.js'
 import { formatCents } from '#/lib/format.js'
 import { createBudget, deleteBudget } from '#/server/budgets.js'
 import { budgetColors, DEFAULT_BUDGET_COLOR } from '#/lib/budget-colors.js'
+import { ConfirmButton } from './ConfirmButton.js'
 
 export function BudgetList() {
   const [showAddForm, setShowAddForm] = useState(false)
@@ -16,7 +17,6 @@ export function BudgetList() {
   const [addColor, setAddColor] = useState(DEFAULT_BUDGET_COLOR)
   const [addAmount, setAddAmount] = useState('')
   const [addYear, setAddYear] = useState(new Date().getFullYear())
-  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const { data: budgets } = useLiveQuery((q) =>
     q.from({ b: budgetsCollection }).orderBy(({ b }) => b.year, 'desc'),
@@ -94,10 +94,8 @@ export function BudgetList() {
   const handleDelete = useCallback(async (id: string) => {
     try {
       await deleteBudget({ data: { id } })
-      setDeletingId(null)
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete budget')
-      setDeletingId(null)
     }
   }, [])
 
@@ -220,32 +218,13 @@ export function BudgetList() {
                         </span>
                       </div>
                       {!budgetsWithSyncedItems.has(budget.id) && (
-                        deletingId === budget.id ? (
-                          <div className="relative z-10 flex items-center gap-1">
-                            <button
-                              onClick={() => handleDelete(budget.id)}
-                              className="rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                            >
-                              Delete
-                            </button>
-                            <button
-                              onClick={() => setDeletingId(null)}
-                              className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault()
-                              setDeletingId(budget.id)
-                            }}
-                            className="relative z-10 rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
-                          >
-                            ×
-                          </button>
-                        )
+                        <ConfirmButton
+                          onConfirm={() => handleDelete(budget.id)}
+                          className="relative z-10 rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                          confirmClassName="relative z-10 rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                        >
+                          ×
+                        </ConfirmButton>
                       )}
                     </div>
 

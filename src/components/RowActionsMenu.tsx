@@ -1,12 +1,28 @@
+import { useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { MoreHorizontal } from 'lucide-react'
+import { ConfirmButton } from './ConfirmButton.js'
 
 interface RowActionsMenuProps {
-  onReconcile: () => void
+  onCheckpoint: () => void
   onDelete?: () => void
 }
 
-export function RowActionsMenu({ onReconcile, onDelete }: RowActionsMenuProps) {
+export function RowActionsMenu({ onCheckpoint, onDelete }: RowActionsMenuProps) {
+  const [confirming, setConfirming] = useState(false)
+
+  if (confirming && onDelete) {
+    return (
+      <ConfirmButton
+        onConfirm={onDelete}
+        confirming={confirming}
+        onConfirmingChange={setConfirming}
+      >
+        Delete
+      </ConfirmButton>
+    )
+  }
+
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
@@ -22,15 +38,15 @@ export function RowActionsMenu({ onReconcile, onDelete }: RowActionsMenuProps) {
           className="z-50 min-w-[140px] rounded-md border border-gray-200 bg-white py-1 shadow-md"
         >
           <DropdownMenu.Item
-            onSelect={onReconcile}
+            onSelect={onCheckpoint}
             className="cursor-pointer px-3 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50"
           >
-            Reconcile
+            Checkpoint
           </DropdownMenu.Item>
 
           {onDelete && (
             <DropdownMenu.Item
-              onSelect={onDelete}
+              onSelect={() => setConfirming(true)}
               className="cursor-pointer px-3 py-1.5 text-sm text-red-600 outline-none hover:bg-red-50"
             >
               Delete

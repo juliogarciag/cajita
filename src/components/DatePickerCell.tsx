@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { DayPicker } from 'react-day-picker'
 import { format } from 'date-fns'
@@ -17,33 +17,39 @@ interface DatePickerCellProps {
 
 export function DatePickerCell({ value, onSave, onCancel, onTab, onEnter }: DatePickerCellProps) {
   const { dateFnsFormat } = useDateFormat()
+  const savedRef = useRef(false)
+
+  const wrappedOnSave = useCallback((isoDate: string) => {
+    if (savedRef.current) return
+    savedRef.current = true
+    onSave(isoDate)
+  }, [onSave])
+
+  const wrappedOnCancel = useCallback(() => {
+    if (savedRef.current) return
+    savedRef.current = true
+    onCancel()
+  }, [onCancel])
 
   const picker = useDatePickerDropdown({
     value,
     dateFnsFormat,
     initialOpen: true,
-    onSelect: onSave,
+    onSelect: wrappedOnSave,
   })
 
-  // Save on click-outside (override default close behavior)
-  useEffect(() => {
-    if (!picker.isOpen) return
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (
-        picker.inputRef.current &&
-        !picker.inputRef.current.contains(target) &&
-        picker.dropdownRef.current &&
-        !picker.dropdownRef.current.contains(target)
-      ) {
-        if (picker.selectedDate) {
-          onSave(format(picker.selectedDate, 'yyyy-MM-dd'))
-        }
+  const handleBlur = useCallback(() => {
+    // Small delay to allow click on dropdown calendar to register before blur fires
+    setTimeout(() => {
+      if (picker.dropdownRef.current?.contains(document.activeElement)) return
+      if (picker.inputRef.current?.contains(document.activeElement)) return
+      if (picker.selectedDate) {
+        wrappedOnSave(format(picker.selectedDate, 'yyyy-MM-dd'))
+      } else {
+        wrappedOnCancel()
       }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [picker.isOpen, picker.selectedDate, picker.inputRef, picker.dropdownRef, onSave])
+    }, 150)
+  }, [picker.selectedDate, picker.dropdownRef, picker.inputRef, wrappedOnSave, wrappedOnCancel])
 
   // Auto-focus and select on mount
   useEffect(() => {
@@ -54,22 +60,22 @@ export function DatePickerCell({ value, onSave, onCancel, onTab, onEnter }: Date
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onCancel()
+        wrappedOnCancel()
       } else if (e.key === 'Tab') {
         e.preventDefault()
         if (picker.selectedDate) {
-          onSave(format(picker.selectedDate, 'yyyy-MM-dd'))
+          wrappedOnSave(format(picker.selectedDate, 'yyyy-MM-dd'))
         }
         onTab?.(e.shiftKey)
       } else if (e.key === 'Enter') {
         e.preventDefault()
         if (picker.selectedDate) {
-          onSave(format(picker.selectedDate, 'yyyy-MM-dd'))
+          wrappedOnSave(format(picker.selectedDate, 'yyyy-MM-dd'))
         }
         onEnter?.()
       }
     },
-    [picker.selectedDate, onSave, onCancel, onTab, onEnter],
+    [picker.selectedDate, wrappedOnSave, wrappedOnCancel, onTab, onEnter],
   )
 
   return (
@@ -80,6 +86,7 @@ export function DatePickerCell({ value, onSave, onCancel, onTab, onEnter }: Date
         value={picker.inputValue}
         onChange={picker.handleInputChange}
         onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
         placeholder={dateFnsFormat}
         className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-gray-500 focus:outline-none"
       />

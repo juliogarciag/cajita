@@ -90,6 +90,7 @@ export function useDatePickerDropdown({
         !dropdownRef.current.contains(target)
       ) {
         setIsOpen(false)
+        inputRef.current.blur()
       }
     }
     document.addEventListener('mousedown', handler)

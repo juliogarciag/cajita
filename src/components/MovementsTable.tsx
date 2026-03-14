@@ -3,6 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { useLiveQuery } from '@tanstack/react-db'
 import { Link } from '@tanstack/react-router'
 import { Plus, History, Lock, Unlock, ExternalLink } from 'lucide-react'
+import { ConfirmButton } from './ConfirmButton.js'
 import { RowActionsMenu } from './RowActionsMenu.js'
 import { Tooltip } from './Tooltip.js'
 import { movementsCollection, type Movement } from '#/lib/movements-collection.js'
@@ -11,7 +12,6 @@ import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
 import { budgetItemsCollection } from '#/lib/budget-items-collection.js'
 import { budgetsCollection } from '#/lib/budgets-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
-import { useClickAwayDismiss } from '#/lib/use-click-away-dismiss.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import { createCheckpoint, deleteCheckpoint } from '#/server/checkpoints.js'
 import { EditableCell } from './EditableCell.js'
@@ -32,15 +32,11 @@ interface MovementsTableProps {
 
 export function MovementsTable({ highlightId }: MovementsTableProps) {
   const parentRef = useRef<HTMLDivElement>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [snapshotOpen, setSnapshotOpen] = useState(false)
   const [checkpointRowId, setCheckpointRowId] = useState<string | null>(null)
-  const [unfreezing, setUnfreezing] = useState(false)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const scrollToEnd = useRef(false)
   const initialScroll = useRef(true)
-
-  useClickAwayDismiss(!!deletingId, useCallback(() => setDeletingId(null), []))
 
   const { data: movements } = useLiveQuery((q) =>
     q
@@ -198,7 +194,6 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
 
   const handleDelete = useCallback((id: string) => {
     movementsCollection.delete(id)
-    setDeletingId(null)
   }, [])
 
   const handleCreateCheckpoint = useCallback(
@@ -212,7 +207,6 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   const handleUnfreeze = useCallback(async () => {
     if (!activeCheckpoint) return
     await deleteCheckpoint({ data: { id: activeCheckpoint.id } })
-    setUnfreezing(false)
   }, [activeCheckpoint])
 
   const rowCells = (row: MovementWithTotal) => {
@@ -250,17 +244,12 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
         <div className="w-[120px] shrink-0 px-3 py-1 text-right font-medium">
           {formatCents(row.total_cents)}
         </div>
-        <div className="w-[160px] shrink-0 flex items-center pl-2">
-          {row.category_color && (
-            <span
-              className="inline-block h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: row.category_color }}
-            />
-          )}
+        <div className="w-[160px] shrink-0 flex items-center">
           <EditableCell
             value={row.category_name ?? ''}
             type="category"
             categoryId={row.category_id}
+            categoryColor={row.category_color}
             disabled={disabled}
             onSave={(v) => handleUpdate(row.id, 'category_id', v)}
           />
@@ -279,18 +268,10 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           )}
           {frozen ? (
             <Lock size={14} className="text-gray-300" />
-          ) : deletingId === row.id ? (
-            <button
-              data-confirm-delete
-              onClick={() => handleDelete(row.id)}
-              className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-            >
-              Confirm?
-            </button>
           ) : (
             <RowActionsMenu
-              onReconcile={() => setCheckpointRowId(row.id)}
-              onDelete={budgetManaged ? undefined : () => setDeletingId(row.id)}
+              onCheckpoint={() => setCheckpointRowId(row.id)}
+              onDelete={budgetManaged ? undefined : () => handleDelete(row.id)}
             />
           )}
         </div>
@@ -335,7 +316,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
       >
         <div className="flex items-center gap-1.5 font-medium text-amber-700">
           <Lock size={12} />
-          Reconciled
+          Checkpointed
         </div>
         <div className="ml-4 text-amber-600">
           Expected: {formatCents(activeCheckpoint.expected_cents)} | Actual:{' '}
@@ -351,33 +332,14 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           </span>
         </div>
         <div className="ml-auto">
-          {unfreezing ? (
-            <div className="flex items-center gap-2">
-              <span className="text-amber-700">
-                Unlock {lastFrozenIndex + 1} movements?
-              </span>
-              <button
-                onClick={handleUnfreeze}
-                className="rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
-              >
-                Yes
-              </button>
-              <button
-                onClick={() => setUnfreezing(false)}
-                className="rounded px-2 py-0.5 text-xs font-medium text-gray-500 hover:bg-gray-100"
-              >
-                No
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setUnfreezing(true)}
-              className="flex items-center gap-1 rounded px-2 py-0.5 text-amber-600 hover:bg-amber-100"
-            >
-              <Unlock size={12} />
-              Unfreeze
-            </button>
-          )}
+          <ConfirmButton
+            onConfirm={handleUnfreeze}
+            className="flex items-center gap-1 rounded px-2 py-0.5 text-amber-600 hover:bg-amber-100"
+            confirmClassName="rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
+          >
+            <Unlock size={12} />
+            Unfreeze
+          </ConfirmButton>
         </div>
       </div>
     ) : null
@@ -386,7 +348,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   const dividerHeight = activeCheckpoint && lastFrozenIndex >= 0 ? 32 : 0
 
   const tableContent = (
-    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white" data-editable-table>
       {/* Header */}
       <div className="flex border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
         <div className="min-w-[260px] flex-1 px-3 py-2">Description</div>

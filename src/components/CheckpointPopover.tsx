@@ -60,7 +60,7 @@ export function CheckpointPopover({ expectedCents, onConfirm, onClose }: Checkpo
         ref={panelRef}
         className="w-[320px] rounded-lg border border-gray-200 bg-white p-4 shadow-lg"
       >
-        <h3 className="mb-3 text-sm font-semibold text-gray-900">Reconcile checkpoint</h3>
+        <h3 className="mb-3 text-sm font-semibold text-gray-900">Balance checkpoint</h3>
 
         <div className="mb-3 flex items-center justify-between text-sm">
           <span className="text-gray-500">Expected total</span>
@@ -74,8 +74,20 @@ export function CheckpointPopover({ expectedCents, onConfirm, onClose }: Checkpo
             type="text"
             inputMode="decimal"
             value={actualInput}
-            onChange={(e) => setActualInput(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onChange={(e) => setActualInput(e.target.value.replace(/[^0-9.\-]/g, ''))}
+            onKeyDown={(e) => {
+              const allowed = /^[0-9.\-]$/
+              if (
+                !allowed.test(e.key) &&
+                !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Escape', 'Enter', 'Home', 'End'].includes(e.key) &&
+                !e.metaKey &&
+                !e.ctrlKey
+              ) {
+                e.preventDefault()
+                return
+              }
+              handleKeyDown(e)
+            }}
             placeholder="0.00"
             className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
           />
@@ -102,7 +114,7 @@ export function CheckpointPopover({ expectedCents, onConfirm, onClose }: Checkpo
             disabled={actualCents === null}
             className="rounded bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
           >
-            Reconcile
+            Checkpoint
           </button>
         </div>
       </div>

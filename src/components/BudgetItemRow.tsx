@@ -1,10 +1,10 @@
-import { useState, useCallback } from 'react'
+import { useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Link as LinkIcon, Unlink, Lock, Trash2, ExternalLink } from 'lucide-react'
 import type { BudgetItem } from '#/lib/budget-items-collection.js'
 import { formatCents, formatSoles, parseDollarsTocents } from '#/lib/format.js'
-import { useClickAwayDismiss } from '#/lib/use-click-away-dismiss.js'
 import { EditableCell } from './EditableCell.js'
+import { ConfirmButton } from './ConfirmButton.js'
 import { TableRow } from './TableRow.js'
 
 interface BudgetItemRowProps {
@@ -32,14 +32,8 @@ export function BudgetItemRow({
   onSync,
   onUnsync,
 }: BudgetItemRowProps) {
-  const [isDeleting, setIsDeleting] = useState(false)
   const isSynced = !!item.movement_id
   const disabled = frozen
-
-  useClickAwayDismiss(
-    isDeleting,
-    useCallback(() => setIsDeleting(false), []),
-  )
 
   const handleFieldSave = useCallback(
     (field: string, rawValue: string) => {
@@ -154,25 +148,12 @@ export function BudgetItemRow({
               <LinkIcon size={12} />
               Sync
             </button>
-            {isDeleting ? (
-              <button
-                data-confirm-delete
-                onClick={() => {
-                  onDelete(item.id)
-                  setIsDeleting(false)
-                }}
-                className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-              >
-                Yes
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsDeleting(true)}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
-              >
-                <Trash2 size={12} />
-              </button>
-            )}
+            <ConfirmButton
+              onConfirm={() => onDelete(item.id)}
+              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+            >
+              <Trash2 size={12} />
+            </ConfirmButton>
           </>
         )}
       </div>
