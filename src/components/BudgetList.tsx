@@ -200,6 +200,7 @@ export function BudgetList() {
                 return (
                   <div
                     key={budget.id}
+                    data-budget-card={budget.id}
                     className="relative rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
                   >
                     <Link
