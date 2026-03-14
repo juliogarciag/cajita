@@ -1,3 +1,12 @@
+### Short term
+
+- Reconcile is a weird term. Think of something better.
+- Date input fields remain focused after clicking outside.
+- Category clicking area in movements table row is quite small
+- Pressing tab in movements and budget movements don't open the next item
+- "Confirm?" text is not consistent across the app. It says "yes?" sometimes and sometimes just "Delete". Use a single word. If possible, create a single component to reuse there.
+- It's possible to write regular text in amount inputs.
+
 ### Finances
 
 - Add the ability to add notes to a movement or budget movement. That should include the name of whoever made the note. Links should be able to include links or anything useful. Probably a small WYSIWYG markdown editor.
