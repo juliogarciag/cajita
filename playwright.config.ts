@@ -2,10 +2,13 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: true,
+  // ElectricSQL pushes real-time changes to all connected clients. When tests
+  // modify shared data (movements, categories) concurrently, DOM elements get
+  // detached mid-interaction. Run spec files serially to avoid interference.
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: "html",
 
   use: {

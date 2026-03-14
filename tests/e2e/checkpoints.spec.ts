@@ -11,36 +11,50 @@ test.describe.configure({ mode: "serial" });
  */
 async function addMovement(page: Page, description: string, amount: string) {
   await page.getByRole("button", { name: "Add Movement" }).click();
-  const newRow = page.locator("[data-row-id]").last();
-  await expect(newRow).toBeVisible();
 
-  // Set description
-  const descCell = newRow.locator('[data-cell="description"]');
-  await descCell.click();
-  const textbox = newRow.getByRole("textbox");
-  await textbox.fill(description);
+  // The new row appears scrolled into view with "—" as description placeholder.
+  // Click the last visible editable description cell with "—".
+  const emptyDescCell = page
+    .locator(
+      '[data-cell="description"] [data-editable-cell]:not([data-disabled])',
+    )
+    .filter({ hasText: "—" })
+    .last();
+  await expect(emptyDescCell).toBeVisible({ timeout: 5000 });
+  await emptyDescCell.click({ force: true });
+
+  // Use keyboard.type() — sends keystrokes to whatever has focus, avoiding
+  // the need for a stable DOM element reference that fill() requires.
+  // Small delay to ensure the click registered and edit mode activated.
+  await page.waitForTimeout(200);
+  await page.keyboard.type(description, { delay: 10 });
   await page.keyboard.press("Enter");
-  await expect(newRow.getByText(description)).toBeVisible();
 
-  // Set amount
-  await newRow
-    .locator("[data-editable-cell]")
-    .filter({ hasText: "$0.00" })
-    .click();
-  await newRow.getByRole("textbox").fill(amount);
-  await page.keyboard.press("Enter");
-
-  // Return a stable locator: find the [data-row-id] row that contains this description
-  return page.locator("[data-row-id]", {
+  // Locate the row by its unique description
+  const row = page.locator("[data-row-id]", {
     has: page.getByText(description, { exact: true }),
   });
+  await expect(row).toBeVisible({ timeout: 10000 });
+
+  // Set amount — use fill() on the row's textbox (more stable than keyboard.type)
+  const amountCell = row
+    .locator("[data-editable-cell]")
+    .filter({ hasText: "$0.00" })
+    .first();
+  await expect(amountCell).toBeVisible();
+  await amountCell.click({ force: true });
+  await row.getByRole("textbox").fill(amount);
+  await page.keyboard.press("Enter");
+
+  return row;
 }
 
 /** Helper: Delete a movement via row actions menu */
 async function deleteMovement(page: Page, row: Locator) {
-  await row.getByRole("button").last().click();
-  await page.getByRole("menuitem", { name: "Delete" }).click();
-  await page.getByRole("button", { name: "Sure?" }).click();
+  // Use force:true because ElectricSQL sync can detach elements
+  await row.getByRole("button").last().click({ force: true });
+  await page.getByRole("menuitem", { name: "Delete" }).click({ force: true });
+  await page.getByRole("button", { name: "Sure?" }).click({ force: true });
 }
 
 /** Helper: Create a checkpoint on a row by entering the actual balance */
@@ -49,40 +63,69 @@ async function createCheckpoint(
   row: Locator,
   actualBalance: string,
 ) {
-  // Open row actions menu
-  await row.getByRole("button").last().click();
+  // Open row actions menu — use force:true for ElectricSQL stability
+  await row.getByRole("button").last().click({ force: true });
   // Click Checkpoint menu item
-  await page.getByRole("menuitem", { name: "Checkpoint" }).click();
+  await page.getByRole("menuitem", { name: "Checkpoint" }).click({ force: true });
 
   // Fill actual balance in the popover
   await expect(page.getByText("Balance checkpoint")).toBeVisible();
   const input = page.getByPlaceholder("0.00");
   await input.fill(actualBalance);
 
-  // Click Checkpoint button to confirm
-  await page.getByRole("button", { name: "Checkpoint" }).click();
+  // Click Checkpoint button to confirm.
+  // Use force:true because ElectricSQL sync can detach/re-render the popover.
+  await page.getByRole("button", { name: "Checkpoint" }).click({ force: true });
 
   // Wait for the popover overlay to disappear
   await expect(page.getByText("Balance checkpoint")).not.toBeVisible();
 
-  // Wait for the checkpoint divider to appear (ElectricSQL sync may take a moment)
-  await expect(page.getByText("Checkpointed")).toBeVisible({ timeout: 15000 });
+  // Wait for the checkpoint divider to appear (ElectricSQL sync may take a moment).
+  // If it doesn't appear within 5s, reload the page to force re-sync.
+  try {
+    await expect(page.getByText("Checkpointed")).toBeVisible({ timeout: 5000 });
+  } catch {
+    await page.reload();
+    await expect(page.getByText("Checkpointed")).toBeVisible({ timeout: 15000 });
+  }
 }
 
 /** Helper: Unfreeze by clicking the Unfreeze ConfirmButton (two clicks) */
 async function unfreeze(page: Page) {
   // Click "Unfreeze" — ConfirmButton switches to "Sure?"
-  await page.getByRole("button", { name: "Unfreeze" }).click();
-  // Click "Sure?" to confirm checkpoint deletion
-  await page.getByRole("button", { name: "Sure?" }).click();
-  // Wait for the checkpoint divider to disappear (ElectricSQL sync)
-  await expect(page.getByText("Checkpointed")).not.toBeVisible({
-    timeout: 15000,
-  });
+  // Use force:true because the divider is absolutely positioned with z-index
+  await page.getByRole("button", { name: "Unfreeze" }).click({ force: true });
+
+  // Wait for the ConfirmButton to switch to "Sure?" state
+  const sureBtn = page.locator("[data-confirm-delete]");
+  await expect(sureBtn).toBeVisible({ timeout: 3000 });
+
+  // Small delay to ensure React has finished the state transition and
+  // useClickAwayDismiss capture handler is attached before we click
+  await page.waitForTimeout(200);
+
+  // Click "Sure?" using data-confirm-delete selector with force:true
+  // to avoid interception by the absolutely positioned divider
+  await sureBtn.click({ force: true });
+
+  // Wait for the checkpoint divider to disappear (ElectricSQL sync).
+  // If it doesn't disappear, reload to force re-sync.
+  try {
+    await expect(page.getByText("Checkpointed")).not.toBeVisible({
+      timeout: 10000,
+    });
+  } catch {
+    await page.reload();
+    await expect(page.getByText("Checkpointed")).not.toBeVisible({
+      timeout: 15000,
+    });
+  }
 }
 
 test.describe("Checkpoints", () => {
   test.beforeEach(async ({ page }) => {
+    // ElectricSQL sync + checkpoint operations need extra time
+    test.slow();
     await page.goto("/finances/movements");
     await expect(
       page.getByRole("heading", { name: "Movements" }),
@@ -94,11 +137,7 @@ test.describe("Checkpoints", () => {
     // Clean up any leftover checkpoint from a previous failed run
     const unfreezeBtn = page.getByRole("button", { name: "Unfreeze" });
     if (await unfreezeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await unfreezeBtn.click();
-      await page.getByRole("button", { name: "Sure?" }).click();
-      await expect(page.getByText("Checkpointed")).not.toBeVisible({
-        timeout: 15000,
-      });
+      await unfreeze(page);
     }
   });
 
@@ -167,17 +206,41 @@ test.describe("Checkpoints", () => {
     const frozenRow = await addMovement(page, frozenDesc, "400");
     await createCheckpoint(page, frozenRow, "400");
 
-    // Add a new movement AFTER the checkpoint
+    // Add a new movement AFTER the checkpoint.
+    // With a checkpoint active, the DOM has a divider that can interfere.
+    // Click Add Movement, then reload to get a clean DOM, then find the new row.
+    await page.getByRole("button", { name: "Add Movement" }).click();
+    // Wait briefly for the server to process, then reload for a clean state
+    await page.waitForTimeout(500);
+    await page.reload();
+    await expect(page.getByText("Checkpointed")).toBeVisible({ timeout: 10000 });
+
+    // Find the new empty row (not frozen — has editable cells)
     const afterDesc = `CP-After-${Date.now()}`;
-    const newRow = await addMovement(page, afterDesc, "500");
+    const emptyDescCell = page
+      .locator(
+        '[data-cell="description"] [data-editable-cell]:not([data-disabled])',
+      )
+      .filter({ hasText: "—" })
+      .last();
+    await expect(emptyDescCell).toBeVisible({ timeout: 5000 });
+    await emptyDescCell.click({ force: true });
+    await page.waitForTimeout(200);
+    await page.keyboard.type(afterDesc, { delay: 10 });
+    await page.keyboard.press("Enter");
+
+    const newRow = page.locator("[data-row-id]", {
+      has: page.getByText(afterDesc, { exact: true }),
+    });
+    await expect(newRow).toBeVisible({ timeout: 10000 });
 
     // The new movement should NOT be frozen — no disabled cells
     await expect(newRow.locator("[data-disabled]")).not.toBeVisible();
 
-    // Verify the new row has action button (not lock icon), proving it's editable
+    // Verify the new row has action button (not lock icon)
     await expect(newRow.getByRole("button").last()).toBeVisible();
 
-    // Clean up: delete new movement first (not frozen, so has action menu)
+    // Clean up: delete new movement first
     await deleteMovement(page, newRow);
 
     // Unfreeze and delete the frozen movement

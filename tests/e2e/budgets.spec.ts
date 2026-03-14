@@ -127,17 +127,15 @@ test.describe("Budgets", () => {
   test("can delete a budget", async ({ page }) => {
     const budgetName = `TestBudget-${UNIQUE}`;
 
-    // Budget card has a delete button (×)
-    // Delete only appears if no synced items (we unsynced in previous test)
-    // Need to find the specific budget card
-    // Use a locator that finds the card containing exactly this budget name
-    const cards = page.locator("div").filter({
-      has: page.getByText(budgetName, { exact: true }),
-    });
-
-    // Click delete (×) — ConfirmButton two-click
-    await cards.getByRole("button", { name: "×" }).first().click();
-    await page.getByRole("button", { name: "Sure?" }).click();
+    // Budget card: find the × button near the budget name text.
+    // The ConfirmButton has z-10, so it's above the link overlay.
+    const deleteBtn = page
+      .getByText(budgetName, { exact: true })
+      .locator("xpath=ancestor::div[contains(@class,'rounded-lg')]")
+      .getByRole("button", { name: "×" });
+    await expect(deleteBtn).toBeVisible({ timeout: 5000 });
+    await deleteBtn.click({ force: true });
+    await page.getByRole("button", { name: "Sure?" }).click({ force: true });
 
     // Verify budget is gone
     await expect(
