@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { AmountInput } from './AmountInput.js'
 import { CategorySelect } from './CategorySelect.js'
 import { DatePickerCell } from './DatePickerCell.js'
 import { useDateFormat } from '#/lib/date-format.js'
@@ -99,37 +100,8 @@ export function EditableCell({
     [cancel, save, onTab, onEnter, focusAdjacentCell],
   )
 
-  const handleAmountKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (type === 'amount') {
-        const allowed = /^[0-9.\-]$/
-        if (
-          !allowed.test(e.key) &&
-          !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Escape', 'Enter', 'Home', 'End'].includes(e.key) &&
-          !e.metaKey &&
-          !e.ctrlKey
-        ) {
-          e.preventDefault()
-        }
-      }
-      handleKeyDown(e)
-    },
-    [type, handleKeyDown],
-  )
-
-  const handleAmountChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (type === 'amount') {
-        setDraft(e.target.value.replace(/[^0-9.\-]/g, ''))
-      } else {
-        setDraft(e.target.value)
-      }
-    },
-    [type],
-  )
-
-  // Display value: format dates using user preference
-  const displayValue = type === 'date' ? formatDate(value) : value
+  // Display value: use draft for optimistic update (avoids blink), format dates
+  const displayValue = type === 'date' ? formatDate(draft) : draft
 
   if (disabled || !editing) {
     return (
@@ -184,17 +156,34 @@ export function EditableCell({
     )
   }
 
+  if (type === 'amount') {
+    return (
+      <div ref={cellRef} data-editable-cell>
+        <AmountInput
+          value={value}
+          onSave={(v) => {
+            onSave(v)
+            setEditing(false)
+          }}
+          onCancel={() => setEditing(false)}
+          onTab={onTab}
+          onEnter={onEnter}
+          className={className}
+        />
+      </div>
+    )
+  }
+
   return (
     <div ref={cellRef} data-editable-cell>
       <input
         ref={inputRef}
         type="text"
         value={draft}
-        onChange={handleAmountChange}
+        onChange={(e) => setDraft(e.target.value)}
         onBlur={save}
-        onKeyDown={handleAmountKeyDown}
+        onKeyDown={handleKeyDown}
         className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-gray-500 focus:outline-none"
-        inputMode={type === 'amount' ? 'decimal' : undefined}
       />
     </div>
   )

@@ -1,7 +1,7 @@
 ### Short term
 
-- Pressing tab in movements and budget movements don't open the next item
-- It's possible to write regular text in amount inputs.
+- Budget movement links in movements are not deep. They don't scroll to the element.
+- Pressing tab in movements and budget movements don't open the next item. Tab navigation should be flawless. Tab navigation and opening should go from each editable item in the row to the actions in the right, from left to right, and then to the next row. Shift+Tab should do the same in reverse.
 
 ### Finances
 
