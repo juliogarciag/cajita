@@ -1,4 +1,5 @@
-import { test, expect, type Page, type Locator } from "@playwright/test";
+import { expect, loginIsolated } from "./fixtures";
+import { test, type Page, type Locator, type BrowserContext } from "@playwright/test";
 import { addMovement, deleteMovement } from "./helpers";
 
 // Checkpoints share global state (only one active checkpoint at a time)
@@ -11,13 +12,26 @@ async function createCheckpoint(
   row: Locator,
   actualBalance: string,
 ) {
-  // Open row actions menu — use force:true for ElectricSQL stability
-  await row.getByRole("button").last().click({ force: true });
-  // Click Checkpoint menu item
-  await page.getByRole("menuitem", { name: "Checkpoint" }).click({ force: true });
+  // Open row actions menu and click Checkpoint.
+  // Retry if ElectricSQL re-renders close the menu before we can click.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await row.getByRole("button").last().click({ force: true });
+
+    const menuItem = page.getByRole("menuitem", { name: "Checkpoint" });
+    const menuVisible = await menuItem
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
+    if (menuVisible) {
+      await menuItem.click({ force: true });
+      break;
+    }
+
+    await page.waitForTimeout(300);
+  }
 
   // Fill actual balance in the popover
-  await expect(page.getByText("Balance checkpoint")).toBeVisible();
+  await expect(page.getByText("Balance checkpoint")).toBeVisible({ timeout: 5000 });
   const input = page.getByPlaceholder("0.00");
   await input.fill(actualBalance);
 
@@ -71,7 +85,18 @@ async function unfreeze(page: Page) {
 }
 
 test.describe("Checkpoints", () => {
-  test.beforeEach(async ({ page }) => {
+  let context: BrowserContext;
+  let page: Page;
+
+  test.beforeAll(async ({ browser }) => {
+    ({ context, page } = await loginIsolated(browser));
+  });
+
+  test.afterAll(async () => {
+    await context.close();
+  });
+
+  test.beforeEach(async () => {
     // ElectricSQL sync + checkpoint operations need extra time
     test.slow();
     await page.goto("/finances/movements");
@@ -89,7 +114,7 @@ test.describe("Checkpoints", () => {
     }
   });
 
-  test("can create a checkpoint on a movement", async ({ page }) => {
+  test("can create a checkpoint on a movement", async () => {
     const desc = `CP-Create-${Date.now()}`;
     const row = await addMovement(page, desc, "100");
 
@@ -106,7 +131,7 @@ test.describe("Checkpoints", () => {
     await deleteMovement(page, row);
   });
 
-  test("frozen movements cannot be edited", async ({ page }) => {
+  test("frozen movements cannot be edited", async () => {
     const desc = `CP-Frozen-${Date.now()}`;
     const row = await addMovement(page, desc, "250");
 
@@ -124,7 +149,7 @@ test.describe("Checkpoints", () => {
     await deleteMovement(page, row);
   });
 
-  test("can unfreeze by deleting checkpoint", async ({ page }) => {
+  test("can unfreeze by deleting checkpoint", async () => {
     const desc = `CP-Unfreeze-${Date.now()}`;
     const row = await addMovement(page, desc, "300");
 
@@ -146,9 +171,7 @@ test.describe("Checkpoints", () => {
     await deleteMovement(page, row);
   });
 
-  test("new movements added after checkpoint are NOT frozen", async ({
-    page,
-  }) => {
+  test("new movements added after checkpoint are NOT frozen", async () => {
     // Add first movement and checkpoint it
     const frozenDesc = `CP-Before-${Date.now()}`;
     const frozenRow = await addMovement(page, frozenDesc, "400");
@@ -197,9 +220,7 @@ test.describe("Checkpoints", () => {
     await deleteMovement(page, frozenRow);
   });
 
-  test("checkpoint popover shows expected total and difference", async ({
-    page,
-  }) => {
+  test("checkpoint popover shows expected total and difference", async () => {
     const desc = `CP-Popover-${Date.now()}`;
     const row = await addMovement(page, desc, "750");
 

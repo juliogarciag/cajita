@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { addMovement, deleteMovement } from "./helpers";
 
 test.describe("Movements CRUD", () => {
@@ -56,19 +56,40 @@ test.describe("Movements CRUD", () => {
   });
 
   test("can set movement category", async ({ page }) => {
+    // Create a category first (isolated team starts empty).
+    const categoryName = `TestCat-${Date.now()}`;
+    await page.goto("/finances/categories");
+    await page.getByRole("button", { name: "Add Category" }).click();
+    await page.getByRole("textbox", { name: "Category name" }).fill(categoryName);
+    await page.getByRole("button", { name: "Blue" }).click();
+    await page.getByRole("button", { name: "Create" }).click();
+    await expect(page.getByText(categoryName, { exact: true })).toBeVisible();
+
+    // Navigate to movements and add a movement
+    await page.goto("/finances/movements");
     const name = `Cat-Test-${Date.now()}`;
     const row = await addMovement(page, name);
 
-    // Click category cell (last editable cell)
+    // Click category cell and select the category.
+    // ElectricSQL may still be syncing the new category to this page,
+    // so retry the click→select flow until it succeeds.
     const categoryCell = row.locator("[data-editable-cell]").last();
-    await categoryCell.click();
+    for (let attempt = 0; attempt < 15; attempt++) {
+      await categoryCell.click({ force: true });
 
-    // Select a category from the combobox
-    const combobox = row.getByRole("combobox");
-    await combobox.selectOption({ label: "Salary" });
+      try {
+        const combobox = row.getByRole("combobox");
+        await combobox.selectOption({ label: categoryName }, { timeout: 2000 });
+        break;
+      } catch {
+        // Option not yet available or select was detached — retry
+        await page.keyboard.press("Escape").catch(() => {});
+        await page.waitForTimeout(500);
+      }
+    }
 
     // Verify category was set
-    await expect(row.getByText("Salary")).toBeVisible();
+    await expect(row.getByText(categoryName)).toBeVisible({ timeout: 10000 });
 
     // Clean up
     await deleteMovement(page, row);

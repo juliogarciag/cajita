@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { google } from '#/server/auth.js'
-import { createSession, upsertUser } from '#/server/session.js'
+import { createSession, upsertUser, ensureTeamMembership } from '#/server/session.js'
 import { isEmailAllowed } from '#/config/allowed-users.js'
 import { parseCookies, serializeCookie, deleteCookieHeader } from '#/server/cookies.js'
 
@@ -48,6 +48,7 @@ export const Route = createFileRoute('/api/auth/callback')({
             picture: profile.picture,
           })
 
+          await ensureTeamMembership(userId)
           const sessionToken = await createSession(userId)
 
           const headers = new Headers()

@@ -29,11 +29,64 @@ export async function validateSession(token: string) {
     return null
   }
 
-  return { id: row.id, email: row.email, name: row.name, picture: row.picture }
+  // Resolve the user's team (pick the first one)
+  const membership = await db
+    .selectFrom('team_memberships')
+    .select('team_id')
+    .where('user_id', '=', row.id)
+    .orderBy('created_at', 'asc')
+    .executeTakeFirst()
+
+  if (!membership) return null
+
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    picture: row.picture,
+    teamId: membership.team_id,
+  }
 }
 
 export async function destroySession(token: string): Promise<void> {
   await db.deleteFrom('sessions').where('token', '=', token).execute()
+}
+
+export async function ensureTeamMembership(userId: string): Promise<void> {
+  const existing = await db
+    .selectFrom('team_memberships')
+    .select('id')
+    .where('user_id', '=', userId)
+    .executeTakeFirst()
+
+  if (existing) return
+
+  // Assign to the oldest team (the default one)
+  const team = await db
+    .selectFrom('teams')
+    .select('id')
+    .orderBy('created_at', 'asc')
+    .executeTakeFirstOrThrow()
+
+  await db
+    .insertInto('team_memberships')
+    .values({ team_id: team.id, user_id: userId })
+    .execute()
+}
+
+export async function createIsolatedTeam(userId: string, teamName: string): Promise<string> {
+  const team = await db
+    .insertInto('teams')
+    .values({ name: teamName })
+    .returning('id')
+    .executeTakeFirstOrThrow()
+
+  await db
+    .insertInto('team_memberships')
+    .values({ team_id: team.id, user_id: userId })
+    .execute()
+
+  return team.id
 }
 
 export async function upsertUser(profile: {

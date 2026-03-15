@@ -5,12 +5,13 @@ import { authMiddleware } from './middleware.js'
 
 // --- Helpers ---
 
-async function isMovementFrozen(movementId: string): Promise<boolean> {
-  // Get the latest checkpoint
+async function isMovementFrozen(movementId: string, teamId: string): Promise<boolean> {
+  // Get the latest checkpoint for this team
   const checkpoint = await db
     .selectFrom('checkpoints')
     .innerJoin('movements', 'movements.id', 'checkpoints.movement_id')
     .select(['movements.date as cp_date', 'movements.sort_position as cp_sort_position'])
+    .where('checkpoints.team_id', '=', teamId)
     .orderBy('checkpoints.created_at', 'desc')
     .executeTakeFirst()
 
@@ -21,6 +22,7 @@ async function isMovementFrozen(movementId: string): Promise<boolean> {
     .selectFrom('movements')
     .select(['date', 'sort_position'])
     .where('id', '=', movementId)
+    .where('team_id', '=', teamId)
     .executeTakeFirstOrThrow()
 
   // Frozen if at or before the checkpoint boundary
@@ -34,7 +36,9 @@ async function isMovementFrozen(movementId: string): Promise<boolean> {
 
 export const getMovements = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    const teamId = context.user.teamId
+
     const movements = await db
       .selectFrom('movements')
       .leftJoin('categories', 'categories.id', 'movements.category_id')
@@ -50,6 +54,7 @@ export const getMovements = createServerFn({ method: 'GET' })
         'categories.name as category_name',
         'categories.color as category_color',
       ])
+      .where('movements.team_id', '=', teamId)
       .orderBy('movements.date', 'asc')
       .orderBy('movements.sort_position', 'asc')
       .execute()
@@ -67,12 +72,15 @@ export const createMovement = createServerFn({ method: 'POST' })
       category_id: z.string().uuid().nullable().optional(),
     }),
   )
-  .handler(async ({ data }) => {
-    // Get the next sort_position for this date
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
+    // Get the next sort_position for this date within this team
     const maxPos = await db
       .selectFrom('movements')
       .select(db.fn.max('sort_position').as('max_pos'))
       .where('date', '=', data.date)
+      .where('team_id', '=', teamId)
       .executeTakeFirst()
 
     const sort_position = ((maxPos?.max_pos as number) ?? 0) + 1000
@@ -80,6 +88,7 @@ export const createMovement = createServerFn({ method: 'POST' })
     const movement = await db
       .insertInto('movements')
       .values({
+        team_id: teamId,
         description: data.description,
         date: data.date,
         amount_cents: data.amount_cents,
@@ -104,8 +113,10 @@ export const updateMovement = createServerFn({ method: 'POST' })
       sort_position: z.number().int().optional(),
     }),
   )
-  .handler(async ({ data }) => {
-    if (await isMovementFrozen(data.id)) {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
+    if (await isMovementFrozen(data.id, teamId)) {
       throw new Error('Cannot edit a frozen movement')
     }
 
@@ -122,6 +133,7 @@ export const updateMovement = createServerFn({ method: 'POST' })
       .updateTable('movements')
       .set(toSet)
       .where('id', '=', id)
+      .where('team_id', '=', teamId)
       .returningAll()
       .executeTakeFirstOrThrow()
 
@@ -131,23 +143,28 @@ export const updateMovement = createServerFn({ method: 'POST' })
 export const deleteMovement = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => {
-    if (await isMovementFrozen(data.id)) {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
+    if (await isMovementFrozen(data.id, teamId)) {
       throw new Error('Cannot delete a frozen movement')
     }
 
-    await db.deleteFrom('movements').where('id', '=', data.id).execute()
+    await db.deleteFrom('movements').where('id', '=', data.id).where('team_id', '=', teamId).execute()
     return { success: true }
   })
 
 export const rebalanceSortPositions = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ date: z.string() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     const movements = await db
       .selectFrom('movements')
       .select(['id'])
       .where('date', '=', data.date)
+      .where('team_id', '=', teamId)
       .orderBy('sort_position', 'asc')
       .execute()
 

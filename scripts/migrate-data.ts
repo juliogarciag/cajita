@@ -228,6 +228,15 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Wipe existing data (order matters for FK constraints)
   // ---------------------------------------------------------------------------
+  // Resolve the default team
+  const team = await db
+    .selectFrom('teams')
+    .select('id')
+    .orderBy('created_at', 'asc')
+    .executeTakeFirstOrThrow()
+  const teamId = team.id
+  console.log(`\nUsing team: ${teamId}`)
+
   console.log('\nWiping existing data...')
   await db.deleteFrom('budget_items').execute()
   await db.deleteFrom('budgets').execute()
@@ -249,7 +258,7 @@ async function main() {
     colorIdx++
     const result = await db
       .insertInto('categories')
-      .values({ name, color, sort_order: colorIdx })
+      .values({ team_id: teamId, name, color, sort_order: colorIdx })
       .returning('id')
       .executeTakeFirstOrThrow()
     categoryMap.set(name, result.id)
@@ -274,6 +283,7 @@ async function main() {
       await db
         .insertInto('budgets')
         .values({
+          team_id: teamId,
           category_id: categoryId,
           name,
           year,
@@ -309,6 +319,7 @@ async function main() {
       .insertInto('movements')
       .values(
         batch.map((m, j) => ({
+          team_id: teamId,
           description: m.description,
           date: m.date,
           amount_cents: m.amountCents,

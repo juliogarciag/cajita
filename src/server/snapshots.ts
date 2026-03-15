@@ -5,10 +5,13 @@ import { authMiddleware } from './middleware.js'
 
 export const getSnapshots = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    const teamId = context.user.teamId
+
     const snapshots = await db
       .selectFrom('snapshots')
       .select(['id', 'name', 'type', 'pinned', 'created_at'])
+      .where('team_id', '=', teamId)
       .orderBy('created_at', 'desc')
       .execute()
 
@@ -23,10 +26,13 @@ export const createSnapshot = createServerFn({ method: 'POST' })
       type: z.enum(['automatic', 'manual']).default('manual'),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     const movements = await db
       .selectFrom('movements')
       .selectAll()
+      .where('team_id', '=', teamId)
       .orderBy('date', 'asc')
       .orderBy('sort_position', 'asc')
       .execute()
@@ -34,6 +40,7 @@ export const createSnapshot = createServerFn({ method: 'POST' })
     const snapshot = await db
       .insertInto('snapshots')
       .values({
+        team_id: teamId,
         name: data.name ?? null,
         type: data.type,
         data: JSON.stringify(movements),
@@ -47,11 +54,14 @@ export const createSnapshot = createServerFn({ method: 'POST' })
 export const pinSnapshot = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     await db
       .updateTable('snapshots')
       .set({ pinned: true })
       .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
       .execute()
 
     return { success: true }
@@ -60,30 +70,36 @@ export const pinSnapshot = createServerFn({ method: 'POST' })
 export const deleteSnapshot = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     // Only allow deleting unpinned auto snapshots
     const snapshot = await db
       .selectFrom('snapshots')
       .select(['type', 'pinned'])
       .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
     if (snapshot.type === 'manual' || snapshot.pinned) {
       throw new Error('Cannot delete manual or pinned snapshots')
     }
 
-    await db.deleteFrom('snapshots').where('id', '=', data.id).execute()
+    await db.deleteFrom('snapshots').where('id', '=', data.id).where('team_id', '=', teamId).execute()
     return { success: true }
   })
 
 export const getSnapshotData = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     const snapshot = await db
       .selectFrom('snapshots')
       .select(['id', 'name', 'type', 'data', 'created_at'])
       .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
     return { snapshot }
@@ -92,12 +108,15 @@ export const getSnapshotData = createServerFn({ method: 'GET' })
 export const restoreSnapshot = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     // Get the snapshot to restore
     const targetSnapshot = await db
       .selectFrom('snapshots')
       .select(['data'])
       .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
     const snapshotMovements = (
@@ -112,6 +131,7 @@ export const restoreSnapshot = createServerFn({ method: 'POST' })
       const currentMovements = await trx
         .selectFrom('movements')
         .selectAll()
+        .where('team_id', '=', teamId)
         .orderBy('date', 'asc')
         .orderBy('sort_position', 'asc')
         .execute()
@@ -119,6 +139,7 @@ export const restoreSnapshot = createServerFn({ method: 'POST' })
       await trx
         .insertInto('snapshots')
         .values({
+          team_id: teamId,
           name: 'Pre-restore backup',
           type: 'automatic',
           pinned: true,
@@ -126,8 +147,8 @@ export const restoreSnapshot = createServerFn({ method: 'POST' })
         })
         .execute()
 
-      // 2. Delete all current movements
-      await trx.deleteFrom('movements').execute()
+      // 2. Delete all current movements for this team
+      await trx.deleteFrom('movements').where('team_id', '=', teamId).execute()
 
       // 3. Insert all movements from snapshot
       if (snapshotMovements.length > 0) {
@@ -136,6 +157,7 @@ export const restoreSnapshot = createServerFn({ method: 'POST' })
           .values(
             snapshotMovements.map((m) => ({
               id: m.id as string,
+              team_id: teamId,
               description: m.description as string,
               date: m.date as string,
               amount_cents: m.amount_cents as number,
@@ -154,14 +176,16 @@ export const restoreSnapshot = createServerFn({ method: 'POST' })
 
 export const ensureTodaySnapshot = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    const teamId = context.user.teamId
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    // Check if auto snapshot exists for today
+    // Check if auto snapshot exists for today for this team
     const existing = await db
       .selectFrom('snapshots')
       .select(['id'])
+      .where('team_id', '=', teamId)
       .where('type', '=', 'automatic')
       .where('created_at', '>=', today)
       .executeTakeFirst()
@@ -174,6 +198,7 @@ export const ensureTodaySnapshot = createServerFn({ method: 'POST' })
     const movements = await db
       .selectFrom('movements')
       .selectAll()
+      .where('team_id', '=', teamId)
       .orderBy('date', 'asc')
       .orderBy('sort_position', 'asc')
       .execute()
@@ -181,18 +206,20 @@ export const ensureTodaySnapshot = createServerFn({ method: 'POST' })
     await db
       .insertInto('snapshots')
       .values({
+        team_id: teamId,
         name: null,
         type: 'automatic',
         data: JSON.stringify(movements),
       })
       .execute()
 
-    // Prune old unpinned auto snapshots (>90 days)
+    // Prune old unpinned auto snapshots (>90 days) for this team
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - 90)
 
     await db
       .deleteFrom('snapshots')
+      .where('team_id', '=', teamId)
       .where('type', '=', 'automatic')
       .where('pinned', '=', false)
       .where('created_at', '<', cutoff)

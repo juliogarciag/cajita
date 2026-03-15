@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, loginIsolated } from "./fixtures";
+import { test, type Page, type BrowserContext } from "@playwright/test";
 
 // Budget tests modify shared state (categories, movements) and must run serially
 test.describe.configure({ mode: "serial" });
@@ -20,7 +21,18 @@ async function navigateToBudget(page: Page, budgetName: string) {
 }
 
 test.describe("Budgets", () => {
-  test.beforeEach(async ({ page }) => {
+  let context: BrowserContext;
+  let page: Page;
+
+  test.beforeAll(async ({ browser }) => {
+    ({ context, page } = await loginIsolated(browser));
+  });
+
+  test.afterAll(async () => {
+    await context.close();
+  });
+
+  test.beforeEach(async () => {
     await page.goto("/finances/budgets");
     await expect(
       page.getByRole("heading", { name: "Budgets" }),
@@ -30,7 +42,7 @@ test.describe("Budgets", () => {
     ).toBeVisible();
   });
 
-  test("can create a new budget", async ({ page }) => {
+  test("can create a new budget", async () => {
     const budgetName = `TestBudget-${UNIQUE}`;
 
     await page.getByRole("button", { name: "Add Budget" }).click();
@@ -48,7 +60,7 @@ test.describe("Budgets", () => {
     await expect(page.getByText(budgetName)).toBeVisible();
   });
 
-  test("can navigate to budget detail and see summary", async ({ page }) => {
+  test("can navigate to budget detail and see summary", async () => {
     const budgetName = `TestBudget-${UNIQUE}`;
 
     await navigateToBudget(page, budgetName);
@@ -58,7 +70,7 @@ test.describe("Budgets", () => {
     await expect(page.getByText(/Remaining:/)).toBeVisible();
   });
 
-  test("can add a budget item", async ({ page }) => {
+  test("can add a budget item", async () => {
     const budgetName = `TestBudget-${UNIQUE}`;
 
     await navigateToBudget(page, budgetName);
@@ -80,7 +92,7 @@ test.describe("Budgets", () => {
     await expect(page.getByText("Test Item E2E")).toBeVisible();
   });
 
-  test("can sync a budget item to movements", async ({ page }) => {
+  test("can sync a budget item to movements", async () => {
     const budgetName = `TestBudget-${UNIQUE}`;
 
     await navigateToBudget(page, budgetName);
@@ -108,7 +120,7 @@ test.describe("Budgets", () => {
     await expect(page.getByText("Synced")).toBeVisible({ timeout: 10000 });
   });
 
-  test("can unsync a budget item from movements", async ({ page }) => {
+  test("can unsync a budget item from movements", async () => {
     const budgetName = `TestBudget-${UNIQUE}`;
 
     await navigateToBudget(page, budgetName);
@@ -126,7 +138,7 @@ test.describe("Budgets", () => {
     await expect(page.getByText("Pending")).toBeVisible({ timeout: 10000 });
   });
 
-  test("can delete a budget", async ({ page }) => {
+  test("can delete a budget", async () => {
     const budgetName = `TestBudget-${UNIQUE}`;
 
     // Use data-budget-card attribute for stable targeting instead of XPath

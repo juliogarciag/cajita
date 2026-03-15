@@ -1,4 +1,5 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
+import { addMovement, deleteMovement } from "./helpers";
 
 test.describe("Navigation & Settings", () => {
   test("unauthenticated user is redirected to login", async ({ browser }) => {
@@ -8,7 +9,7 @@ test.describe("Navigation & Settings", () => {
 
     await page.goto("/dashboard");
     // The _authenticated layout redirects to "/" when no session cookie is present.
-    await expect(page).toHaveURL("http://localhost:3000/", { timeout: 10000 });
+    await expect(page).toHaveURL("/", { timeout: 10000 });
     await context.close();
   });
 
@@ -63,13 +64,19 @@ test.describe("Navigation & Settings", () => {
 
   test("shows logged-in user name", async ({ page }) => {
     await page.goto("/dashboard");
-    await expect(page.getByText("Dev User", { exact: true })).toBeVisible();
+    // Isolated test users are named "Test User <id>"
+    await expect(page.getByText(/Test User \w+/).first()).toBeVisible();
     await expect(
-      page.getByText("Welcome back, Dev User."),
+      page.getByText(/Welcome back, Test User \w+\./),
     ).toBeVisible();
   });
 
   test("settings page can toggle date format", async ({ page }) => {
+    // Create a movement so there's a date to verify format on
+    await page.goto("/finances/movements");
+    const name = `DateFmt-${Date.now()}`;
+    const row = await addMovement(page, name);
+
     await page.goto("/finances/settings");
     await expect(
       page.getByRole("heading", { name: "Settings" }),
@@ -91,7 +98,6 @@ test.describe("Navigation & Settings", () => {
     await expect(page).toHaveURL(/\/finances\/movements/);
 
     // Dates should now show in YYYY-MM-DD format (e.g. 2026-03-14)
-    // Look for at least one date matching the pattern
     await expect(page.locator("text=/\\d{4}-\\d{2}-\\d{2}/").first()).toBeVisible({
       timeout: 10000,
     });
@@ -105,5 +111,8 @@ test.describe("Navigation & Settings", () => {
     await expect(page.locator("text=/\\d{2}\\/\\d{2}\\/\\d{4}/").first()).toBeVisible({
       timeout: 10000,
     });
+
+    // Clean up
+    await deleteMovement(page, row);
   });
 });

@@ -14,7 +14,17 @@ export const createBudgetItem = createServerFn({ method: 'POST' })
       amount_cents: z.number().int(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
+    // Verify budget belongs to team
+    await db
+      .selectFrom('budgets')
+      .select('id')
+      .where('id', '=', data.budget_id)
+      .where('team_id', '=', teamId)
+      .executeTakeFirstOrThrow()
+
     const maxPos = await db
       .selectFrom('budget_items')
       .select(db.fn.max('sort_position').as('max_pos'))
@@ -54,11 +64,15 @@ export const updateBudgetItem = createServerFn({ method: 'POST' })
       accounting_date: z.string().nullable().optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     const existing = await db
       .selectFrom('budget_items')
-      .selectAll()
-      .where('id', '=', data.id)
+      .innerJoin('budgets', 'budgets.id', 'budget_items.budget_id')
+      .selectAll('budget_items')
+      .where('budget_items.id', '=', data.id)
+      .where('budgets.team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
     // If synced and movement is frozen, block edit
@@ -108,11 +122,15 @@ export const updateBudgetItem = createServerFn({ method: 'POST' })
 export const deleteBudgetItem = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     const item = await db
       .selectFrom('budget_items')
-      .selectAll()
-      .where('id', '=', data.id)
+      .innerJoin('budgets', 'budgets.id', 'budget_items.budget_id')
+      .selectAll('budget_items')
+      .where('budget_items.id', '=', data.id)
+      .where('budgets.team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
     // If synced and frozen, block delete
@@ -141,11 +159,16 @@ export const syncBudgetItem = createServerFn({ method: 'POST' })
       accounting_date: z.string(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     const item = await db
       .selectFrom('budget_items')
-      .selectAll()
-      .where('id', '=', data.id)
+      .innerJoin('budgets', 'budgets.id', 'budget_items.budget_id')
+      .selectAll('budget_items')
+      .select('budgets.category_id as budget_category_id')
+      .where('budget_items.id', '=', data.id)
+      .where('budgets.team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
     if (item.movement_id) {
@@ -156,18 +179,12 @@ export const syncBudgetItem = createServerFn({ method: 'POST' })
       throw new Error('USD amount is required before syncing')
     }
 
-    // Get budget for category
-    const budget = await db
-      .selectFrom('budgets')
-      .select('category_id')
-      .where('id', '=', item.budget_id)
-      .executeTakeFirstOrThrow()
-
     // Create movement
     const maxPos = await db
       .selectFrom('movements')
       .select(db.fn.max('sort_position').as('max_pos'))
       .where('date', '=', data.accounting_date)
+      .where('team_id', '=', teamId)
       .executeTakeFirst()
 
     const sort_position = ((maxPos?.max_pos as number) ?? 0) + 1000
@@ -175,10 +192,11 @@ export const syncBudgetItem = createServerFn({ method: 'POST' })
     const movement = await db
       .insertInto('movements')
       .values({
+        team_id: teamId,
         description: item.description,
         date: data.accounting_date,
         amount_cents: item.amount_cents,
-        category_id: budget.category_id,
+        category_id: item.budget_category_id,
         sort_position,
         source: 'budget_sync',
       })
@@ -202,11 +220,15 @@ export const syncBudgetItem = createServerFn({ method: 'POST' })
 export const unsyncBudgetItem = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     const item = await db
       .selectFrom('budget_items')
-      .selectAll()
-      .where('id', '=', data.id)
+      .innerJoin('budgets', 'budgets.id', 'budget_items.budget_id')
+      .selectAll('budget_items')
+      .where('budget_items.id', '=', data.id)
+      .where('budgets.team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
     if (!item.movement_id) {

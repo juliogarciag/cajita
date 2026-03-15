@@ -4,6 +4,7 @@ import { validateSession } from '#/server/session.js'
 
 const ELECTRIC_URL = process.env.ELECTRIC_URL ?? 'http://localhost:3060'
 const ALLOWED_TABLES = ['movements', 'categories', 'checkpoints', 'budgets', 'budget_items']
+const TEAM_SCOPED_TABLES = ['movements', 'categories', 'checkpoints', 'budgets']
 
 // Electric protocol query params to forward
 const ELECTRIC_PARAMS = [
@@ -48,6 +49,16 @@ export const Route = createFileRoute('/api/electric/$table')({
           if (value !== null) {
             electricUrl.searchParams.set(param, value)
           }
+        }
+
+        // Scope team-scoped tables by the user's team
+        if (TEAM_SCOPED_TABLES.includes(table) && user.teamId) {
+          const existingWhere = electricUrl.searchParams.get('where')
+          const teamClause = `"team_id" = '${user.teamId}'`
+          electricUrl.searchParams.set(
+            'where',
+            existingWhere ? `(${existingWhere}) AND ${teamClause}` : teamClause,
+          )
         }
 
         try {

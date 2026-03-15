@@ -13,12 +13,15 @@ export const createBudget = createServerFn({ method: 'POST' })
       annual_amount_cents: z.number().int().min(0),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     try {
       // Auto-create a category for this budget
       const maxOrder = await db
         .selectFrom('categories')
         .select(db.fn.max('sort_order').as('max_order'))
+        .where('team_id', '=', teamId)
         .executeTakeFirst()
 
       const sort_order = ((maxOrder?.max_order as number) ?? 0) + 1
@@ -26,6 +29,7 @@ export const createBudget = createServerFn({ method: 'POST' })
       const category = await db
         .insertInto('categories')
         .values({
+          team_id: teamId,
           name: data.name,
           color: data.color,
           sort_order,
@@ -39,6 +43,7 @@ export const createBudget = createServerFn({ method: 'POST' })
         .selectFrom('movements')
         .select(db.fn.max('sort_position').as('max_pos'))
         .where('date', '=', eoyDate)
+        .where('team_id', '=', teamId)
         .executeTakeFirst()
 
       const sort_position = ((maxPos?.max_pos as number) ?? 0) + 1000
@@ -47,6 +52,7 @@ export const createBudget = createServerFn({ method: 'POST' })
       const movement = await db
         .insertInto('movements')
         .values({
+          team_id: teamId,
           description: `[Remaining] ${data.name}`,
           date: eoyDate,
           amount_cents: remainingCents,
@@ -61,6 +67,7 @@ export const createBudget = createServerFn({ method: 'POST' })
       const budget = await db
         .insertInto('budgets')
         .values({
+          team_id: teamId,
           category_id: category.id as string,
           name: data.name,
           year: data.year,
@@ -95,11 +102,14 @@ export const updateBudget = createServerFn({ method: 'POST' })
       annual_amount_cents: z.number().int().min(0),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     const budget = await db
       .updateTable('budgets')
       .set({ annual_amount_cents: data.annual_amount_cents, updated_at: new Date() })
       .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
       .returningAll()
       .executeTakeFirstOrThrow()
 
@@ -113,7 +123,9 @@ export const updateBudget = createServerFn({ method: 'POST' })
 export const deleteBudget = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     // Get all synced movement IDs for this budget
     const syncedItems = await db
       .selectFrom('budget_items')
@@ -130,6 +142,7 @@ export const deleteBudget = createServerFn({ method: 'POST' })
       .selectFrom('budgets')
       .select(['remaining_movement_id', 'category_id'])
       .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
     // Check if remaining movement is frozen
@@ -149,7 +162,7 @@ export const deleteBudget = createServerFn({ method: 'POST' })
       .executeTakeFirst()
 
     // Delete budget (CASCADE deletes budget_items)
-    await db.deleteFrom('budgets').where('id', '=', data.id).execute()
+    await db.deleteFrom('budgets').where('id', '=', data.id).where('team_id', '=', teamId).execute()
 
     // Delete the remaining movement
     if (budget.remaining_movement_id) {

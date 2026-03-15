@@ -8,10 +8,12 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "dev:docker": "docker compose up",
+    "dev:test": "dotenv -e .env.test -- vite dev --port 3001",
     "build": "vite build",
     "preview": "vite preview",
     "start": "npm run migrate && node .output/server/index.mjs",
     "migrate": "tsx src/db/migrate.ts",
+    "migrate:test": "dotenv -e .env.test -- tsx src/db/migrate.ts",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:e2e": "npx playwright test"
@@ -59,6 +61,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.4",
+    "dotenv-cli": "^11.0.0",
     "jsdom": "^28.1.0",
     "prettier": "^3.8.1",
     "tsx": "^4.21.0",

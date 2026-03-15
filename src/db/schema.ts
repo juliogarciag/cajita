@@ -1,5 +1,18 @@
 import type { Generated } from 'kysely'
 
+export interface TeamsTable {
+  id: Generated<string>
+  name: string
+  created_at: Generated<Date>
+}
+
+export interface TeamMembershipsTable {
+  id: Generated<string>
+  team_id: string
+  user_id: string
+  created_at: Generated<Date>
+}
+
 export interface UsersTable {
   id: Generated<string>
   email: string
@@ -18,6 +31,7 @@ export interface SessionsTable {
 
 export interface CategoriesTable {
   id: Generated<string>
+  team_id: string
   name: string
   color: string
   budget_id: string | null
@@ -28,6 +42,7 @@ export interface CategoriesTable {
 
 export interface MovementsTable {
   id: Generated<string>
+  team_id: string
   description: string
   date: string
   amount_cents: number
@@ -40,6 +55,7 @@ export interface MovementsTable {
 
 export interface BudgetsTable {
   id: Generated<string>
+  team_id: string
   category_id: string
   name: string
   year: number
@@ -65,6 +81,7 @@ export interface BudgetItemsTable {
 
 export interface SnapshotsTable {
   id: Generated<string>
+  team_id: string
   name: string | null
   type: 'automatic' | 'manual'
   data: string
@@ -74,6 +91,7 @@ export interface SnapshotsTable {
 
 export interface CheckpointsTable {
   id: Generated<string>
+  team_id: string
   movement_id: string
   expected_cents: number
   actual_cents: number
@@ -89,6 +107,8 @@ export interface UserPreferencesTable {
 }
 
 export interface Database {
+  teams: TeamsTable
+  team_memberships: TeamMembershipsTable
   users: UsersTable
   sessions: SessionsTable
   categories: CategoriesTable

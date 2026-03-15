@@ -30,5 +30,38 @@ services:
       db:
         condition: service_healthy
 
+  # --- Test environment (isolated from dev data) ---
+  db-test:
+    image: postgres:16
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: cajita_test
+      POSTGRES_USER: cajita
+      POSTGRES_PASSWORD: cajita
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+    volumes:
+      - pgdata_test:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -d cajita_test -U cajita
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  electric-test:
+    image: electricsql/electric
+    ports:
+      - "3061:3000"
+    environment:
+      DATABASE_URL: postgresql://cajita:cajita@db-test:5432/cajita_test
+      ELECTRIC_INSECURE: "true"
+    depends_on:
+      db-test:
+        condition: service_healthy
+
 volumes:
   pgdata:
+  pgdata_test:

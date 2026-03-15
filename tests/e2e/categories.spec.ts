@@ -1,4 +1,5 @@
-import { test, expect, type Page, type Locator } from "@playwright/test";
+import { test, expect } from "./fixtures";
+import type { Page, Locator } from "@playwright/test";
 
 /**
  * Get the category row that contains the given name.

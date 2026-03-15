@@ -21,6 +21,6 @@
 
 - Tax calculator tracker.
 
-### Very far in the future
+### Very far in the future??
 
-- Create teams and isolate movements/tools from each other.
+- Create teams and isolate movements/tools from each other. This would also allow tests to run in parallel because each test would get its own team.

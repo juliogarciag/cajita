@@ -7,10 +7,13 @@ import { authMiddleware } from './middleware.js'
 
 export const getCategories = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    const teamId = context.user.teamId
+
     const categories = await db
       .selectFrom('categories')
       .selectAll()
+      .where('team_id', '=', teamId)
       .orderBy('sort_order', 'asc')
       .execute()
 
@@ -25,10 +28,13 @@ export const createCategory = createServerFn({ method: 'POST' })
       color: z.string().optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     const maxOrder = await db
       .selectFrom('categories')
       .select(db.fn.max('sort_order').as('max_order'))
+      .where('team_id', '=', teamId)
       .executeTakeFirst()
 
     const sort_order = ((maxOrder?.max_order as number) ?? 0) + 1
@@ -36,6 +42,7 @@ export const createCategory = createServerFn({ method: 'POST' })
     const category = await db
       .insertInto('categories')
       .values({
+        team_id: teamId,
         name: data.name,
         color: data.color ?? '#6b7280',
         sort_order,
@@ -55,12 +62,15 @@ export const updateCategory = createServerFn({ method: 'POST' })
       color: z.string().optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     // Check if budget-owned
     const existing = await db
       .selectFrom('categories')
       .select('budget_id')
       .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
     if (existing.budget_id) {
@@ -75,6 +85,7 @@ export const updateCategory = createServerFn({ method: 'POST' })
       .updateTable('categories')
       .set(updates)
       .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
       .returningAll()
       .executeTakeFirstOrThrow()
 
@@ -89,11 +100,14 @@ export const archiveCategory = createServerFn({ method: 'POST' })
       archived: z.boolean(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     const existing = await db
       .selectFrom('categories')
       .select('budget_id')
       .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
     if (existing.budget_id) {
@@ -104,6 +118,7 @@ export const archiveCategory = createServerFn({ method: 'POST' })
       .updateTable('categories')
       .set({ archived: data.archived })
       .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
       .returningAll()
       .executeTakeFirstOrThrow()
 
@@ -113,19 +128,22 @@ export const archiveCategory = createServerFn({ method: 'POST' })
 export const deleteCategory = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
     // Check if budget-owned
     const existing = await db
       .selectFrom('categories')
       .select('budget_id')
       .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
     if (existing.budget_id) {
       throw new Error('Cannot delete a budget-owned category. Delete the budget instead.')
     }
 
-    await db.deleteFrom('categories').where('id', '=', data.id).execute()
+    await db.deleteFrom('categories').where('id', '=', data.id).where('team_id', '=', teamId).execute()
 
     return { success: true }
   })
