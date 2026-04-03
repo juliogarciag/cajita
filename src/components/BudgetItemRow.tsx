@@ -62,7 +62,7 @@ export function BudgetItemRow({
 
   return (
     <TableRow id={id} frozen={frozen} highlight={highlight}>
-      <div className="w-6 shrink-0 flex items-center justify-center">
+      <div className="w-6 shrink-0 flex items-center pl-2">
         {frozen && <Lock size={10} className="text-indigo-400" />}
       </div>
       <div className="min-w-[200px] flex-1 px-1">

@@ -216,7 +216,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     const disabled = frozen || budgetManaged
     return (
       <>
-        <div className="w-6 shrink-0 flex items-center justify-center">
+        <div className="w-6 shrink-0 flex items-center pl-2">
           {frozen
             ? <Lock size={10} className="text-indigo-400" />
             : budgetManaged
