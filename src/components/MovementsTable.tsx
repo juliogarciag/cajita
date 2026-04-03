@@ -216,7 +216,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     const disabled = frozen || budgetManaged
     return (
       <>
-        <div className="w-8 shrink-0 flex items-center justify-center">
+        <div className="w-[18px] shrink-0 flex items-center pl-2">
           {frozen
             ? <Lock size={10} className="text-indigo-400" />
             : budgetManaged
@@ -360,7 +360,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white" data-editable-table>
       {/* Header */}
       <div className="flex border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
-        <div className="w-8 shrink-0" />
+        <div className="w-[18px] shrink-0" />
         <div className="min-w-[260px] flex-1 px-3 py-2">Description</div>
         <div className="w-[120px] shrink-0 px-3 py-2">Date</div>
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Amount</div>
