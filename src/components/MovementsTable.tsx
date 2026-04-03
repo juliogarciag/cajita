@@ -106,55 +106,52 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
 
   const withTotals = allWithTotals
 
-  // Find the index of the last frozen row (for divider placement)
-  const lastFrozenIndex = useMemo(() => {
-    for (let i = withTotals.length - 1; i >= 0; i--) {
-      if (withTotals[i].frozen) return i
-    }
-    return -1
-  }, [withTotals])
+  // Merge rows and month dividers into a single flat list for the virtualizer
+  type TableItem =
+    | { type: 'row'; data: MovementWithTotal }
+    | { type: 'month-divider'; label: string; isYearBoundary: boolean; height: number }
 
-  // Compute month/year boundary dividers
-  const monthDividers = useMemo(() => {
+  const tableItems = useMemo((): TableItem[] => {
     if (withTotals.length === 0) return []
-    const dividers: { afterIndex: number; label: string; isYearBoundary: boolean; height: number }[] = []
-    let prevMonth = withTotals[0].date.slice(0, 7)
-    let prevYear = withTotals[0].date.slice(0, 4)
-    for (let i = 1; i < withTotals.length; i++) {
-      const curMonth = withTotals[i].date.slice(0, 7)
-      const curYear = withTotals[i].date.slice(0, 4)
-      if (curMonth !== prevMonth) {
+    const result: TableItem[] = []
+    let prevMonth = ''
+    let prevYear = ''
+    for (let i = 0; i < withTotals.length; i++) {
+      const row = withTotals[i]
+      const curMonth = row.date.slice(0, 7)
+      const curYear = row.date.slice(0, 4)
+      if (i > 0 && curMonth !== prevMonth) {
         const isYearBoundary = curYear !== prevYear
         const [y, m] = curMonth.split('-')
         const label = new Date(Number(y), Number(m) - 1, 1).toLocaleString('default', {
           month: 'long',
           year: 'numeric',
         })
-        dividers.push({ afterIndex: i - 1, label, isYearBoundary, height: isYearBoundary ? 28 : 24 })
-        prevMonth = curMonth
-        prevYear = curYear
+        result.push({ type: 'month-divider', label, isYearBoundary, height: isYearBoundary ? 28 : 24 })
       }
+      result.push({ type: 'row', data: row })
+      prevMonth = curMonth
+      prevYear = curYear
     }
-    return dividers
+    return result
   }, [withTotals])
 
-  // Cumulative per-row offsets from month dividers
-  const { rowOffsets, totalMonthDividerHeight } = useMemo(() => {
-    const offsets = new Array(withTotals.length).fill(0)
-    let cumulative = 0
-    for (const d of monthDividers) {
-      cumulative += d.height
-      for (let i = d.afterIndex + 1; i < withTotals.length; i++) {
-        offsets[i] = cumulative
-      }
+  // Find the index of the last frozen row in tableItems (for checkpoint divider placement)
+  const lastFrozenIndex = useMemo(() => {
+    for (let i = tableItems.length - 1; i >= 0; i--) {
+      const item = tableItems[i]
+      if (item.type === 'row' && item.data.frozen) return i
     }
-    return { rowOffsets: offsets, totalMonthDividerHeight: cumulative }
-  }, [withTotals, monthDividers])
+    return -1
+  }, [tableItems])
 
   const virtualizer = useVirtualizer({
-    count: withTotals.length,
+    count: tableItems.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: (index) => {
+      const item = tableItems[index]
+      return item.type === 'month-divider' ? item.height : ROW_HEIGHT
+    },
     overscan: 20,
   })
 
@@ -164,7 +161,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     if (initialScroll.current) {
       initialScroll.current = false
       if (highlightId) {
-        const idx = withTotals.findIndex((m) => m.id === highlightId)
+        const idx = tableItems.findIndex((item) => item.type === 'row' && item.data.id === highlightId)
         if (idx >= 0) {
           setTimeout(() => {
             virtualizer.scrollToIndex(idx, { align: 'center' })
@@ -348,37 +345,16 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   // Extra height for the checkpoint divider row
   const dividerHeight = activeCheckpoint && lastFrozenIndex >= 0 ? 32 : 0
 
-  // Month dividers rendered as absolutely positioned overlays
-  const monthDividersJSX = useMemo(() => {
-    let cumulative = 0
-    return monthDividers.map((d) => {
-      const checkpointContribution =
-        dividerHeight > 0 && lastFrozenIndex >= 0 && d.afterIndex >= lastFrozenIndex ? dividerHeight : 0
-      const y = (d.afterIndex + 1) * ROW_HEIGHT + cumulative + checkpointContribution
-      cumulative += d.height
-      return (
-        <div
-          key={`month-${d.afterIndex}`}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: `${d.height}px`,
-            transform: `translateY(${y}px)`,
-            zIndex: 5,
-          }}
-          className={
-            d.isYearBoundary
-              ? 'flex items-center border-y border-gray-300 bg-gray-100 px-3 text-xs font-semibold text-gray-600'
-              : 'flex items-center border-b border-gray-100 bg-gray-50 px-3 text-xs text-gray-400'
-          }
-        >
-          {d.label}
-        </div>
-      )
-    })
-  }, [monthDividers, dividerHeight, lastFrozenIndex])
+  // Compute checkpoint Y position by summing estimated sizes of all items above it
+  const checkpointY = useMemo(() => {
+    if (lastFrozenIndex < 0) return 0
+    let y = 0
+    for (let i = 0; i <= lastFrozenIndex; i++) {
+      const item = tableItems[i]
+      y += item.type === 'month-divider' ? item.height : ROW_HEIGHT
+    }
+    return y
+  }, [tableItems, lastFrozenIndex])
 
   // Checkpoint divider positioned after last frozen row
   const checkpointDivider =
@@ -390,7 +366,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           left: 0,
           width: '100%',
           height: '32px',
-          transform: `translateY(${(lastFrozenIndex + 1) * ROW_HEIGHT + (rowOffsets[lastFrozenIndex + 1] ?? 0)}px)`,
+          transform: `translateY(${checkpointY}px)`,
           zIndex: 10,
         }}
         className="flex items-center border-b-2 border-indigo-200 bg-indigo-50 px-3 text-xs"
@@ -442,23 +418,46 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
       <div
         ref={parentRef}
         className="overflow-auto"
-        style={{ height: Math.min(withTotals.length * ROW_HEIGHT + dividerHeight + totalMonthDividerHeight, window.innerHeight - 260) }}
+        style={{ height: Math.min(virtualizer.getTotalSize() + dividerHeight, window.innerHeight - 260) }}
       >
         <div
           style={{
-            height: `${virtualizer.getTotalSize() + dividerHeight + totalMonthDividerHeight}px`,
+            height: `${virtualizer.getTotalSize() + dividerHeight}px`,
             width: '100%',
             position: 'relative',
           }}
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
-            const row = withTotals[virtualRow.index]
+            const item = tableItems[virtualRow.index]
             const checkpointOffset =
               dividerHeight > 0 && virtualRow.index > lastFrozenIndex ? dividerHeight : 0
-            const monthOffset = rowOffsets[virtualRow.index] ?? 0
-            return renderRow(row, virtualRow.start + checkpointOffset + monthOffset, virtualRow.size)
+            const top = virtualRow.start + checkpointOffset
+
+            if (item.type === 'month-divider') {
+              return (
+                <div
+                  key={`divider-${virtualRow.index}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${item.height}px`,
+                    transform: `translateY(${top}px)`,
+                  }}
+                  className={
+                    item.isYearBoundary
+                      ? 'flex items-center border-y border-gray-300 bg-gray-100 px-3 text-xs font-semibold text-gray-600'
+                      : 'flex items-center border-b border-gray-100 bg-gray-50 px-3 text-xs text-gray-400'
+                  }
+                >
+                  {item.label}
+                </div>
+              )
+            }
+
+            return renderRow(item.data, top, virtualRow.size)
           })}
-          {monthDividersJSX}
           {checkpointDivider}
         </div>
       </div>
