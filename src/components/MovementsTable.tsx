@@ -216,6 +216,13 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     const disabled = frozen || budgetManaged
     return (
       <>
+        <div className="w-6 shrink-0 flex items-center justify-center">
+          {frozen
+            ? <Lock size={10} className="text-indigo-400" />
+            : budgetManaged
+            ? <Lock size={10} className="text-cyan-500" />
+            : null}
+        </div>
         <div className="min-w-[260px] flex-1 px-1" data-cell="description">
           <EditableCell
             value={row.description}
@@ -255,46 +262,24 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           />
         </div>
         <div className="w-[80px] shrink-0 flex items-center justify-end gap-1 pr-2">
-          {frozen ? (
-            <>
-              <Lock size={14} className="text-indigo-400 shrink-0" />
-              {movementToBudgetId.has(row.id) && (
-                <Tooltip content="View budget">
-                  <Link
-                    to="/finances/budgets/$budgetId"
-                    params={{ budgetId: movementToBudgetId.get(row.id)! }}
-                    search={{ highlight: row.id }}
-                    tabIndex={-1}
-                    className="rounded p-1 text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600"
-                  >
-                    <ExternalLink size={12} />
-                  </Link>
-                </Tooltip>
-              )}
-            </>
-          ) : (
-            <>
-              {budgetManaged && (
-                <>
-                  <Lock size={14} className="text-cyan-500 shrink-0" />
-                  <Tooltip content="View budget">
-                    <Link
-                      to="/finances/budgets/$budgetId"
-                      params={{ budgetId: movementToBudgetId.get(row.id)! }}
-                      search={{ highlight: row.id }}
-                      tabIndex={-1}
-                      className="rounded p-1 text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600"
-                    >
-                      <ExternalLink size={12} />
-                    </Link>
-                  </Tooltip>
-                </>
-              )}
-              <RowActionsMenu
-                onCheckpoint={() => setCheckpointRowId(row.id)}
-                onDelete={budgetManaged ? undefined : () => handleDelete(row.id)}
-              />
-            </>
+          {movementToBudgetId.has(row.id) && (
+            <Tooltip content="View budget">
+              <Link
+                to="/finances/budgets/$budgetId"
+                params={{ budgetId: movementToBudgetId.get(row.id)! }}
+                search={{ highlight: row.id }}
+                tabIndex={-1}
+                className="rounded p-1 text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600"
+              >
+                <ExternalLink size={12} />
+              </Link>
+            </Tooltip>
+          )}
+          {!frozen && (
+            <RowActionsMenu
+              onCheckpoint={() => setCheckpointRowId(row.id)}
+              onDelete={budgetManaged ? undefined : () => handleDelete(row.id)}
+            />
           )}
         </div>
       </>
@@ -308,7 +293,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
       key={row.id}
       frozen={row.frozen || budgetManaged}
       highlight={highlightedId === row.id}
-      className={`w-full transition-colors duration-1000 ${row.source === 'budget_remaining' ? 'italic text-gray-400' : ''} ${row.frozen ? 'border-l-2 border-l-indigo-200' : budgetManaged ? 'border-l-2 border-l-cyan-200' : ''}`}
+      className={`w-full transition-colors duration-1000 ${row.source === 'budget_remaining' ? 'italic text-gray-400' : ''}`}
       style={{
         position: 'absolute',
         top: 0,
@@ -375,6 +360,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white" data-editable-table>
       {/* Header */}
       <div className="flex border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
+        <div className="w-6 shrink-0" />
         <div className="min-w-[260px] flex-1 px-3 py-2">Description</div>
         <div className="w-[120px] shrink-0 px-3 py-2">Date</div>
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Amount</div>
