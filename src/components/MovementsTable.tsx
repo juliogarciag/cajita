@@ -255,9 +255,9 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           />
         </div>
         <div className="w-[56px] shrink-0 flex items-center justify-end gap-1 pr-2">
-          {frozen || budgetManaged ? (
+          {frozen ? (
             <>
-              <Lock size={14} className={`shrink-0 ${frozen ? 'text-indigo-400' : 'text-cyan-500'}`} />
+              <Lock size={14} className="text-indigo-400 shrink-0" />
               {movementToBudgetId.has(row.id) && (
                 <Tooltip content="View budget">
                   <Link
@@ -273,10 +273,25 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
               )}
             </>
           ) : (
-            <RowActionsMenu
-              onCheckpoint={() => setCheckpointRowId(row.id)}
-              onDelete={() => handleDelete(row.id)}
-            />
+            <>
+              {budgetManaged && (
+                <Tooltip content="View budget">
+                  <Link
+                    to="/finances/budgets/$budgetId"
+                    params={{ budgetId: movementToBudgetId.get(row.id)! }}
+                    search={{ highlight: row.id }}
+                    tabIndex={-1}
+                    className="rounded p-1 text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600"
+                  >
+                    <ExternalLink size={12} />
+                  </Link>
+                </Tooltip>
+              )}
+              <RowActionsMenu
+                onCheckpoint={() => setCheckpointRowId(row.id)}
+                onDelete={budgetManaged ? undefined : () => handleDelete(row.id)}
+              />
+            </>
           )}
         </div>
       </>
