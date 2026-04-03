@@ -254,7 +254,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
             onSave={(v) => handleUpdate(row.id, 'category_id', v)}
           />
         </div>
-        <div className="w-[56px] shrink-0 flex items-center justify-end gap-1 pr-2">
+        <div className="w-[80px] shrink-0 flex items-center justify-end gap-1 pr-2">
           {frozen ? (
             <>
               <Lock size={14} className="text-indigo-400 shrink-0" />
@@ -275,17 +275,20 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           ) : (
             <>
               {budgetManaged && (
-                <Tooltip content="View budget">
-                  <Link
-                    to="/finances/budgets/$budgetId"
-                    params={{ budgetId: movementToBudgetId.get(row.id)! }}
-                    search={{ highlight: row.id }}
-                    tabIndex={-1}
-                    className="rounded p-1 text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600"
-                  >
-                    <ExternalLink size={12} />
-                  </Link>
-                </Tooltip>
+                <>
+                  <Lock size={14} className="text-cyan-500 shrink-0" />
+                  <Tooltip content="View budget">
+                    <Link
+                      to="/finances/budgets/$budgetId"
+                      params={{ budgetId: movementToBudgetId.get(row.id)! }}
+                      search={{ highlight: row.id }}
+                      tabIndex={-1}
+                      className="rounded p-1 text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600"
+                    >
+                      <ExternalLink size={12} />
+                    </Link>
+                  </Tooltip>
+                </>
               )}
               <RowActionsMenu
                 onCheckpoint={() => setCheckpointRowId(row.id)}
@@ -377,7 +380,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Amount</div>
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Total</div>
         <div className="w-[160px] shrink-0 px-3 py-2">Category</div>
-        <div className="w-[56px] shrink-0" />
+        <div className="w-[80px] shrink-0" />
       </div>
 
       {/* Virtualized body */}
