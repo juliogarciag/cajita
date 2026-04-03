@@ -127,7 +127,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           month: 'long',
           year: 'numeric',
         })
-        result.push({ type: 'month-divider', label, isYearBoundary, height: isYearBoundary ? 28 : 24 })
+        result.push({ type: 'month-divider', label, isYearBoundary, height: isYearBoundary ? 32 : 28 })
       }
       result.push({ type: 'row', data: row })
       prevMonth = curMonth
@@ -447,8 +447,8 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
                   }}
                   className={
                     item.isYearBoundary
-                      ? 'flex items-center border-y border-gray-300 bg-gray-100 px-3 text-xs font-semibold text-gray-600'
-                      : 'flex items-center border-b border-gray-100 bg-gray-50 px-3 text-xs text-gray-400'
+                      ? 'flex items-center border-y-2 border-slate-400 bg-slate-200 px-3 text-xs font-bold text-slate-800 uppercase tracking-wide'
+                      : 'flex items-center border-y border-slate-200 bg-slate-100 px-3 text-xs font-semibold text-slate-600'
                   }
                 >
                   {item.label}
