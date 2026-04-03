@@ -22,10 +22,10 @@ export const Route = createFileRoute('/_authenticated')({
 })
 
 const navLinkClass =
-  'text-sm text-gray-600 hover:text-gray-900 [&.active]:font-medium [&.active]:text-gray-900'
+  'text-sm font-medium text-gray-500 hover:text-gray-900 [&.active]:text-gray-900'
 
 const subNavLinkClass =
-  'text-sm px-3 py-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-50 [&.active]:font-medium [&.active]:text-gray-900 [&.active]:bg-gray-100'
+  'text-sm font-medium px-3 py-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-50 [&.active]:text-gray-900 [&.active]:bg-gray-100'
 
 function AuthenticatedLayout() {
   const { user } = Route.useRouteContext()
@@ -46,7 +46,7 @@ function AuthenticatedLayout() {
               </Link>
               <Link
                 to="/finances/movements"
-                className={isFinancesRoute ? `${navLinkClass} font-medium !text-gray-900` : navLinkClass}
+                className={isFinancesRoute ? `${navLinkClass} !text-gray-900` : navLinkClass}
                 activeOptions={{ exact: false }}
               >
                 Finances

@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "/Users/julio/.asdf/shims/npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
     },
