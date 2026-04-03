@@ -255,23 +255,27 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           />
         </div>
         <div className="w-[56px] shrink-0 flex items-center justify-end gap-1 pr-2">
-          {movementToBudgetId.has(row.id) && (
-            <Tooltip content="View budget">
-              <Link
-                to="/finances/budgets/$budgetId"
-                params={{ budgetId: movementToBudgetId.get(row.id)! }}
-                className="rounded p-1 text-gray-300 hover:bg-blue-50 hover:text-blue-600"
-              >
-                <ExternalLink size={12} />
-              </Link>
-            </Tooltip>
-          )}
-          {frozen ? (
-            <Lock size={14} className="text-gray-300" />
+          {frozen || budgetManaged ? (
+            <>
+              <Lock size={14} className={`shrink-0 ${frozen ? 'text-indigo-400' : 'text-cyan-500'}`} />
+              {movementToBudgetId.has(row.id) && (
+                <Tooltip content="View budget">
+                  <Link
+                    to="/finances/budgets/$budgetId"
+                    params={{ budgetId: movementToBudgetId.get(row.id)! }}
+                    search={{ highlight: row.id }}
+                    tabIndex={-1}
+                    className="rounded p-1 text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600"
+                  >
+                    <ExternalLink size={12} />
+                  </Link>
+                </Tooltip>
+              )}
+            </>
           ) : (
             <RowActionsMenu
               onCheckpoint={() => setCheckpointRowId(row.id)}
-              onDelete={budgetManaged ? undefined : () => handleDelete(row.id)}
+              onDelete={() => handleDelete(row.id)}
             />
           )}
         </div>
@@ -279,12 +283,14 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     )
   }
 
-  const renderRow = (row: MovementWithTotal, virtualStart: number, virtualSize: number) => (
+  const renderRow = (row: MovementWithTotal, virtualStart: number, virtualSize: number) => {
+    const budgetManaged = row.source !== 'manual' && movementToBudgetId.has(row.id)
+    return (
     <TableRow
       key={row.id}
-      frozen={row.frozen}
+      frozen={row.frozen || budgetManaged}
       highlight={highlightedId === row.id}
-      className={`w-full transition-colors duration-1000 ${row.source === 'budget_remaining' ? 'italic text-gray-400' : ''}`}
+      className={`w-full transition-colors duration-1000 ${row.source === 'budget_remaining' ? 'italic text-gray-400' : ''} ${row.frozen ? 'border-l-2 border-l-indigo-200' : budgetManaged ? 'border-l-2 border-l-cyan-200' : ''}`}
       style={{
         position: 'absolute',
         top: 0,
@@ -297,7 +303,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     >
       {rowCells(row)}
     </TableRow>
-  )
+  )}
 
   // Checkpoint divider positioned after last frozen row
   const checkpointDivider =
@@ -312,13 +318,13 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           transform: `translateY(${(lastFrozenIndex + 1) * ROW_HEIGHT}px)`,
           zIndex: 10,
         }}
-        className="flex items-center border-b-2 border-amber-300 bg-amber-50 px-3 text-xs"
+        className="flex items-center border-b-2 border-indigo-200 bg-indigo-50 px-3 text-xs"
       >
-        <div className="flex items-center gap-1.5 font-medium text-amber-700">
+        <div className="flex items-center gap-1.5 font-medium text-indigo-700">
           <Lock size={12} />
           Checkpointed
         </div>
-        <div className="ml-4 text-amber-600">
+        <div className="ml-4 text-indigo-600">
           Expected: {formatCents(activeCheckpoint.expected_cents)} | Actual:{' '}
           {formatCents(activeCheckpoint.actual_cents)} | Diff:{' '}
           <span
@@ -334,7 +340,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
         <div className="ml-auto">
           <ConfirmButton
             onConfirm={handleUnfreeze}
-            className="flex items-center gap-1 rounded px-2 py-0.5 text-amber-600 hover:bg-amber-100"
+            className="flex items-center gap-1 rounded px-2 py-0.5 text-indigo-600 hover:bg-indigo-100"
             confirmClassName="rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
           >
             <Unlock size={12} />
