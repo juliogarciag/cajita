@@ -223,7 +223,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
             ? <Lock size={10} className="text-cyan-500" />
             : null}
         </div>
-        <div className="min-w-[260px] flex-1 px-1" data-cell="description">
+        <div className="min-w-[260px] flex-1 pr-1" data-cell="description">
           <EditableCell
             value={row.description}
             type="text"

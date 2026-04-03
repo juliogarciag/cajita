@@ -65,7 +65,7 @@ export function BudgetItemRow({
       <div className="w-4 shrink-0 flex items-center pl-1">
         {frozen && <Lock size={10} className="text-indigo-400" />}
       </div>
-      <div className="min-w-[200px] flex-1 px-1">
+      <div className="min-w-[200px] flex-1 pr-1">
         <EditableCell
           value={item.description}
           type="text"
