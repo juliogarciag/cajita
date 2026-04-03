@@ -9,10 +9,9 @@ import { budgetsCollection } from '#/lib/budgets-collection.js'
 import { categoriesCollection } from '#/lib/categories-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
-import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
+import { formatCents } from '#/lib/format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import {
-  createBudgetItem,
   updateBudgetItem,
   deleteBudgetItem,
   syncBudgetItem,
@@ -20,19 +19,15 @@ import {
 } from '#/server/budget-items.js'
 import { updateBudget } from '#/server/budgets.js'
 import { BudgetItemRow } from './BudgetItemRow.js'
-import { DateInput } from './DateInput.js'
+import { NewBudgetItemRow } from './NewBudgetItemRow.js'
 
 export function BudgetDetail() {
   const { budgetId } = useParams({ strict: false }) as { budgetId: string }
   const { highlight } = useSearch({ strict: false }) as { highlight?: string }
 
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [showNewRow, setShowNewRow] = useState(false)
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null)
   const scrolledRef = useRef(false)
-  const [addDesc, setAddDesc] = useState('')
-  const [addDate, setAddDate] = useState(toISODate(new Date()))
-  const [addLocalCents, setAddLocalCents] = useState('')
-  const [addAmountCents, setAddAmountCents] = useState('')
   const [editingAnnual, setEditingAnnual] = useState(false)
   const [annualDraft, setAnnualDraft] = useState('')
 
@@ -102,32 +97,6 @@ export function BudgetDetail() {
   const annualCents = budget.annual_amount_cents
   const remainingCents = annualCents + itemsTotal
   const pct = annualCents > 0 ? Math.min((spentCents / annualCents) * 100, 100) : 0
-
-  const handleAdd = async () => {
-    if (!addDesc) return
-    const usdCents = addAmountCents ? parseDollarsTocents(addAmountCents) : 0
-    const localCents = addLocalCents ? parseDollarsTocents(addLocalCents) : null
-
-    try {
-      await createBudgetItem({
-        data: {
-          budget_id: budget.id,
-          description: addDesc,
-          date: addDate,
-          amount_local_cents: localCents ? -Math.abs(localCents) : null,
-          amount_cents: usdCents ? -Math.abs(usdCents) : 0,
-        },
-      })
-
-      setShowAddForm(false)
-      setAddDesc('')
-      setAddDate(toISODate(new Date()))
-      setAddLocalCents('')
-      setAddAmountCents('')
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add item')
-    }
-  }
 
   const handleUpdate = async (id: string, updates: Partial<Pick<BudgetItem, 'description' | 'date' | 'amount_local_cents' | 'amount_cents' | 'accounting_date'>>) => {
     try {
@@ -278,69 +247,18 @@ export function BudgetDetail() {
             )
           })
         )}
+        {showNewRow && (
+          <NewBudgetItemRow
+            budgetId={budgetId}
+            onDone={() => setShowNewRow(false)}
+            onCancel={() => setShowNewRow(false)}
+          />
+        )}
       </div>
 
-      {/* Add item form */}
-      {showAddForm ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <h3 className="mb-3 text-sm font-medium text-gray-700">New Item</h3>
-          <div className="flex items-end gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">Description</label>
-              <input
-                type="text"
-                value={addDesc}
-                onChange={(e) => setAddDesc(e.target.value)}
-                className="w-48 rounded border border-gray-300 px-2 py-1.5 text-sm"
-                autoFocus
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">Date</label>
-              <DateInput
-                value={addDate}
-                onChange={setAddDate}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">Soles (optional)</label>
-              <input
-                type="text"
-                placeholder="185.38"
-                value={addLocalCents}
-                onChange={(e) => setAddLocalCents(e.target.value)}
-                inputMode="decimal"
-                className="w-24 rounded border border-gray-300 px-2 py-1.5 text-sm"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">USD</label>
-              <input
-                type="text"
-                placeholder="55.42"
-                value={addAmountCents}
-                onChange={(e) => setAddAmountCents(e.target.value)}
-                inputMode="decimal"
-                className="w-24 rounded border border-gray-300 px-2 py-1.5 text-sm"
-              />
-            </div>
-            <button
-              onClick={handleAdd}
-              className="rounded-lg bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-            >
-              Add
-            </button>
-            <button
-              onClick={() => setShowAddForm(false)}
-              className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
+      {!showNewRow && (
         <button
-          onClick={() => setShowAddForm(true)}
+          onClick={() => setShowNewRow(true)}
           className="flex items-center gap-2 self-start rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
         >
           <Plus size={16} />
