@@ -61,7 +61,7 @@ export function BudgetItemRow({
   )
 
   return (
-    <TableRow id={id} frozen={frozen} highlight={highlight}>
+    <TableRow id={id} frozen={frozen} highlight={highlight} className={frozen ? 'border-l-2 border-l-indigo-200' : ''}>
       <div className="min-w-[200px] flex-1 px-1">
         <EditableCell
           value={item.description}
@@ -118,7 +118,20 @@ export function BudgetItemRow({
       </div>
       <div className="flex w-[56px] shrink-0 items-center justify-end gap-1 px-2">
         {frozen ? (
-          <Lock size={14} className="text-gray-300" />
+          <>
+            <Lock size={14} className="text-indigo-400 shrink-0" />
+            {isSynced && (
+              <Link
+                to="/finances/movements"
+                search={{ highlight: item.movement_id! }}
+                tabIndex={-1}
+                className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                title="View in movements"
+              >
+                <ExternalLink size={12} />
+              </Link>
+            )}
+          </>
         ) : isSynced ? (
           <div className="flex items-center gap-0.5">
             <Link

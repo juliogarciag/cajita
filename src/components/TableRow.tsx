@@ -1,5 +1,4 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { Lock } from 'lucide-react'
 
 export const ROW_HEIGHT = 40
 
@@ -23,19 +22,12 @@ export function TableRow({
 }: TableRowProps) {
   return (
     <div
-      className={`relative flex items-center border-b border-gray-100 text-sm ${
+      className={`flex items-center border-b border-gray-100 text-sm ${
         highlight ? 'bg-blue-100' : frozen ? '' : 'hover:bg-gray-50'
       } ${className}`}
       style={{ height: ROW_HEIGHT, ...style }}
       {...rest}
     >
-      {frozen && (
-        <Lock
-          size={10}
-          className="absolute left-1.5 text-amber-400 shrink-0"
-          aria-label="Read-only"
-        />
-      )}
       {children}
     </div>
   )
