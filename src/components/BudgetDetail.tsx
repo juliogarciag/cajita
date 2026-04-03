@@ -9,9 +9,10 @@ import { budgetsCollection } from '#/lib/budgets-collection.js'
 import { categoriesCollection } from '#/lib/categories-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
-import { formatCents } from '#/lib/format.js'
+import { formatCents, toISODate } from '#/lib/format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import {
+  createBudgetItem,
   updateBudgetItem,
   deleteBudgetItem,
   syncBudgetItem,
@@ -19,13 +20,13 @@ import {
 } from '#/server/budget-items.js'
 import { updateBudget } from '#/server/budgets.js'
 import { BudgetItemRow } from './BudgetItemRow.js'
-import { NewBudgetItemRow } from './NewBudgetItemRow.js'
 
 export function BudgetDetail() {
   const { budgetId } = useParams({ strict: false }) as { budgetId: string }
   const { highlight } = useSearch({ strict: false }) as { highlight?: string }
 
-  const [showNewRow, setShowNewRow] = useState(false)
+  const [newItemId, setNewItemId] = useState<string | null>(null)
+  const [isAdding, setIsAdding] = useState(false)
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null)
   const scrolledRef = useRef(false)
   const [editingAnnual, setEditingAnnual] = useState(false)
@@ -97,6 +98,29 @@ export function BudgetDetail() {
   const annualCents = budget.annual_amount_cents
   const remainingCents = annualCents + itemsTotal
   const pct = annualCents > 0 ? Math.min((spentCents / annualCents) * 100, 100) : 0
+
+  const handleAdd = async () => {
+    setIsAdding(true)
+    try {
+      const result = await createBudgetItem({
+        data: {
+          budget_id: budgetId,
+          description: '',
+          date: toISODate(new Date()),
+          amount_cents: 0,
+        },
+      })
+      setNewItemId(result.item.id)
+      setTimeout(() => {
+        const el = document.getElementById(result.item.id)
+        el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 100)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add item')
+    } finally {
+      setIsAdding(false)
+    }
+  }
 
   const handleUpdate = async (id: string, updates: Partial<Pick<BudgetItem, 'description' | 'date' | 'amount_local_cents' | 'amount_cents' | 'accounting_date'>>) => {
     try {
@@ -239,6 +263,7 @@ export function BudgetDetail() {
                 item={item}
                 frozen={isFrozen}
                 highlight={highlightedItemId === item.id}
+                autoEditDescription={item.id === newItemId}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 onSync={() => handleSync(item.id)}
@@ -247,24 +272,16 @@ export function BudgetDetail() {
             )
           })
         )}
-        {showNewRow && (
-          <NewBudgetItemRow
-            budgetId={budgetId}
-            onDone={() => setShowNewRow(false)}
-            onCancel={() => setShowNewRow(false)}
-          />
-        )}
       </div>
 
-      {!showNewRow && (
-        <button
-          onClick={() => setShowNewRow(true)}
-          className="flex items-center gap-2 self-start rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          <Plus size={16} />
-          Add Item
-        </button>
-      )}
+      <button
+        onClick={handleAdd}
+        disabled={isAdding}
+        className="flex items-center gap-2 self-start rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+      >
+        <Plus size={16} />
+        {isAdding ? 'Adding…' : 'Add Item'}
+      </button>
 
     </div>
   )

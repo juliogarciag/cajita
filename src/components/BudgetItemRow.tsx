@@ -12,6 +12,7 @@ interface BudgetItemRowProps {
   item: BudgetItem
   frozen: boolean
   highlight?: boolean
+  autoEditDescription?: boolean
   onUpdate: (
     id: string,
     updates: Partial<
@@ -31,6 +32,7 @@ export function BudgetItemRow({
   item,
   frozen,
   highlight = false,
+  autoEditDescription = false,
   onUpdate,
   onDelete,
   onSync,
@@ -72,6 +74,7 @@ export function BudgetItemRow({
           value={item.description}
           type="text"
           disabled={disabled}
+          autoEdit={autoEditDescription}
           onSave={(v) => handleFieldSave('description', v)}
         />
       </div>
