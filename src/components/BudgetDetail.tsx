@@ -20,6 +20,7 @@ import {
 } from '#/server/budget-items.js'
 import { updateBudget } from '#/server/budgets.js'
 import { BudgetItemRow } from './BudgetItemRow.js'
+import { ROW_HEIGHT } from './TableRow.js'
 
 export function BudgetDetail() {
   const { budgetId } = useParams({ strict: false }) as { budgetId: string }
@@ -29,6 +30,7 @@ export function BudgetDetail() {
   const [isAdding, setIsAdding] = useState(false)
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null)
   const scrolledRef = useRef(false)
+  const tableBodyRef = useRef<HTMLDivElement>(null)
   const [editingAnnual, setEditingAnnual] = useState(false)
   const [annualDraft, setAnnualDraft] = useState('')
 
@@ -112,8 +114,9 @@ export function BudgetDetail() {
       })
       setNewItemId(result.item.id)
       setTimeout(() => {
-        const el = document.getElementById(result.item.id)
-        el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        if (tableBodyRef.current) {
+          tableBodyRef.current.scrollTop = tableBodyRef.current.scrollHeight
+        }
       }, 100)
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to add item')
@@ -166,18 +169,28 @@ export function BudgetDetail() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link
-          to="/finances/budgets"
-          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-        >
-          <ArrowLeft size={20} />
-        </Link>
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-4 rounded-full" style={{ backgroundColor: budgetColor }} />
-          <h1 className="text-2xl font-bold">{budget.name}</h1>
-          <span className="text-lg text-gray-500">{budget.year}</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link
+            to="/finances/budgets"
+            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
+            <ArrowLeft size={20} />
+          </Link>
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: budgetColor }} />
+            <h1 className="text-2xl font-bold">{budget.name}</h1>
+            <span className="text-lg text-gray-500">{budget.year}</span>
+          </div>
         </div>
+        <button
+          onClick={handleAdd}
+          disabled={isAdding}
+          className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        >
+          <Plus size={16} />
+          {isAdding ? 'Adding…' : 'Add Item'}
+        </button>
       </div>
 
       {/* Summary bar */}
@@ -243,45 +256,42 @@ export function BudgetDetail() {
           <div className="w-[110px] shrink-0 px-3 py-2 text-right">Soles</div>
           <div className="w-[110px] shrink-0 px-3 py-2 text-right">USD</div>
           <div className="w-[110px] shrink-0 px-3 py-2">Acct. Date</div>
-          <div className="w-[80px] shrink-0 px-3 py-2 text-center">Status</div>
-          <div className="w-[56px] shrink-0" />
+          <div className="w-[130px] shrink-0" />
         </div>
 
-        {items.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-gray-400">
-            No items yet. Add your first expense.
-          </div>
-        ) : (
-          items.map((item: BudgetItem) => {
-            const isFrozen = item.movement_id
-              ? frozenMovementIds.has(item.movement_id)
-              : false
-            return (
-              <BudgetItemRow
-                key={item.id}
-                id={item.id}
-                item={item}
-                frozen={isFrozen}
-                highlight={highlightedItemId === item.id}
-                autoEditDescription={item.id === newItemId}
-                onUpdate={handleUpdate}
-                onDelete={handleDelete}
-                onSync={() => handleSync(item.id)}
-                onUnsync={() => handleUnsync(item.id)}
-              />
-            )
-          })
-        )}
+        <div
+          ref={tableBodyRef}
+          className="overflow-auto"
+          style={{ height: Math.min(items.length * ROW_HEIGHT, window.innerHeight - 320) }}
+        >
+          {items.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-gray-400">
+              No items yet. Add your first expense.
+            </div>
+          ) : (
+            items.map((item: BudgetItem) => {
+              const isFrozen = item.movement_id
+                ? frozenMovementIds.has(item.movement_id)
+                : false
+              return (
+                <BudgetItemRow
+                  key={item.id}
+                  id={item.id}
+                  item={item}
+                  frozen={isFrozen}
+                  highlight={highlightedItemId === item.id}
+                  autoEditDescription={item.id === newItemId}
+                  onUpdate={handleUpdate}
+                  onDelete={handleDelete}
+                  onSync={() => handleSync(item.id)}
+                  onUnsync={() => handleUnsync(item.id)}
+                />
+              )
+            })
+          )}
+        </div>
       </div>
 
-      <button
-        onClick={handleAdd}
-        disabled={isAdding}
-        className="flex items-center gap-2 self-start rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-      >
-        <Plus size={16} />
-        {isAdding ? 'Adding…' : 'Add Item'}
-      </button>
 
     </div>
   )
