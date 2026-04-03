@@ -281,10 +281,12 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     )
   }
 
-  const renderRow = (row: MovementWithTotal, virtualStart: number, virtualSize: number) => (
+  const renderRow = (row: MovementWithTotal, virtualStart: number, virtualSize: number) => {
+    const budgetManaged = row.source !== 'manual' && movementToBudgetId.has(row.id)
+    return (
     <TableRow
       key={row.id}
-      frozen={row.frozen}
+      frozen={row.frozen || budgetManaged}
       highlight={highlightedId === row.id}
       className={`w-full transition-colors duration-1000 ${row.source === 'budget_remaining' ? 'italic text-gray-400' : ''}`}
       style={{
@@ -299,7 +301,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     >
       {rowCells(row)}
     </TableRow>
-  )
+  )}
 
   // Checkpoint divider positioned after last frozen row
   const checkpointDivider =
