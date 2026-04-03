@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { eq } from '@tanstack/db'
-import { Link, useParams } from '@tanstack/react-router'
+import { Link, useParams, useSearch } from '@tanstack/react-router'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { budgetItemsCollection, type BudgetItem } from '#/lib/budget-items-collection.js'
@@ -24,8 +24,11 @@ import { DateInput } from './DateInput.js'
 
 export function BudgetDetail() {
   const { budgetId } = useParams({ strict: false }) as { budgetId: string }
+  const { highlight } = useSearch({ strict: false }) as { highlight?: string }
 
   const [showAddForm, setShowAddForm] = useState(false)
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null)
+  const scrolledRef = useRef(false)
   const [addDesc, setAddDesc] = useState('')
   const [addDate, setAddDate] = useState(toISODate(new Date()))
   const [addLocalCents, setAddLocalCents] = useState('')
@@ -50,7 +53,7 @@ export function BudgetDetail() {
   const { data: items } = useLiveQuery((q) =>
     q
       .from({ bi: budgetItemsCollection })
-      .where(({ bi }) => eq(bi.budget_id, budgetId))
+      .where(({ bi }) => eq(bi.budget_id, budgetId as typeof bi.budget_id))
       .orderBy(({ bi }) => bi.sort_position, 'asc'),
   )
 
@@ -63,6 +66,21 @@ export function BudgetDetail() {
   )
 
   const { frozenMovementIds } = useCheckpointBoundary(checkpoints, movements)
+
+  useEffect(() => {
+    if (!highlight || items.length === 0 || scrolledRef.current) return
+    const item = items.find((i) => i.movement_id === highlight)
+    if (!item) return
+    scrolledRef.current = true
+    setTimeout(() => {
+      const el = document.getElementById(item.id)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setHighlightedItemId(item.id)
+        setTimeout(() => setHighlightedItemId(null), 2000)
+      }
+    }, 100)
+  }, [highlight, items])
 
   if (!budget) {
     return (
@@ -247,8 +265,10 @@ export function BudgetDetail() {
             return (
               <BudgetItemRow
                 key={item.id}
+                id={item.id}
                 item={item}
                 frozen={isFrozen}
+                highlight={highlightedItemId === item.id}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 onSync={() => handleSync(item.id)}
