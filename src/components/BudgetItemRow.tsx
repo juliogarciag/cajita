@@ -8,8 +8,10 @@ import { ConfirmButton } from './ConfirmButton.js'
 import { TableRow } from './TableRow.js'
 
 interface BudgetItemRowProps {
+  id?: string
   item: BudgetItem
   frozen: boolean
+  highlight?: boolean
   onUpdate: (
     id: string,
     updates: Partial<
@@ -25,8 +27,10 @@ interface BudgetItemRowProps {
 }
 
 export function BudgetItemRow({
+  id,
   item,
   frozen,
+  highlight = false,
   onUpdate,
   onDelete,
   onSync,
@@ -57,7 +61,7 @@ export function BudgetItemRow({
   )
 
   return (
-    <TableRow frozen={frozen}>
+    <TableRow id={id} frozen={frozen} highlight={highlight}>
       <div className="min-w-[200px] flex-1 px-1">
         <EditableCell
           value={item.description}
@@ -120,6 +124,7 @@ export function BudgetItemRow({
             <Link
               to="/finances/movements"
               search={{ highlight: item.movement_id! }}
+              tabIndex={-1}
               className="rounded p-1 text-gray-300 hover:bg-blue-50 hover:text-blue-600"
               title="View in movements"
             >
@@ -127,6 +132,7 @@ export function BudgetItemRow({
             </Link>
             <button
               onClick={onUnsync}
+              tabIndex={-1}
               className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-orange-600"
               title="Unsync from accounting"
             >
@@ -137,6 +143,7 @@ export function BudgetItemRow({
           <>
             <button
               onClick={onSync}
+              tabIndex={-1}
               disabled={!item.description || item.amount_cents === 0 || !item.accounting_date}
               className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-400 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
               title={
@@ -150,6 +157,7 @@ export function BudgetItemRow({
             </button>
             <ConfirmButton
               onConfirm={() => onDelete(item.id)}
+              tabIndex={-1}
               className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
             >
               <Trash2 size={12} />

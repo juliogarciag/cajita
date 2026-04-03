@@ -65,18 +65,20 @@ export function EditableCell({
 
   const cellRef = useRef<HTMLDivElement>(null)
 
-  const focusAdjacentCell = useCallback((shift: boolean) => {
+  const focusAdjacentCell = useCallback((shift: boolean): boolean => {
     const cell = cellRef.current
-    if (!cell) return
+    if (!cell) return false
     const table = cell.closest('[data-editable-table]')
-    if (!table) return
+    if (!table) return false
     const cells = Array.from(table.querySelectorAll<HTMLElement>('[data-editable-cell]:not([data-disabled])'))
     const idx = cells.indexOf(cell)
-    if (idx < 0) return
+    if (idx < 0) return false
     const next = cells[shift ? idx - 1 : idx + 1]
     if (next) {
       setTimeout(() => next.click(), 0)
+      return true
     }
+    return false
   }, [])
 
   const handleKeyDown = useCallback(
@@ -84,17 +86,21 @@ export function EditableCell({
       if (e.key === 'Escape') {
         cancel()
       } else if (e.key === 'Tab') {
-        e.preventDefault()
-        save()
-        if (onTab) {
-          onTab(e.shiftKey)
+        const navigated = onTab ? (onTab(e.shiftKey), true) : focusAdjacentCell(e.shiftKey)
+        if (navigated) {
+          e.preventDefault()
+          save()
         } else {
-          focusAdjacentCell(e.shiftKey)
+          save()
         }
       } else if (e.key === 'Enter') {
         e.preventDefault()
         save()
-        onEnter?.()
+        if (onEnter) {
+          onEnter()
+        } else {
+          focusAdjacentCell(false)
+        }
       }
     },
     [cancel, save, onTab, onEnter, focusAdjacentCell],
@@ -125,7 +131,7 @@ export function EditableCell({
 
   if (type === 'category') {
     return (
-      <div ref={cellRef} data-editable-cell onKeyDown={handleKeyDown} onBlur={save}>
+      <div ref={cellRef} data-editable-cell onBlur={save}>
         <CategorySelect
           value={categoryId ?? null}
           onChange={(id) => {
@@ -133,6 +139,8 @@ export function EditableCell({
             setEditing(false)
           }}
           autoFocus
+          onTab={onTab ?? ((shift) => focusAdjacentCell(shift))}
+          onEnter={onEnter ?? (() => focusAdjacentCell(false))}
         />
       </div>
     )
@@ -140,19 +148,21 @@ export function EditableCell({
 
   if (type === 'date') {
     return (
-      <DatePickerCell
-        value={value}
-        onSave={(v) => {
-          onSave(v)
-          setEditing(false)
-        }}
-        onCancel={() => {
-          setDraft(value)
-          setEditing(false)
-        }}
-        onTab={onTab}
-        onEnter={onEnter}
-      />
+      <div ref={cellRef} data-editable-cell>
+        <DatePickerCell
+          value={value}
+          onSave={(v) => {
+            onSave(v)
+            setEditing(false)
+          }}
+          onCancel={() => {
+            setDraft(value)
+            setEditing(false)
+          }}
+          onTab={onTab ?? ((shift) => focusAdjacentCell(shift))}
+          onEnter={onEnter ?? (() => focusAdjacentCell(false))}
+        />
+      </div>
     )
   }
 
@@ -166,8 +176,8 @@ export function EditableCell({
             setEditing(false)
           }}
           onCancel={() => setEditing(false)}
-          onTab={onTab}
-          onEnter={onEnter}
+          onTab={onTab ?? ((shift) => focusAdjacentCell(shift))}
+          onEnter={onEnter ?? (() => focusAdjacentCell(false))}
           className={className}
         />
       </div>

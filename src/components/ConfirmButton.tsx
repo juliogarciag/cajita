@@ -8,6 +8,7 @@ interface ConfirmButtonProps {
   confirmClassName?: string
   confirming?: boolean
   onConfirmingChange?: (confirming: boolean) => void
+  tabIndex?: number
 }
 
 export function ConfirmButton({
@@ -17,6 +18,7 @@ export function ConfirmButton({
   confirmClassName = 'rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50',
   confirming: externalConfirming,
   onConfirmingChange,
+  tabIndex,
 }: ConfirmButtonProps) {
   const [internalConfirming, setInternalConfirming] = useState(false)
   const confirming = externalConfirming ?? internalConfirming
@@ -28,6 +30,7 @@ export function ConfirmButton({
     return (
       <button
         data-confirm-delete
+        tabIndex={tabIndex}
         onClick={() => {
           onConfirm()
           setConfirming(false)
@@ -40,7 +43,7 @@ export function ConfirmButton({
   }
 
   return (
-    <button onClick={() => setConfirming(true)} className={className}>
+    <button tabIndex={tabIndex} onClick={() => setConfirming(true)} className={className}>
       {children}
     </button>
   )

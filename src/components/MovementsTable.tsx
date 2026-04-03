@@ -260,6 +260,8 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
               <Link
                 to="/finances/budgets/$budgetId"
                 params={{ budgetId: movementToBudgetId.get(row.id)! }}
+                search={{ highlight: row.id }}
+                tabIndex={-1}
                 className="rounded p-1 text-gray-300 hover:bg-blue-50 hover:text-blue-600"
               >
                 <ExternalLink size={12} />
