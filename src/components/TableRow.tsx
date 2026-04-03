@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from 'react'
 export const ROW_HEIGHT = 40
 
 interface TableRowProps {
+  id?: string
   children: ReactNode
   frozen?: boolean
   highlight?: boolean
@@ -22,7 +23,7 @@ export function TableRow({
   return (
     <div
       className={`flex items-center border-b border-gray-100 text-sm ${
-        highlight ? 'bg-blue-100' : frozen ? 'opacity-50' : 'hover:bg-gray-50'
+        highlight ? 'bg-blue-100' : frozen ? 'border-l-2 border-l-amber-300 opacity-50' : 'hover:bg-gray-50'
       } ${className}`}
       style={{ height: ROW_HEIGHT, ...style }}
       {...rest}
