@@ -218,9 +218,9 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
       <>
         <div className="w-8 shrink-0 flex items-center pl-2">
           {frozen
-            ? <Lock size={14} className="text-indigo-400" />
+            ? <Lock size={10} className="text-indigo-400" />
             : budgetManaged
-            ? <Lock size={14} className="text-cyan-500" />
+            ? <Lock size={10} className="text-cyan-500" />
             : null}
         </div>
         <div className="min-w-[260px] flex-1 pr-1" data-cell="description">
