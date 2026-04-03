@@ -121,7 +121,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     overscan: 20,
   })
 
-  // Scroll to highlighted row or bottom on initial load
+  // Scroll to highlighted row or bottom on initial load, then auto-focus first editable cell
   useEffect(() => {
     if (withTotals.length === 0) return
     if (initialScroll.current) {
@@ -139,6 +139,14 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
       }
       setTimeout(() => {
         parentRef.current?.scrollTo({ top: parentRef.current.scrollHeight })
+        // After scroll settles, focus the first cell of the last non-frozen row
+        setTimeout(() => {
+          const lastEditable = [...withTotals].reverse().find((r) => !r.frozen)
+          if (!lastEditable) return
+          const rowEl = parentRef.current?.querySelector(`[data-row-id="${lastEditable.id}"]`)
+          const firstCell = rowEl?.querySelector<HTMLElement>('[data-editable-cell]:not([data-disabled])')
+          firstCell?.click()
+        }, 100)
       }, 200)
     } else if (scrollToEnd.current) {
       scrollToEnd.current = false

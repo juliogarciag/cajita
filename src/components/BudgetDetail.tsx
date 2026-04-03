@@ -29,6 +29,8 @@ export function BudgetDetail() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null)
   const scrolledRef = useRef(false)
+  const autoFocusedRef = useRef(false)
+  const tableRef = useRef<HTMLDivElement>(null)
   const [addDesc, setAddDesc] = useState('')
   const [addDate, setAddDate] = useState(toISODate(new Date()))
   const [addLocalCents, setAddLocalCents] = useState('')
@@ -81,6 +83,13 @@ export function BudgetDetail() {
       }
     }, 100)
   }, [highlight, items])
+
+  useEffect(() => {
+    if (items.length === 0 || autoFocusedRef.current || highlight) return
+    autoFocusedRef.current = true
+    const firstCell = tableRef.current?.querySelector<HTMLElement>('[data-editable-cell]:not([data-disabled])')
+    firstCell?.click()
+  }, [items, highlight])
 
   if (!budget) {
     return (
@@ -242,7 +251,7 @@ export function BudgetDetail() {
       </div>
 
       {/* Items table */}
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white" data-editable-table>
+      <div ref={tableRef} className="overflow-hidden rounded-lg border border-gray-200 bg-white" data-editable-table>
         <div className="flex border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
           <div className="min-w-[200px] flex-1 px-3 py-2">Description</div>
           <div className="w-[110px] shrink-0 px-3 py-2">Date</div>
