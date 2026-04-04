@@ -336,13 +336,15 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
             open={noteOpenId === row.id}
             onOpenChange={(open) => setNoteOpenId(open ? row.id : null)}
           >
-            <NotePopover
-              note={movementNoteMap.get(row.id) ?? null}
-              onOpenChange={(open) => setNoteOpenId(open ? row.id : null)}
-              teamMembers={teamMembers}
-              onSave={(content) => upsertMovementNote({ data: { movement_id: row.id, content } })}
-              onDelete={() => deleteMovementNote({ data: { movement_id: row.id } })}
-            />
+            {noteOpenId === row.id && (
+              <NotePopover
+                note={movementNoteMap.get(row.id) ?? null}
+                onOpenChange={(open) => setNoteOpenId(open ? row.id : null)}
+                teamMembers={teamMembers}
+                onSave={(content) => upsertMovementNote({ data: { movement_id: row.id, content } })}
+                onDelete={() => deleteMovementNote({ data: { movement_id: row.id } })}
+              />
+            )}
           </NoteIconButton>
           {!frozen && (
             <RowActionsMenu

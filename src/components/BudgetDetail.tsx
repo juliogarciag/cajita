@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { eq } from '@tanstack/db'
 import { Link, useParams, useSearch } from '@tanstack/react-router'
@@ -75,8 +75,9 @@ export function BudgetDetail() {
     q.from({ m: teamMembersCollection }),
   )
 
-  const budgetItemNoteMap = Object.fromEntries(
-    budgetItemNotes.map((n) => [n.budget_item_id, n]),
+  const budgetItemNoteMap = useMemo(
+    () => Object.fromEntries(budgetItemNotes.map((n) => [n.budget_item_id, n])),
+    [budgetItemNotes],
   )
 
   const { frozenMovementIds } = useCheckpointBoundary(checkpoints, movements)

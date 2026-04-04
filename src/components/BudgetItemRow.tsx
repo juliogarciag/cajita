@@ -135,13 +135,15 @@ export function BudgetItemRow({
           open={noteOpen}
           onOpenChange={onNoteOpenChange}
         >
-          <NotePopover
-            note={note}
-            onOpenChange={onNoteOpenChange}
-            teamMembers={teamMembers}
-            onSave={onNoteSave}
-            onDelete={onNoteDelete}
-          />
+          {noteOpen && (
+            <NotePopover
+              note={note}
+              onOpenChange={onNoteOpenChange}
+              teamMembers={teamMembers}
+              onSave={onNoteSave}
+              onDelete={onNoteDelete}
+            />
+          )}
         </NoteIconButton>
         {frozen ? (
           isSynced && (
