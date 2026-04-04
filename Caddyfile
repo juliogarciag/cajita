@@ -2,6 +2,6 @@
   local_certs
 }
 
-localhost {
+localhost:3443 {
   reverse_proxy localhost:3000
 }

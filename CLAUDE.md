@@ -32,13 +32,12 @@ brew install caddy
 caddy trust  # installs Caddy's local CA into the macOS keychain (requires sudo prompt)
 ```
 
-**Then run alongside the dev server:**
+**Then just run:**
 
 ```bash
-npm run dev          # Vite on http://localhost:3000 (keep running as-is)
-npm run dev:https    # Caddy proxies https://localhost → localhost:3000 with HTTP/2
+npm run dev
 ```
 
-Access the app at **https://localhost** instead of http://localhost:3000.
+This starts both Vite (port 3000) and Caddy together. Access the app at **https://localhost:3443**.
 
 The `Caddyfile` at the project root configures this. No changes to the app code are needed — `window.location.origin` picks up the new origin automatically.
