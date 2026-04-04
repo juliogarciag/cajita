@@ -11,12 +11,12 @@ import { categoriesCollection, type Category } from '#/lib/categories-collection
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
 import { budgetItemsCollection } from '#/lib/budget-items-collection.js'
 import { budgetsCollection } from '#/lib/budgets-collection.js'
-import { movementNotesCollection } from '#/lib/movement-notes-collection.js'
+import type { MovementNote } from '#/lib/movement-notes-collection.js'
 import type { TeamMember } from '#/lib/team-members-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import { createCheckpoint, deleteCheckpoint } from '#/server/checkpoints.js'
-import { upsertMovementNote, deleteMovementNote, getTeamMembers } from '#/server/notes.js'
+import { upsertMovementNote, deleteMovementNote, getTeamMembers, getMovementNotes } from '#/server/notes.js'
 import { EditableCell } from './EditableCell.js'
 import { SnapshotPanel } from './SnapshotPanel.js'
 import { CheckpointPopover } from './CheckpointPopover.js'
@@ -66,9 +66,13 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     q.from({ b: budgetsCollection }),
   )
 
-  const { data: movementNotes } = useLiveQuery((q) =>
-    q.from({ n: movementNotesCollection }),
-  )
+  const [movementNotes, setMovementNotes] = useState<MovementNote[]>([])
+  const refreshMovementNotes = useCallback(() => {
+    getMovementNotes().then((notes) => setMovementNotes(notes as unknown as MovementNote[])).catch(() => {})
+  }, [])
+  useEffect(() => {
+    refreshMovementNotes()
+  }, [refreshMovementNotes])
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   useEffect(() => {
@@ -85,7 +89,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
 
   // Map movement IDs to their notes
   const movementNoteMap = useMemo(() => {
-    const map = new Map<string, (typeof movementNotes)[0]>()
+    const map = new Map<string, MovementNote>()
     for (const note of movementNotes) {
       map.set(note.movement_id, note)
     }
@@ -342,8 +346,14 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
                 note={movementNoteMap.get(row.id) ?? null}
                 onOpenChange={(open) => setNoteOpenId(open ? row.id : null)}
                 teamMembers={teamMembers}
-                onSave={(content) => upsertMovementNote({ data: { movement_id: row.id, content } })}
-                onDelete={() => deleteMovementNote({ data: { movement_id: row.id } })}
+                onSave={async (content) => {
+                  await upsertMovementNote({ data: { movement_id: row.id, content } })
+                  refreshMovementNotes()
+                }}
+                onDelete={async () => {
+                  await deleteMovementNote({ data: { movement_id: row.id } })
+                  refreshMovementNotes()
+                }}
               />
             )}
           </NoteIconButton>

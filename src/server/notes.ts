@@ -125,6 +125,28 @@ export const upsertBudgetItemNote = createServerFn({ method: 'POST' })
     return { note: note.rows[0] }
   })
 
+export const getMovementNotes = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const teamId = context.user.teamId
+    return db
+      .selectFrom('movement_notes')
+      .selectAll()
+      .where('team_id', '=', teamId)
+      .execute()
+  })
+
+export const getBudgetItemNotes = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const teamId = context.user.teamId
+    return db
+      .selectFrom('budget_item_notes')
+      .selectAll()
+      .where('team_id', '=', teamId)
+      .execute()
+  })
+
 export const deleteBudgetItemNote = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ budget_item_id: z.string().uuid() }))

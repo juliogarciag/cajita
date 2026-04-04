@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { eq } from '@tanstack/db'
 import { Link, useParams, useSearch } from '@tanstack/react-router'
@@ -9,7 +9,7 @@ import { budgetsCollection } from '#/lib/budgets-collection.js'
 import { categoriesCollection } from '#/lib/categories-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
-import { budgetItemNotesCollection } from '#/lib/budget-item-notes-collection.js'
+import type { BudgetItemNote } from '#/lib/budget-item-notes-collection.js'
 import type { TeamMember } from '#/lib/team-members-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
@@ -20,7 +20,7 @@ import {
   syncBudgetItem,
   unsyncBudgetItem,
 } from '#/server/budget-items.js'
-import { upsertBudgetItemNote, deleteBudgetItemNote, getTeamMembers } from '#/server/notes.js'
+import { upsertBudgetItemNote, deleteBudgetItemNote, getTeamMembers, getBudgetItemNotes } from '#/server/notes.js'
 import { updateBudget } from '#/server/budgets.js'
 import { BudgetItemRow } from './BudgetItemRow.js'
 import { ROW_HEIGHT } from './TableRow.js'
@@ -67,9 +67,13 @@ export function BudgetDetail() {
     q.from({ c: checkpointsCollection }).orderBy(({ c }) => c.created_at, 'desc'),
   )
 
-  const { data: budgetItemNotes } = useLiveQuery((q) =>
-    q.from({ n: budgetItemNotesCollection }),
-  )
+  const [budgetItemNotes, setBudgetItemNotes] = useState<BudgetItemNote[]>([])
+  const refreshBudgetItemNotes = useCallback(() => {
+    getBudgetItemNotes().then((notes) => setBudgetItemNotes(notes as unknown as BudgetItemNote[])).catch(() => {})
+  }, [])
+  useEffect(() => {
+    refreshBudgetItemNotes()
+  }, [refreshBudgetItemNotes])
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   useEffect(() => {
@@ -303,8 +307,14 @@ export function BudgetDetail() {
                   noteOpen={noteOpenId === item.id}
                   teamMembers={teamMembers}
                   onNoteOpenChange={(open) => setNoteOpenId(open ? item.id : null)}
-                  onNoteSave={(content) => upsertBudgetItemNote({ data: { budget_item_id: item.id, content } })}
-                  onNoteDelete={() => deleteBudgetItemNote({ data: { budget_item_id: item.id } })}
+                  onNoteSave={async (content) => {
+                    await upsertBudgetItemNote({ data: { budget_item_id: item.id, content } })
+                    refreshBudgetItemNotes()
+                  }}
+                  onNoteDelete={async () => {
+                    await deleteBudgetItemNote({ data: { budget_item_id: item.id } })
+                    refreshBudgetItemNotes()
+                  }}
                   onUpdate={handleUpdate}
                   onDelete={handleDelete}
                   onSync={() => handleSync(item.id)}
