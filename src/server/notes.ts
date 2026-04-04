@@ -4,6 +4,21 @@ import { sql } from 'kysely'
 import { db } from '#/db/index.js'
 import { authMiddleware } from './middleware.js'
 
+// --- Team Members (one-time fetch, no Electric long-poll) ---
+
+export const getTeamMembers = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const teamId = context.user.teamId
+    const rows = await db
+      .selectFrom('team_memberships')
+      .innerJoin('users', 'users.id', 'team_memberships.user_id')
+      .select(['users.id', 'users.name'])
+      .where('team_memberships.team_id', '=', teamId)
+      .execute()
+    return rows
+  })
+
 // --- Movement Notes ---
 
 export const upsertMovementNote = createServerFn({ method: 'POST' })

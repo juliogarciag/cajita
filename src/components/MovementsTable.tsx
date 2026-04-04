@@ -12,11 +12,11 @@ import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
 import { budgetItemsCollection } from '#/lib/budget-items-collection.js'
 import { budgetsCollection } from '#/lib/budgets-collection.js'
 import { movementNotesCollection } from '#/lib/movement-notes-collection.js'
-import { teamMembersCollection } from '#/lib/team-members-collection.js'
+import type { TeamMember } from '#/lib/team-members-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import { createCheckpoint, deleteCheckpoint } from '#/server/checkpoints.js'
-import { upsertMovementNote, deleteMovementNote } from '#/server/notes.js'
+import { upsertMovementNote, deleteMovementNote, getTeamMembers } from '#/server/notes.js'
 import { EditableCell } from './EditableCell.js'
 import { SnapshotPanel } from './SnapshotPanel.js'
 import { CheckpointPopover } from './CheckpointPopover.js'
@@ -70,9 +70,10 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     q.from({ n: movementNotesCollection }),
   )
 
-  const { data: teamMembers } = useLiveQuery((q) =>
-    q.from({ m: teamMembersCollection }),
-  )
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  useEffect(() => {
+    getTeamMembers().then(setTeamMembers).catch(() => {})
+  }, [])
 
   const categoryMap = useMemo(() => {
     const map = new Map<string, Category>()

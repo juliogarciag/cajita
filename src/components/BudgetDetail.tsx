@@ -10,7 +10,7 @@ import { categoriesCollection } from '#/lib/categories-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
 import { budgetItemNotesCollection } from '#/lib/budget-item-notes-collection.js'
-import { teamMembersCollection } from '#/lib/team-members-collection.js'
+import type { TeamMember } from '#/lib/team-members-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import {
@@ -20,7 +20,7 @@ import {
   syncBudgetItem,
   unsyncBudgetItem,
 } from '#/server/budget-items.js'
-import { upsertBudgetItemNote, deleteBudgetItemNote } from '#/server/notes.js'
+import { upsertBudgetItemNote, deleteBudgetItemNote, getTeamMembers } from '#/server/notes.js'
 import { updateBudget } from '#/server/budgets.js'
 import { BudgetItemRow } from './BudgetItemRow.js'
 import { ROW_HEIGHT } from './TableRow.js'
@@ -71,9 +71,10 @@ export function BudgetDetail() {
     q.from({ n: budgetItemNotesCollection }),
   )
 
-  const { data: teamMembers } = useLiveQuery((q) =>
-    q.from({ m: teamMembersCollection }),
-  )
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  useEffect(() => {
+    getTeamMembers().then(setTeamMembers).catch(() => {})
+  }, [])
 
   const budgetItemNoteMap = useMemo(
     () => Object.fromEntries(budgetItemNotes.map((n) => [n.budget_item_id, n])),
