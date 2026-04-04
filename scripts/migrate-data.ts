@@ -20,26 +20,26 @@ const db = new Kysely<Database>({
 // ---------------------------------------------------------------------------
 const BUDGETS: Record<number, Record<string, number>> = {
   2023: {
-    Goodies: 860000,
-    Salud: 520000,
-    'Goodies Raros': 700000,
-    Mejoras: 1260000,
-    Puppy: 270000,
-    Educación: 170000,
+    Goodies: 8_600_00,
+    Salud: 5_200_00,
+    'Goodies Raros': 7_000_00,
+    Mejoras: 12_600_00,
+    Puppy: 2_700_00,
+    Educación: 1_700_00,
   },
   2024: {
-    Puppy: 420000,
-    Health: 520000,
-    'House Improvements': 430000,
-    Goodies: 810000,
-    'Big Goodies': 570000,
+    Puppy: 4_200_00,
+    Health: 5_200_00,
+    'House Improvements': 4_300_00,
+    Goodies: 8_100_00,
+    'Big Goodies': 5_700_00,
   },
   2025: {
-    Puppy: 255000,
-    Health: 874761,
-    'House Improvements': 371700,
-    Goodies: 867374,
-    'Discretionary Expenses': 300000,
+    Puppy: 2_550_00,
+    Health: 8_747_61,
+    'House Improvements': 3_717_00,
+    Goodies: 8_673_74,
+    'Discretionary Expenses': 3_000_00,
   },
 }
 
@@ -183,8 +183,11 @@ function parseFile2024or2025(filePath: string): RawMovement[] {
 // Main migration
 // ---------------------------------------------------------------------------
 async function main() {
-  const homeDir = process.env.HOME ?? '/Users/julio'
-  const dataDir = path.join(homeDir, 'Desktop')
+  const dataDir = process.env.MIGRATE_DATA_DIR_PATH
+
+  if (!dataDir) {
+    throw new Error('MIGRATE_DATA_DIR_PATH environment variable is not set')
+  }
 
   console.log('Parsing CSV files...')
   const movements2017 = parseFile2017to2022(path.join(dataDir, 'f2017-2022.csv'))
@@ -226,24 +229,36 @@ async function main() {
   }
 
   // ---------------------------------------------------------------------------
-  // Wipe existing data (order matters for FK constraints)
+  // Resolve team
   // ---------------------------------------------------------------------------
-  // Resolve the default team
   const team = await db
     .selectFrom('teams')
     .select('id')
-    .orderBy('created_at', 'asc')
-    .executeTakeFirstOrThrow()
-  const teamId = team.id
-  console.log(`\nUsing team: ${teamId}`)
+    .where('is_default', '=', true)
+    .executeTakeFirst()
 
+  if (!team) {
+    throw new Error('No default team found. Make sure the is_default migration has been run.')
+  }
+
+  const teamId = team.id
+  console.log(`\nUsing default team: ${teamId}`)
+
+  // ---------------------------------------------------------------------------
+  // Wipe existing data (order matters for FK constraints)
+  // ---------------------------------------------------------------------------
   console.log('\nWiping existing data...')
-  await db.deleteFrom('budget_items').execute()
-  await db.deleteFrom('budgets').execute()
-  await db.deleteFrom('checkpoints').execute()
-  await db.deleteFrom('snapshots').execute()
-  await db.deleteFrom('movements').execute()
-  await db.deleteFrom('categories').execute()
+  await db
+    .deleteFrom('budget_items')
+    .where('budget_id', 'in', (qb) =>
+      qb.selectFrom('budgets').select('id').where('team_id', '=', teamId),
+    )
+    .execute()
+  await db.deleteFrom('budgets').where('team_id', '=', teamId).execute()
+  await db.deleteFrom('checkpoints').where('team_id', '=', teamId).execute()
+  await db.deleteFrom('snapshots').where('team_id', '=', teamId).execute()
+  await db.deleteFrom('movements').where('team_id', '=', teamId).execute()
+  await db.deleteFrom('categories').where('team_id', '=', teamId).execute()
   console.log('Done.')
 
   // ---------------------------------------------------------------------------

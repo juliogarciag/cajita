@@ -61,17 +61,14 @@ export async function ensureTeamMembership(userId: string): Promise<void> {
 
   if (existing) return
 
-  // Assign to the oldest team (the default one)
+  // Assign to the default team
   const team = await db
     .selectFrom('teams')
     .select('id')
-    .orderBy('created_at', 'asc')
+    .where('is_default', '=', true)
     .executeTakeFirstOrThrow()
 
-  await db
-    .insertInto('team_memberships')
-    .values({ team_id: team.id, user_id: userId })
-    .execute()
+  await db.insertInto('team_memberships').values({ team_id: team.id, user_id: userId }).execute()
 }
 
 export async function createIsolatedTeam(userId: string, teamName: string): Promise<string> {
@@ -81,10 +78,7 @@ export async function createIsolatedTeam(userId: string, teamName: string): Prom
     .returning('id')
     .executeTakeFirstOrThrow()
 
-  await db
-    .insertInto('team_memberships')
-    .values({ team_id: team.id, user_id: userId })
-    .execute()
+  await db.insertInto('team_memberships').values({ team_id: team.id, user_id: userId }).execute()
 
   return team.id
 }

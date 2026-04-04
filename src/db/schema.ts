@@ -3,6 +3,7 @@ import type { Generated } from 'kysely'
 export interface TeamsTable {
   id: Generated<string>
   name: string
+  is_default: Generated<boolean>
   created_at: Generated<Date>
 }
 
