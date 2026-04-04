@@ -38,6 +38,6 @@ caddy trust  # installs Caddy's local CA into the macOS keychain (requires sudo 
 npm run dev
 ```
 
-This starts both Vite (port 3000) and Caddy together. Access the app at **https://localhost:3443**.
+This starts both Vite (port 3000) and Caddy together. Access the app at **https://localhost:3000**. Vite runs internally on port 3001.
 
 The `Caddyfile` at the project root configures this. No changes to the app code are needed — `window.location.origin` picks up the new origin automatically.

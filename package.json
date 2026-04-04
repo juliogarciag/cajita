@@ -6,7 +6,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "concurrently \"vite dev --port 3000\" \"caddy run --watch\"",
+    "dev": "concurrently \"vite dev --port 3001\" \"caddy run --watch\"",
     "dev:docker": "docker compose up",
     "dev:test": "dotenv -e .env.test -- vite dev --port 3001",
     "build": "vite build",
