@@ -1,7 +1,7 @@
 ---
 title: "feat: Add notes to movements and budget items"
 type: feat
-status: active
+status: completed
 date: 2026-04-03
 origin: docs/brainstorms/2026-04-03-movement-notes-brainstorm.md
 ---
