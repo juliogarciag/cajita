@@ -29,8 +29,9 @@ Browsers allow only 6 concurrent HTTP/1.1 connections per host. The app uses 7 E
 
 ```bash
 brew install caddy
-caddy trust  # installs Caddy's local CA into the macOS keychain (requires sudo prompt)
 ```
+
+Caddy installs its local CA into the macOS keychain automatically on first run (will prompt for your password).
 
 **Then just run:**
 
