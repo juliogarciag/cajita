@@ -12,11 +12,12 @@ import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
 import { budgetItemsCollection } from '#/lib/budget-items-collection.js'
 import { budgetsCollection } from '#/lib/budgets-collection.js'
 import { movementNotesCollection } from '#/lib/movement-notes-collection.js'
+import { budgetItemNotesCollection } from '#/lib/budget-item-notes-collection.js'
 import type { TeamMember } from '#/lib/team-members-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import { createCheckpoint, deleteCheckpoint } from '#/server/checkpoints.js'
-import { upsertMovementNote, deleteMovementNote, getTeamMembers } from '#/server/notes.js'
+import { upsertMovementNote, deleteMovementNote, upsertBudgetItemNote, deleteBudgetItemNote, getTeamMembers } from '#/server/notes.js'
 import { EditableCell } from './EditableCell.js'
 import { SnapshotPanel } from './SnapshotPanel.js'
 import { CheckpointPopover } from './CheckpointPopover.js'
@@ -83,6 +84,10 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     return map
   }, [categories])
 
+  const { data: budgetItemNotes } = useLiveQuery((q) =>
+    q.from({ n: budgetItemNotesCollection }),
+  )
+
   // Map movement IDs to their notes
   const movementNoteMap = useMemo(() => {
     const map = new Map<string, (typeof movementNotes)[0]>()
@@ -91,6 +96,24 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     }
     return map
   }, [movementNotes])
+
+  // Map budget item IDs to their notes
+  const budgetItemNoteMap = useMemo(() => {
+    const map = new Map<string, (typeof budgetItemNotes)[0]>()
+    for (const note of budgetItemNotes) {
+      map.set(note.budget_item_id, note)
+    }
+    return map
+  }, [budgetItemNotes])
+
+  // Map movement IDs to their budget item IDs (for synced movements)
+  const movementToBudgetItemId = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const item of budgetItems) {
+      if (item.movement_id) map.set(item.movement_id, item.id)
+    }
+    return map
+  }, [budgetItems])
 
   // Map movement IDs to their budget IDs (for synced budget items and remaining movements)
   const movementToBudgetId = useMemo(() => {
@@ -332,21 +355,35 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
               </Link>
             </Tooltip>
           )}
-          <NoteIconButton
-            hasNote={movementNoteMap.has(row.id)}
-            open={noteOpenId === row.id}
-            onOpenChange={(open) => setNoteOpenId(open ? row.id : null)}
-          >
-            {noteOpenId === row.id && (
-              <NotePopover
-                note={movementNoteMap.get(row.id) ?? null}
+          {(() => {
+            const budgetItemId = movementToBudgetItemId.get(row.id)
+            const note = budgetItemId
+              ? (budgetItemNoteMap.get(budgetItemId) ?? null)
+              : (movementNoteMap.get(row.id) ?? null)
+            const onSave = budgetItemId
+              ? (content: string) => upsertBudgetItemNote({ data: { budget_item_id: budgetItemId, content } })
+              : (content: string) => upsertMovementNote({ data: { movement_id: row.id, content } })
+            const onDelete = budgetItemId
+              ? () => deleteBudgetItemNote({ data: { budget_item_id: budgetItemId } })
+              : () => deleteMovementNote({ data: { movement_id: row.id } })
+            return (
+              <NoteIconButton
+                hasNote={note !== null}
+                open={noteOpenId === row.id}
                 onOpenChange={(open) => setNoteOpenId(open ? row.id : null)}
-                teamMembers={teamMembers}
-                onSave={(content) => upsertMovementNote({ data: { movement_id: row.id, content } })}
-                onDelete={() => deleteMovementNote({ data: { movement_id: row.id } })}
-              />
-            )}
-          </NoteIconButton>
+              >
+                {noteOpenId === row.id && (
+                  <NotePopover
+                    note={note}
+                    onOpenChange={(open) => setNoteOpenId(open ? row.id : null)}
+                    teamMembers={teamMembers}
+                    onSave={onSave}
+                    onDelete={onDelete}
+                  />
+                )}
+              </NoteIconButton>
+            )
+          })()}
           {!frozen && (
             <RowActionsMenu
               onCheckpoint={() => setCheckpointRowId(row.id)}
