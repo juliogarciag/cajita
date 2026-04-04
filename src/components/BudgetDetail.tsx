@@ -9,7 +9,9 @@ import { budgetsCollection } from '#/lib/budgets-collection.js'
 import { categoriesCollection } from '#/lib/categories-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
-import { formatCents, toISODate } from '#/lib/format.js'
+import { budgetItemNotesCollection } from '#/lib/budget-item-notes-collection.js'
+import { teamMembersCollection } from '#/lib/team-members-collection.js'
+import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import {
   createBudgetItem,
@@ -18,6 +20,7 @@ import {
   syncBudgetItem,
   unsyncBudgetItem,
 } from '#/server/budget-items.js'
+import { upsertBudgetItemNote, deleteBudgetItemNote } from '#/server/notes.js'
 import { updateBudget } from '#/server/budgets.js'
 import { BudgetItemRow } from './BudgetItemRow.js'
 import { ROW_HEIGHT } from './TableRow.js'
@@ -29,6 +32,7 @@ export function BudgetDetail() {
   const [newItemId, setNewItemId] = useState<string | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null)
+  const [noteOpenId, setNoteOpenId] = useState<string | null>(null)
   const scrolledRef = useRef(false)
   const tableBodyRef = useRef<HTMLDivElement>(null)
   const [editingAnnual, setEditingAnnual] = useState(false)
@@ -61,6 +65,18 @@ export function BudgetDetail() {
 
   const { data: checkpoints } = useLiveQuery((q) =>
     q.from({ c: checkpointsCollection }).orderBy(({ c }) => c.created_at, 'desc'),
+  )
+
+  const { data: budgetItemNotes } = useLiveQuery((q) =>
+    q.from({ n: budgetItemNotesCollection }),
+  )
+
+  const { data: teamMembers } = useLiveQuery((q) =>
+    q.from({ m: teamMembersCollection }),
+  )
+
+  const budgetItemNoteMap = Object.fromEntries(
+    budgetItemNotes.map((n) => [n.budget_item_id, n]),
   )
 
   const { frozenMovementIds } = useCheckpointBoundary(checkpoints, movements)
@@ -256,7 +272,7 @@ export function BudgetDetail() {
           <div className="w-[110px] shrink-0 px-3 py-2 text-right">Soles</div>
           <div className="w-[110px] shrink-0 px-3 py-2 text-right">USD</div>
           <div className="w-[110px] shrink-0 px-3 py-2">Acct. Date</div>
-          <div className="w-[130px] shrink-0" />
+          <div className="w-[160px] shrink-0" />
         </div>
 
         <div
@@ -281,6 +297,12 @@ export function BudgetDetail() {
                   frozen={isFrozen}
                   highlight={highlightedItemId === item.id}
                   autoEditDescription={item.id === newItemId}
+                  note={budgetItemNoteMap[item.id] ?? null}
+                  noteOpen={noteOpenId === item.id}
+                  teamMembers={teamMembers}
+                  onNoteOpenChange={(open) => setNoteOpenId(open ? item.id : null)}
+                  onNoteSave={(content) => upsertBudgetItemNote({ data: { budget_item_id: item.id, content } })}
+                  onNoteDelete={() => deleteBudgetItemNote({ data: { budget_item_id: item.id } })}
                   onUpdate={handleUpdate}
                   onDelete={handleDelete}
                   onSync={() => handleSync(item.id)}

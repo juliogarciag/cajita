@@ -11,12 +11,16 @@ import { categoriesCollection, type Category } from '#/lib/categories-collection
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
 import { budgetItemsCollection } from '#/lib/budget-items-collection.js'
 import { budgetsCollection } from '#/lib/budgets-collection.js'
+import { movementNotesCollection } from '#/lib/movement-notes-collection.js'
+import { teamMembersCollection } from '#/lib/team-members-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import { createCheckpoint, deleteCheckpoint } from '#/server/checkpoints.js'
+import { upsertMovementNote, deleteMovementNote } from '#/server/notes.js'
 import { EditableCell } from './EditableCell.js'
 import { SnapshotPanel } from './SnapshotPanel.js'
 import { CheckpointPopover } from './CheckpointPopover.js'
+import { NotePopover, NoteIconButton } from './NotePopover.js'
 import { TableRow, ROW_HEIGHT } from './TableRow.js'
 
 interface MovementWithTotal extends Movement {
@@ -35,6 +39,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   const [snapshotOpen, setSnapshotOpen] = useState(false)
   const [checkpointRowId, setCheckpointRowId] = useState<string | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const [noteOpenId, setNoteOpenId] = useState<string | null>(null)
   const scrollToEnd = useRef(false)
   const initialScroll = useRef(true)
 
@@ -61,6 +66,14 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     q.from({ b: budgetsCollection }),
   )
 
+  const { data: movementNotes } = useLiveQuery((q) =>
+    q.from({ n: movementNotesCollection }),
+  )
+
+  const { data: teamMembers } = useLiveQuery((q) =>
+    q.from({ m: teamMembersCollection }),
+  )
+
   const categoryMap = useMemo(() => {
     const map = new Map<string, Category>()
     for (const cat of categories) {
@@ -68,6 +81,15 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     }
     return map
   }, [categories])
+
+  // Map movement IDs to their notes
+  const movementNoteMap = useMemo(() => {
+    const map = new Map<string, (typeof movementNotes)[0]>()
+    for (const note of movementNotes) {
+      map.set(note.movement_id, note)
+    }
+    return map
+  }, [movementNotes])
 
   // Map movement IDs to their budget IDs (for synced budget items and remaining movements)
   const movementToBudgetId = useMemo(() => {
@@ -295,7 +317,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
             onSave={(v) => handleUpdate(row.id, 'category_id', v)}
           />
         </div>
-        <div className="w-[80px] shrink-0 flex items-center justify-end gap-1 pr-2">
+        <div className="w-[100px] shrink-0 flex items-center justify-end gap-1 pr-2">
           {movementToBudgetId.has(row.id) && (
             <Tooltip content="View budget">
               <Link
@@ -309,6 +331,19 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
               </Link>
             </Tooltip>
           )}
+          <NoteIconButton
+            hasNote={movementNoteMap.has(row.id)}
+            open={noteOpenId === row.id}
+            onOpenChange={(open) => setNoteOpenId(open ? row.id : null)}
+          >
+            <NotePopover
+              note={movementNoteMap.get(row.id) ?? null}
+              onOpenChange={(open) => setNoteOpenId(open ? row.id : null)}
+              teamMembers={teamMembers}
+              onSave={(content) => upsertMovementNote({ data: { movement_id: row.id, content } })}
+              onDelete={() => deleteMovementNote({ data: { movement_id: row.id } })}
+            />
+          </NoteIconButton>
           {!frozen && (
             <RowActionsMenu
               onCheckpoint={() => setCheckpointRowId(row.id)}
@@ -411,7 +446,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Amount</div>
         <div className="w-[120px] shrink-0 px-3 py-2 text-right">Total</div>
         <div className="w-[160px] shrink-0 px-3 py-2">Category</div>
-        <div className="w-[80px] shrink-0" />
+        <div className="w-[100px] shrink-0" />
       </div>
 
       {/* Virtualized body */}

@@ -2,10 +2,13 @@ import { useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Link as LinkIcon, Unlink, Lock, Trash2 } from 'lucide-react'
 import type { BudgetItem } from '#/lib/budget-items-collection.js'
+import type { BudgetItemNote } from '#/lib/budget-item-notes-collection.js'
+import type { TeamMember } from '#/lib/team-members-collection.js'
 import { formatCents, formatSoles, parseDollarsTocents } from '#/lib/format.js'
 import { EditableCell } from './EditableCell.js'
 import { ConfirmButton } from './ConfirmButton.js'
 import { TableRow } from './TableRow.js'
+import { NotePopover, NoteIconButton } from './NotePopover.js'
 
 interface BudgetItemRowProps {
   id?: string
@@ -13,6 +16,12 @@ interface BudgetItemRowProps {
   frozen: boolean
   highlight?: boolean
   autoEditDescription?: boolean
+  note: BudgetItemNote | null
+  noteOpen: boolean
+  teamMembers: TeamMember[]
+  onNoteOpenChange: (open: boolean) => void
+  onNoteSave: (content: string) => Promise<unknown>
+  onNoteDelete: () => Promise<unknown>
   onUpdate: (
     id: string,
     updates: Partial<
@@ -33,6 +42,12 @@ export function BudgetItemRow({
   frozen,
   highlight = false,
   autoEditDescription = false,
+  note,
+  noteOpen,
+  teamMembers,
+  onNoteOpenChange,
+  onNoteSave,
+  onNoteDelete,
   onUpdate,
   onDelete,
   onSync,
@@ -114,7 +129,20 @@ export function BudgetItemRow({
           onSave={(v) => handleFieldSave('accounting_date', v)}
         />
       </div>
-      <div className="flex w-[130px] shrink-0 items-center justify-end gap-1 px-2">
+      <div className="flex w-[160px] shrink-0 items-center justify-end gap-1 px-2">
+        <NoteIconButton
+          hasNote={!!note}
+          open={noteOpen}
+          onOpenChange={onNoteOpenChange}
+        >
+          <NotePopover
+            note={note}
+            onOpenChange={onNoteOpenChange}
+            teamMembers={teamMembers}
+            onSave={onNoteSave}
+            onDelete={onNoteDelete}
+          />
+        </NoteIconButton>
         {frozen ? (
           isSynced && (
             <Link

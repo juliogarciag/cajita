@@ -1,9 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { db } from '#/db/index.js'
 import { parseCookies } from '#/server/cookies.js'
 import { validateSession } from '#/server/session.js'
 
 const ELECTRIC_URL = process.env.ELECTRIC_URL ?? 'http://localhost:3060'
-const ALLOWED_TABLES = ['movements', 'categories', 'checkpoints', 'budgets', 'budget_items']
+const ALLOWED_TABLES = [
+  'movements', 'categories', 'checkpoints', 'budgets', 'budget_items',
+  'movement_notes', 'budget_item_notes', 'team_members',
+]
 const TEAM_SCOPED_TABLES = ['movements', 'categories', 'checkpoints', 'budgets']
 
 // Electric protocol query params to forward
@@ -55,6 +59,47 @@ export const Route = createFileRoute('/api/electric/$table')({
         if (TEAM_SCOPED_TABLES.includes(table) && user.teamId) {
           const existingWhere = electricUrl.searchParams.get('where')
           const teamClause = `"team_id" = '${user.teamId}'`
+          electricUrl.searchParams.set(
+            'where',
+            existingWhere ? `(${existingWhere}) AND ${teamClause}` : teamClause,
+          )
+        }
+
+        // Scope note tables directly via team_id (added in migration 014)
+        if (table === 'movement_notes' && user.teamId) {
+          const existingWhere = electricUrl.searchParams.get('where')
+          const teamClause = `"team_id" = '${user.teamId}'`
+          electricUrl.searchParams.set(
+            'where',
+            existingWhere ? `(${existingWhere}) AND ${teamClause}` : teamClause,
+          )
+        }
+
+        if (table === 'budget_item_notes' && user.teamId) {
+          const existingWhere = electricUrl.searchParams.get('where')
+          const teamClause = `"team_id" = '${user.teamId}'`
+          electricUrl.searchParams.set(
+            'where',
+            existingWhere ? `(${existingWhere}) AND ${teamClause}` : teamClause,
+          )
+        }
+
+        // team_members: expose users who share a team — pre-fetch user IDs to avoid subquery
+        if (table === 'team_members' && user.teamId) {
+          const memberships = await db
+            .selectFrom('team_memberships')
+            .select('user_id')
+            .where('team_id', '=', user.teamId)
+            .execute()
+
+          const userIds = memberships.map((m) => m.user_id)
+          if (userIds.length === 0) {
+            return new Response('[]', { status: 200 })
+          }
+
+          electricUrl.searchParams.set('table', 'users')
+          const existingWhere = electricUrl.searchParams.get('where')
+          const teamClause = `"id" IN (${userIds.map((id) => `'${id}'`).join(', ')})`
           electricUrl.searchParams.set(
             'where',
             existingWhere ? `(${existingWhere}) AND ${teamClause}` : teamClause,

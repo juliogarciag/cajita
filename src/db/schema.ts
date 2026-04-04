@@ -106,6 +106,28 @@ export interface UserPreferencesTable {
   updated_at: Generated<Date>
 }
 
+export interface MovementNotesTable {
+  id: Generated<string>
+  movement_id: string
+  team_id: string
+  content: string
+  created_by_user_id: string | null
+  updated_by_user_id: string | null
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
+export interface BudgetItemNotesTable {
+  id: Generated<string>
+  budget_item_id: string
+  team_id: string
+  content: string
+  created_by_user_id: string | null
+  updated_by_user_id: string | null
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
 export interface Database {
   teams: TeamsTable
   team_memberships: TeamMembershipsTable
@@ -118,4 +140,6 @@ export interface Database {
   budgets: BudgetsTable
   budget_items: BudgetItemsTable
   user_preferences: UserPreferencesTable
+  movement_notes: MovementNotesTable
+  budget_item_notes: BudgetItemNotesTable
 }

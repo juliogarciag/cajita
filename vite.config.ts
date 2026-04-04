@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { defineConfig } from 'vite'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -13,6 +14,13 @@ const config = defineConfig({
     viteReact(),
     tailwindcss(),
   ],
+  resolve: {
+    alias: {
+      '@tanstack/router-core/scroll-restoration-script': path.resolve(
+        'node_modules/@tanstack/router-core/dist/esm/scroll-restoration-script/client.js',
+      ),
+    },
+  },
 })
 
 export default config
