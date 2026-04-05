@@ -22,11 +22,10 @@ function toISODate(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-/** Return the generation horizon: last day of current year + 3 months */
+/** Return the generation horizon: end of current year + 3 months (= March of next year) */
 function getHorizon(): { year: number; month: number } {
   const now = new Date()
-  const horizonDate = new Date(now.getFullYear(), now.getMonth() + 3 + 1, 0) // end of month
-  return { year: horizonDate.getFullYear(), month: horizonDate.getMonth() + 1 }
+  return { year: now.getFullYear() + 1, month: 3 }
 }
 
 // ---------------------------------------------------------------------------
