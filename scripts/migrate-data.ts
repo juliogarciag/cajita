@@ -392,22 +392,29 @@ async function main() {
   const mvCount = await db
     .selectFrom('movements')
     .select(sql<number>`count(*)`.as('count'))
+    .where('team_id', '=', teamId)
     .executeTakeFirstOrThrow()
   const catCount = await db
     .selectFrom('categories')
     .select(sql<number>`count(*)`.as('count'))
+    .where('team_id', '=', teamId)
     .executeTakeFirstOrThrow()
   const budCount = await db
     .selectFrom('budgets')
     .select(sql<number>`count(*)`.as('count'))
+    .where('team_id', '=', teamId)
     .executeTakeFirstOrThrow()
   const biCount = await db
     .selectFrom('budget_items')
     .select(sql<number>`count(*)`.as('count'))
+    .where('budget_id', 'in', (qb) =>
+      qb.selectFrom('budgets').select('id').where('team_id', '=', teamId),
+    )
     .executeTakeFirstOrThrow()
   const totalCents = await db
     .selectFrom('movements')
     .select(sql<number>`sum(amount_cents)`.as('total'))
+    .where('team_id', '=', teamId)
     .executeTakeFirstOrThrow()
 
   console.log('\n--- Migration complete ---')
