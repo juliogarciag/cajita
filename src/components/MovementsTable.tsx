@@ -435,7 +435,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           )}
           {!frozen && (
             <RowActionsMenu
-              onCheckpoint={() => setCheckpointRowId(row.id)}
+              onCheckpoint={row.date > TODAY ? undefined : () => setCheckpointRowId(row.id)}
               onDelete={budgetManaged || isFutureUnconfirmedRecurring ? undefined : () => handleDelete(row.id)}
             />
           )}

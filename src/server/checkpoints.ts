@@ -22,6 +22,11 @@ export const createCheckpoint = createServerFn({ method: 'POST' })
       .where('team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
+    const today = new Date().toISOString().slice(0, 10)
+    if (movement.date > today) {
+      throw new Error('Cannot create a checkpoint on a future movement')
+    }
+
     // Compute expected_cents (running total up to and including this movement).
     // Exclude unconfirmed recurring placeholders — they represent future estimates, not real money.
     const result = await db

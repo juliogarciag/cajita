@@ -4,7 +4,7 @@ import { MoreHorizontal } from 'lucide-react'
 import { ConfirmButton } from './ConfirmButton.js'
 
 interface RowActionsMenuProps {
-  onCheckpoint: () => void
+  onCheckpoint?: () => void
   onDelete?: () => void
 }
 
@@ -37,12 +37,14 @@ export function RowActionsMenu({ onCheckpoint, onDelete }: RowActionsMenuProps) 
           sideOffset={4}
           className="z-50 min-w-[140px] rounded-md border border-gray-200 bg-white py-1 shadow-md"
         >
-          <DropdownMenu.Item
-            onSelect={onCheckpoint}
-            className="cursor-pointer px-3 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50"
-          >
-            Checkpoint
-          </DropdownMenu.Item>
+          {onCheckpoint && (
+            <DropdownMenu.Item
+              onSelect={onCheckpoint}
+              className="cursor-pointer px-3 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50"
+            >
+              Checkpoint
+            </DropdownMenu.Item>
+          )}
 
           {onDelete && (
             <DropdownMenu.Item
