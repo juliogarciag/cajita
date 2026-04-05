@@ -90,6 +90,9 @@ function AuthenticatedLayout() {
             <Link to="/finances/categories" className={subNavLinkClass}>
               Categories
             </Link>
+            <Link to="/finances/recurring" className={subNavLinkClass}>
+              Recurring
+            </Link>
             <Link to="/finances/settings" className={subNavLinkClass}>
               Settings
             </Link>

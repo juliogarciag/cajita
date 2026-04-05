@@ -22,7 +22,8 @@ export const createCheckpoint = createServerFn({ method: 'POST' })
       .where('team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
-    // Compute expected_cents (running total up to and including this movement)
+    // Compute expected_cents (running total up to and including this movement).
+    // Exclude unconfirmed recurring placeholders — they represent future estimates, not real money.
     const result = await db
       .selectFrom('movements')
       .select(db.fn.sum<number>('amount_cents').as('total'))
@@ -31,6 +32,12 @@ export const createCheckpoint = createServerFn({ method: 'POST' })
         eb.or([
           eb('date', '<', movement.date),
           eb.and([eb('date', '=', movement.date), eb('sort_position', '<=', movement.sort_position)]),
+        ]),
+      )
+      .where((eb) =>
+        eb.or([
+          eb('source', '!=', 'recurring'),
+          eb('confirmed', '=', true),
         ]),
       )
       .executeTakeFirstOrThrow()

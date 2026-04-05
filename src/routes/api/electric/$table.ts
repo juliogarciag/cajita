@@ -7,8 +7,9 @@ const ELECTRIC_URL = process.env.ELECTRIC_URL ?? 'http://localhost:3060'
 const ALLOWED_TABLES = [
   'movements', 'categories', 'checkpoints', 'budgets', 'budget_items',
   'movement_notes', 'budget_item_notes', 'team_members',
+  'recurring_movement_templates',
 ]
-const TEAM_SCOPED_TABLES = ['movements', 'categories', 'checkpoints', 'budgets']
+const TEAM_SCOPED_TABLES = ['movements', 'categories', 'checkpoints', 'budgets', 'recurring_movement_templates']
 
 // Electric protocol query params to forward
 const ELECTRIC_PARAMS = [

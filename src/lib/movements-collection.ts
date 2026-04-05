@@ -11,6 +11,9 @@ const movementSchema = z.object({
   category_id: z.string().nullable(),
   sort_position: z.coerce.number(),
   source: z.string().default('manual'),
+  recurring_template_id: z.string().nullable().default(null),
+  recurring_period: z.string().nullable().default(null),
+  confirmed: z.coerce.boolean().default(true),
   created_at: z.string(),
   updated_at: z.string(),
 })

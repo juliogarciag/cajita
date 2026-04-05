@@ -7,6 +7,20 @@ export interface TeamsTable {
   created_at: Generated<Date>
 }
 
+export interface RecurringMovementTemplatesTable {
+  id: Generated<string>
+  team_id: string
+  description: string
+  amount_cents: number
+  category_id: string | null
+  day_of_month: number
+  start_date: string // YYYY-MM-DD
+  end_date: string | null
+  active: Generated<boolean>
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
 export interface TeamMembershipsTable {
   id: Generated<string>
   team_id: string
@@ -50,6 +64,9 @@ export interface MovementsTable {
   category_id: string | null
   sort_position: number
   source: Generated<string>
+  recurring_template_id: string | null
+  recurring_period: string | null // YYYY-MM-DD, always 1st of month
+  confirmed: Generated<boolean>
   created_at: Generated<Date>
   updated_at: Generated<Date>
 }
@@ -132,6 +149,7 @@ export interface BudgetItemNotesTable {
 export interface Database {
   teams: TeamsTable
   team_memberships: TeamMembershipsTable
+  recurring_movement_templates: RecurringMovementTemplatesTable
   users: UsersTable
   sessions: SessionsTable
   categories: CategoriesTable

@@ -2,7 +2,7 @@ import { useRef, useMemo, useState, useCallback, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useLiveQuery } from '@tanstack/react-db'
 import { Link } from '@tanstack/react-router'
-import { Plus, History, Lock, Unlock, ExternalLink } from 'lucide-react'
+import { Plus, History, Lock, Unlock, ExternalLink, Clock, CheckCircle } from 'lucide-react'
 import { ConfirmButton } from './ConfirmButton.js'
 import { RowActionsMenu } from './RowActionsMenu.js'
 import { Tooltip } from './Tooltip.js'
@@ -18,6 +18,7 @@ import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import { createCheckpoint, deleteCheckpoint } from '#/server/checkpoints.js'
 import { upsertMovementNote, deleteMovementNote, upsertBudgetItemNote, deleteBudgetItemNote, getTeamMembers } from '#/server/notes.js'
+import { confirmRecurringMovement } from '#/server/recurring-movements.js'
 import { EditableCell } from './EditableCell.js'
 import { SnapshotPanel } from './SnapshotPanel.js'
 import { CheckpointPopover } from './CheckpointPopover.js'
@@ -30,6 +31,8 @@ interface MovementWithTotal extends Movement {
   category_color: string | null
   frozen: boolean
 }
+
+const TODAY = new Date().toISOString().slice(0, 10)
 
 interface MovementsTableProps {
   highlightId?: string
@@ -152,20 +155,46 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
 
   const withTotals = allWithTotals
 
-  // Merge rows and month dividers into a single flat list for the virtualizer
+  // Current balance: sum of confirmed movements with date <= today
+  const currentBalance = useMemo(() => {
+    return movements
+      .filter((m: Movement) => m.date <= TODAY && (m.confirmed !== false || m.source !== 'recurring'))
+      .reduce((sum: number, m: Movement) => sum + m.amount_cents, 0)
+  }, [movements])
+
+  // Projected year-end: sum of all movements through Dec 31 of current year
+  const currentYear = new Date().getFullYear()
+  const yearEnd = `${currentYear}-12-31`
+  const projectedYearEnd = useMemo(() => {
+    return movements
+      .filter((m: Movement) => m.date <= yearEnd)
+      .reduce((sum: number, m: Movement) => sum + m.amount_cents, 0)
+  }, [movements, yearEnd])
+
+  // Merge rows, month dividers, and today-divider into a single flat list for the virtualizer
   type TableItem =
     | { type: 'row'; data: MovementWithTotal }
     | { type: 'month-divider'; label: string; isYearBoundary: boolean; height: number }
+    | { type: 'today-divider'; height: number }
 
   const tableItems = useMemo((): TableItem[] => {
     if (withTotals.length === 0) return []
     const result: TableItem[] = []
     let prevMonth = ''
     let prevYear = ''
+    let todayDividerInserted = false
+
     for (let i = 0; i < withTotals.length; i++) {
       const row = withTotals[i]
       const curMonth = row.date.slice(0, 7)
       const curYear = row.date.slice(0, 4)
+
+      // Insert today-divider before the first row with date > today
+      if (!todayDividerInserted && row.date > TODAY) {
+        todayDividerInserted = true
+        result.push({ type: 'today-divider', height: 32 })
+      }
+
       if (i > 0 && curMonth !== prevMonth) {
         const isYearBoundary = curYear !== prevYear
         const [y, m] = curMonth.split('-')
@@ -196,7 +225,9 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     getScrollElement: () => parentRef.current,
     estimateSize: (index) => {
       const item = tableItems[index]
-      return item.type === 'month-divider' ? item.height : ROW_HEIGHT
+      if (item.type === 'month-divider') return item.height
+      if (item.type === 'today-divider') return item.height
+      return ROW_HEIGHT
     },
     overscan: 20,
   })
@@ -276,6 +307,10 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     movementsCollection.delete(id)
   }, [])
 
+  const handleConfirmRecurring = useCallback(async (id: string) => {
+    await confirmRecurringMovement({ data: { movementId: id } })
+  }, [])
+
   const handleCreateCheckpoint = useCallback(
     async (movementId: string, actualCents: number) => {
       await createCheckpoint({ data: { movement_id: movementId, actual_cents: actualCents } })
@@ -292,7 +327,8 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   const rowCells = (row: MovementWithTotal) => {
     const isPositive = row.amount_cents > 0
     const frozen = row.frozen
-    const budgetManaged = row.source !== 'manual' && movementToBudgetId.has(row.id)
+    const budgetManaged = (row.source === 'budget_sync' || row.source === 'budget_remaining') && movementToBudgetId.has(row.id)
+    const isUnconfirmedRecurring = row.source === 'recurring' && !row.confirmed
     const disabled = frozen || budgetManaged
     return (
       <>
@@ -301,6 +337,8 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
             ? <Lock size={10} className="text-indigo-400" />
             : budgetManaged
             ? <Lock size={10} className="text-cyan-500" />
+            : isUnconfirmedRecurring
+            ? <Clock size={10} className="text-amber-400" />
             : <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
         </div>
         <div className="min-w-[260px] flex-1 pr-1" data-cell="description">
@@ -384,6 +422,16 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
               </NoteIconButton>
             )
           })()}
+          {isUnconfirmedRecurring && (
+            <Tooltip content="Confirm this movement">
+              <button
+                onClick={() => handleConfirmRecurring(row.id)}
+                className="rounded p-1 text-amber-500 hover:bg-amber-50 hover:text-amber-700"
+              >
+                <CheckCircle size={12} />
+              </button>
+            </Tooltip>
+          )}
           {!frozen && (
             <RowActionsMenu
               onCheckpoint={() => setCheckpointRowId(row.id)}
@@ -396,13 +444,19 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   }
 
   const renderRow = (row: MovementWithTotal, virtualStart: number, virtualSize: number) => {
-    const budgetManaged = row.source !== 'manual' && movementToBudgetId.has(row.id)
+    const budgetManaged = (row.source === 'budget_sync' || row.source === 'budget_remaining') && movementToBudgetId.has(row.id)
+    const isUnconfirmedRecurring = row.source === 'recurring' && !row.confirmed
+    const rowClassName = [
+      'w-full transition-colors duration-1000',
+      row.source === 'budget_remaining' ? 'italic text-gray-400' : '',
+      isUnconfirmedRecurring ? 'italic text-gray-500 bg-amber-50/40' : '',
+    ].filter(Boolean).join(' ')
     return (
     <TableRow
       key={row.id}
       frozen={row.frozen || budgetManaged}
       highlight={highlightedId === row.id}
-      className={`w-full transition-colors duration-1000 ${row.source === 'budget_remaining' ? 'italic text-gray-400' : ''}`}
+      className={rowClassName}
       style={{
         position: 'absolute',
         top: 0,
@@ -426,7 +480,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     let y = 0
     for (let i = 0; i <= lastFrozenIndex; i++) {
       const item = tableItems[i]
-      y += item.type === 'month-divider' ? item.height : ROW_HEIGHT
+      y += item.type === 'row' ? ROW_HEIGHT : item.height
     }
     return y
   }, [tableItems, lastFrozenIndex])
@@ -508,6 +562,27 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
               dividerHeight > 0 && virtualRow.index > lastFrozenIndex ? dividerHeight : 0
             const top = virtualRow.start + checkpointOffset
 
+            if (item.type === 'today-divider') {
+              return (
+                <div
+                  key={`today-divider-${virtualRow.index}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${item.height}px`,
+                    transform: `translateY(${top}px)`,
+                    zIndex: 5,
+                  }}
+                  className="flex items-center border-y-2 border-amber-300 bg-amber-50 px-3 text-xs font-semibold text-amber-700 gap-2"
+                >
+                  <Clock size={12} />
+                  Today — projected below
+                </div>
+              )
+            }
+
             if (item.type === 'month-divider') {
               return (
                 <div
@@ -548,12 +623,23 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-baseline gap-3">
+          <div className="flex items-baseline gap-4">
             <h1 className="text-2xl font-bold">Movements</h1>
             {withTotals.length > 0 && (
-              <span className={`text-lg font-semibold ${withTotals[withTotals.length - 1].total_cents >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                {formatCents(withTotals[withTotals.length - 1].total_cents)}
-              </span>
+              <>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Current</span>
+                  <span className={`text-lg font-semibold ${currentBalance >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    {formatCents(currentBalance)}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Year-end</span>
+                  <span className={`text-base font-medium ${projectedYearEnd >= 0 ? 'text-green-600' : 'text-red-600'} opacity-70`}>
+                    {formatCents(projectedYearEnd)}
+                  </span>
+                </div>
+              </>
             )}
           </div>
           <div className="flex items-center gap-2">

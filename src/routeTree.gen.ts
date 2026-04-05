@@ -20,6 +20,7 @@ import { Route as ApiAuthDevLoginRouteImport } from './routes/api/auth/dev-login
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 import { Route as AuthenticatedToolsCreatePlaylistRouteImport } from './routes/_authenticated/tools/create-playlist'
 import { Route as AuthenticatedFinancesSettingsRouteImport } from './routes/_authenticated/finances/settings'
+import { Route as AuthenticatedFinancesRecurringRouteImport } from './routes/_authenticated/finances/recurring'
 import { Route as AuthenticatedFinancesMovementsRouteImport } from './routes/_authenticated/finances/movements'
 import { Route as AuthenticatedFinancesCategoriesRouteImport } from './routes/_authenticated/finances/categories'
 import { Route as AuthenticatedFinancesBudgetsIndexRouteImport } from './routes/_authenticated/finances/budgets/index'
@@ -81,6 +82,12 @@ const AuthenticatedFinancesSettingsRoute =
     path: '/finances/settings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedFinancesRecurringRoute =
+  AuthenticatedFinancesRecurringRouteImport.update({
+    id: '/finances/recurring',
+    path: '/finances/recurring',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedFinancesMovementsRoute =
   AuthenticatedFinancesMovementsRouteImport.update({
     id: '/finances/movements',
@@ -111,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/finances/categories': typeof AuthenticatedFinancesCategoriesRoute
   '/finances/movements': typeof AuthenticatedFinancesMovementsRoute
+  '/finances/recurring': typeof AuthenticatedFinancesRecurringRoute
   '/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -127,6 +135,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/finances/categories': typeof AuthenticatedFinancesCategoriesRoute
   '/finances/movements': typeof AuthenticatedFinancesMovementsRoute
+  '/finances/recurring': typeof AuthenticatedFinancesRecurringRoute
   '/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -145,6 +154,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/finances/categories': typeof AuthenticatedFinancesCategoriesRoute
   '/_authenticated/finances/movements': typeof AuthenticatedFinancesMovementsRoute
+  '/_authenticated/finances/recurring': typeof AuthenticatedFinancesRecurringRoute
   '/_authenticated/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/_authenticated/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/finances/categories'
     | '/finances/movements'
+    | '/finances/recurring'
     | '/finances/settings'
     | '/tools/create-playlist'
     | '/api/auth/callback'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/finances/categories'
     | '/finances/movements'
+    | '/finances/recurring'
     | '/finances/settings'
     | '/tools/create-playlist'
     | '/api/auth/callback'
@@ -196,6 +208,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/finances/categories'
     | '/_authenticated/finances/movements'
+    | '/_authenticated/finances/recurring'
     | '/_authenticated/finances/settings'
     | '/_authenticated/tools/create-playlist'
     | '/api/auth/callback'
@@ -297,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFinancesSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/finances/recurring': {
+      id: '/_authenticated/finances/recurring'
+      path: '/finances/recurring'
+      fullPath: '/finances/recurring'
+      preLoaderRoute: typeof AuthenticatedFinancesRecurringRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/finances/movements': {
       id: '/_authenticated/finances/movements'
       path: '/finances/movements'
@@ -332,6 +352,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFinancesCategoriesRoute: typeof AuthenticatedFinancesCategoriesRoute
   AuthenticatedFinancesMovementsRoute: typeof AuthenticatedFinancesMovementsRoute
+  AuthenticatedFinancesRecurringRoute: typeof AuthenticatedFinancesRecurringRoute
   AuthenticatedFinancesSettingsRoute: typeof AuthenticatedFinancesSettingsRoute
   AuthenticatedToolsCreatePlaylistRoute: typeof AuthenticatedToolsCreatePlaylistRoute
   AuthenticatedToolsIndexRoute: typeof AuthenticatedToolsIndexRoute
@@ -343,6 +364,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFinancesCategoriesRoute: AuthenticatedFinancesCategoriesRoute,
   AuthenticatedFinancesMovementsRoute: AuthenticatedFinancesMovementsRoute,
+  AuthenticatedFinancesRecurringRoute: AuthenticatedFinancesRecurringRoute,
   AuthenticatedFinancesSettingsRoute: AuthenticatedFinancesSettingsRoute,
   AuthenticatedToolsCreatePlaylistRoute: AuthenticatedToolsCreatePlaylistRoute,
   AuthenticatedToolsIndexRoute: AuthenticatedToolsIndexRoute,
