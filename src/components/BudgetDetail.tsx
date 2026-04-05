@@ -84,6 +84,28 @@ export function BudgetDetail() {
 
   const { frozenMovementIds } = useCheckpointBoundary(checkpoints, movements)
 
+  const handleDownloadCsv = useCallback(() => {
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
+    const rows = [
+      ['Description', 'Date', 'Amount (USD)', 'Amount (Soles)', 'Accounting Date'],
+      ...items.map((item: BudgetItem) => [
+        escape(item.description || ''),
+        escape(formatDate(item.date)),
+        (item.amount_cents / 100).toFixed(2),
+        item.amount_local_cents != null ? (item.amount_local_cents / 100).toFixed(2) : '',
+        item.accounting_date ? escape(formatDate(item.accounting_date)) : '',
+      ]),
+    ]
+    const csv = rows.map((r) => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${budget?.name ?? 'budget'}-${budget?.year ?? ''}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [items, budget, formatDate])
+
   useEffect(() => {
     if (!highlight || items.length === 0 || scrolledRef.current) return
     const item = items.find((i) => i.movement_id === highlight)
@@ -177,28 +199,6 @@ export function BudgetDetail() {
       toast.error(err instanceof Error ? err.message : 'Failed to unsync')
     }
   }
-
-  const handleDownloadCsv = useCallback(() => {
-    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
-    const rows = [
-      ['Description', 'Date', 'Amount (USD)', 'Amount (Soles)', 'Accounting Date'],
-      ...items.map((item: BudgetItem) => [
-        escape(item.description || ''),
-        escape(formatDate(item.date)),
-        (item.amount_cents / 100).toFixed(2),
-        item.amount_local_cents != null ? (item.amount_local_cents / 100).toFixed(2) : '',
-        item.accounting_date ? escape(formatDate(item.accounting_date)) : '',
-      ]),
-    ]
-    const csv = rows.map((r) => r.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${budget?.name ?? 'budget'}-${budget?.year ?? ''}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-  }, [items, budget, formatDate])
 
   const handleUpdateAnnual = async () => {
     const cents = parseDollarsTocents(annualDraft)
