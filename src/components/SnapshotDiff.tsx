@@ -3,6 +3,7 @@ import { useLiveQuery } from '@tanstack/react-db'
 import { ArrowLeft } from 'lucide-react'
 import { movementsCollection, type Movement } from '#/lib/movements-collection.js'
 import { formatCents } from '#/lib/format.js'
+import { useDateFormat } from '#/lib/date-format.js'
 
 interface SnapshotMovement {
   id: string
@@ -150,22 +151,7 @@ export function SnapshotDiff({ snapshotData, onConfirm, onCancel }: SnapshotDiff
         {diff.modified.length > 0 && (
           <DiffSection title="Will revert changes" color="amber">
             {diff.modified.map(({ current, snapshot, changes }) => (
-              <div key={current.id} className="py-1.5 text-xs">
-                <div className="font-medium text-gray-700">{current.description || snapshot.description}</div>
-                <div className="mt-0.5 text-gray-500">
-                  {changes.map((field) => {
-                    const fieldKey = field === 'amount' ? 'amount_cents' : field
-                    const cur = field === 'amount' ? formatCents(current.amount_cents) : (current as unknown as Record<string, unknown>)[fieldKey]
-                    const snap = field === 'amount' ? formatCents(snapshot.amount_cents) : (snapshot as unknown as Record<string, unknown>)[fieldKey]
-                    return (
-                      <span key={field} className="mr-2">
-                        {field}: <span className="line-through text-red-500">{String(cur)}</span>{' '}
-                        <span className="text-green-600">{String(snap)}</span>
-                      </span>
-                    )
-                  })}
-                </div>
-              </div>
+              <ModifiedRow key={current.id} current={current} snapshot={snapshot} changes={changes} />
             ))}
           </DiffSection>
         )}
@@ -215,12 +201,53 @@ function DiffSection({
   )
 }
 
+function ModifiedRow({
+  current,
+  snapshot,
+  changes,
+}: {
+  current: Movement
+  snapshot: SnapshotMovement
+  changes: string[]
+}) {
+  const { formatDate } = useDateFormat()
+  return (
+    <div className="py-1.5 text-xs">
+      <div className="font-medium text-gray-700">{current.description || snapshot.description}</div>
+      <div className="mt-0.5 text-gray-500">
+        {changes.map((field) => {
+          const fieldKey = field === 'amount' ? 'amount_cents' : field
+          const cur =
+            field === 'amount'
+              ? formatCents(current.amount_cents)
+              : field === 'date'
+                ? formatDate(current.date)
+                : String((current as unknown as Record<string, unknown>)[fieldKey])
+          const snap =
+            field === 'amount'
+              ? formatCents(snapshot.amount_cents)
+              : field === 'date'
+                ? formatDate(snapshot.date)
+                : String((snapshot as unknown as Record<string, unknown>)[fieldKey])
+          return (
+            <span key={field} className="mr-2">
+              {field}: <span className="line-through text-red-500">{cur}</span>{' '}
+              <span className="text-green-600">{snap}</span>
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function DiffRow({ description, date, amount }: { description: string; date: string; amount: number }) {
+  const { formatDate } = useDateFormat()
   return (
     <div className="flex items-center justify-between py-1 text-xs">
       <span className="text-gray-700">{description || '(no description)'}</span>
       <div className="flex items-center gap-3">
-        <span className="text-gray-500">{date}</span>
+        <span className="text-gray-500">{formatDate(date)}</span>
         <span className={amount > 0 ? 'text-green-700' : 'text-red-700'}>{formatCents(amount)}</span>
       </div>
     </div>

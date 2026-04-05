@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Camera, Pin, Trash2, RotateCcw, X } from 'lucide-react'
 import {
   getSnapshots,
@@ -10,6 +10,7 @@ import {
   ensureTodaySnapshot,
 } from '#/server/snapshots.js'
 import { SnapshotDiff } from './SnapshotDiff.js'
+import { useDateFormat } from '#/lib/date-format.js'
 
 interface Snapshot {
   id: string
@@ -25,12 +26,23 @@ interface SnapshotPanelProps {
 }
 
 export function SnapshotPanel({ open, onClose }: SnapshotPanelProps) {
+  const { formatDate } = useDateFormat()
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [snapshotName, setSnapshotName] = useState('')
   const [diffSnapshotId, setDiffSnapshotId] = useState<string | null>(null)
   const [diffData, setDiffData] = useState<unknown[] | null>(null)
+
+  const formatSnapshotTimestamp = useMemo(
+    () => (date: Date | string) => {
+      const d = typeof date === 'string' ? new Date(date) : date
+      const datePart = formatDate(d.toISOString().slice(0, 10))
+      const timePart = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      return `${datePart}, ${timePart}`
+    },
+    [formatDate],
+  )
 
   const loadSnapshots = useCallback(async () => {
     setLoading(true)
@@ -155,13 +167,13 @@ export function SnapshotPanel({ open, onClose }: SnapshotPanelProps) {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="truncate text-sm font-medium text-gray-900">
-                          {snap.name || formatSnapshotDate(snap.created_at)}
+                          {snap.name || formatSnapshotTimestamp(snap.created_at)}
                         </span>
                         <TypeBadge type={snap.type} pinned={snap.pinned} />
                       </div>
                       {snap.name && (
                         <p className="text-xs text-gray-500">
-                          {formatSnapshotDate(snap.created_at)}
+                          {formatSnapshotTimestamp(snap.created_at)}
                         </p>
                       )}
                     </div>
@@ -225,13 +237,3 @@ function TypeBadge({ type, pinned }: { type: string; pinned: boolean }) {
   )
 }
 
-function formatSnapshotDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
