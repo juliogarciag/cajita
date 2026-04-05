@@ -14,6 +14,7 @@ const ALLOWED_TABLES = [
   'budget_item_notes',
   'team_members',
   'recurring_movement_templates',
+  'projection_scenarios',
 ]
 const TEAM_SCOPED_TABLES = [
   'movements',
@@ -21,6 +22,7 @@ const TEAM_SCOPED_TABLES = [
   'checkpoints',
   'budgets',
   'recurring_movement_templates',
+  'projection_scenarios',
 ]
 
 // Electric protocol query params to forward

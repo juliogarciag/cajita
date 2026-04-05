@@ -148,6 +148,17 @@ export interface BudgetItemNotesTable {
   updated_at: Generated<Date>
 }
 
+export interface ProjectionScenariosTable {
+  id: Generated<string>
+  team_id: string
+  name: string
+  script_id: string
+  inputs_json: string // jsonb — pg driver serializes to string; parse with JSON.parse()
+  active: Generated<boolean>
+  created_at: Generated<string>
+  updated_at: Generated<string>
+}
+
 export interface Database {
   teams: TeamsTable
   team_memberships: TeamMembershipsTable
@@ -163,4 +174,5 @@ export interface Database {
   user_preferences: UserPreferencesTable
   movement_notes: MovementNotesTable
   budget_item_notes: BudgetItemNotesTable
+  projection_scenarios: ProjectionScenariosTable
 }
