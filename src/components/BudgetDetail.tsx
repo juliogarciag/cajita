@@ -24,7 +24,6 @@ import {
 import { upsertBudgetItemNote, deleteBudgetItemNote, getTeamMembers } from '#/server/notes.js'
 import { updateBudget } from '#/server/budgets.js'
 import { BudgetItemRow } from './BudgetItemRow.js'
-import { ROW_HEIGHT } from './TableRow.js'
 
 export function BudgetDetail() {
   const { budgetId } = useParams({ strict: false }) as { budgetId: string }
@@ -315,7 +314,7 @@ export function BudgetDetail() {
         <div
           ref={tableBodyRef}
           className="overflow-auto"
-          style={{ height: Math.min(items.length * ROW_HEIGHT, window.innerHeight - 320) }}
+          style={{ maxHeight: 'calc(100vh - 370px)' }}
         >
           {items.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-gray-400">
