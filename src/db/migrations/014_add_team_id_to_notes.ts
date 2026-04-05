@@ -5,9 +5,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   // Add team_id to movement_notes (denormalized for Electric scoping)
   await db.schema
     .alterTable('movement_notes')
-    .addColumn('team_id', 'uuid', (col) =>
-      col.references('teams.id').onDelete('cascade'),
-    )
+    .addColumn('team_id', 'uuid', (col) => col.references('teams.id').onDelete('cascade'))
     .execute()
 
   // Backfill team_id from movements
@@ -27,9 +25,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   // Add team_id to budget_item_notes
   await db.schema
     .alterTable('budget_item_notes')
-    .addColumn('team_id', 'uuid', (col) =>
-      col.references('teams.id').onDelete('cascade'),
-    )
+    .addColumn('team_id', 'uuid', (col) => col.references('teams.id').onDelete('cascade'))
     .execute()
 
   // Backfill team_id from budget_items -> budgets

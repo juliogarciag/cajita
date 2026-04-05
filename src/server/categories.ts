@@ -143,7 +143,11 @@ export const deleteCategory = createServerFn({ method: 'POST' })
       throw new Error('Cannot delete a budget-owned category. Delete the budget instead.')
     }
 
-    await db.deleteFrom('categories').where('id', '=', data.id).where('team_id', '=', teamId).execute()
+    await db
+      .deleteFrom('categories')
+      .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
+      .execute()
 
     return { success: true }
   })

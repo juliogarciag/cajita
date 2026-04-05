@@ -15,7 +15,7 @@ export interface RecurringMovementTemplatesTable {
   category_id: string | null
   period_type: Generated<string> // 'monthly' | 'annual'
   day_of_month: number
-  month_of_year: number | null   // 1–12, required when period_type = 'annual'
+  month_of_year: number | null // 1–12, required when period_type = 'annual'
   start_date: string // YYYY-MM-DD
   end_date: string | null
   active: Generated<boolean>

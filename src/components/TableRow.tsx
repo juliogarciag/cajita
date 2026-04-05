@@ -49,11 +49,7 @@ interface TableCellProps {
 }
 
 export function TableCell({ children, width, className = '' }: TableCellProps) {
-  return (
-    <div className={`${width} shrink-0 px-1 ${className}`}>
-      {children}
-    </div>
-  )
+  return <div className={`${width} shrink-0 px-1 ${className}`}>{children}</div>
 }
 
 interface TableHeaderProps {
@@ -75,9 +71,5 @@ interface TableHeaderCellProps {
 }
 
 export function TableHeaderCell({ children, width, className = '' }: TableHeaderCellProps) {
-  return (
-    <div className={`${width} shrink-0 px-3 py-2 ${className}`}>
-      {children}
-    </div>
-  )
+  return <div className={`${width} shrink-0 px-3 py-2 ${className}`}>{children}</div>
 }

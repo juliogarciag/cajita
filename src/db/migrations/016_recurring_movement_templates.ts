@@ -6,9 +6,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createTable('recurring_movement_templates')
     .addColumn('id', 'uuid', (col) => col.primaryKey().defaultTo(sql`gen_random_uuid()`))
-    .addColumn('team_id', 'uuid', (col) =>
-      col.notNull().references('teams.id').onDelete('cascade'),
-    )
+    .addColumn('team_id', 'uuid', (col) => col.notNull().references('teams.id').onDelete('cascade'))
     .addColumn('description', 'text', (col) => col.notNull())
     .addColumn('amount_cents', 'integer', (col) => col.notNull())
     .addColumn('category_id', 'uuid', (col) => col.references('categories.id').onDelete('set null'))
@@ -40,10 +38,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     )
     .execute()
 
-  await db.schema
-    .alterTable('movements')
-    .addColumn('recurring_period', 'date')
-    .execute()
+  await db.schema.alterTable('movements').addColumn('recurring_period', 'date').execute()
 
   await db.schema
     .alterTable('movements')
@@ -65,10 +60,7 @@ export async function down(db: Kysely<unknown>): Promise<void> {
   await db.schema.alterTable('movements').dropColumn('recurring_period').execute()
   await db.schema.alterTable('movements').dropColumn('recurring_template_id').execute()
 
-  await db.schema
-    .dropIndex('idx_recurring_movement_templates_team_id')
-    .ifExists()
-    .execute()
+  await db.schema.dropIndex('idx_recurring_movement_templates_team_id').ifExists().execute()
 
   await db.schema.dropTable('recurring_movement_templates').ifExists().execute()
 }

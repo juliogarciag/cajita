@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { Plus, Pencil, Trash2, Power, PowerOff, RefreshCw } from 'lucide-react'
-import { recurringMovementTemplatesCollection, type RecurringMovementTemplate } from '#/lib/recurring-movement-templates-collection.js'
+import {
+  recurringMovementTemplatesCollection,
+  type RecurringMovementTemplate,
+} from '#/lib/recurring-movement-templates-collection.js'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { formatCents } from '#/lib/format.js'
 import { useDateFormat } from '#/lib/date-format.js'
@@ -22,8 +25,18 @@ export const Route = createFileRoute('/_authenticated/finances/recurring')({
 // ---------------------------------------------------------------------------
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ]
 
 interface TemplateFormData {
@@ -63,13 +76,21 @@ interface TemplateFormProps {
   submitLabel: string
 }
 
-function TemplateForm({ categories, initial = EMPTY_FORM, onSubmit, onCancel, submitLabel }: TemplateFormProps) {
+function TemplateForm({
+  categories,
+  initial = EMPTY_FORM,
+  onSubmit,
+  onCancel,
+  submitLabel,
+}: TemplateFormProps) {
   const [form, setForm] = useState<TemplateFormData>(initial)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const set = (field: keyof TemplateFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm((f) => ({ ...f, [field]: e.target.value }))
+  const set =
+    (field: keyof TemplateFormData) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [field]: e.target.value }))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -81,7 +102,8 @@ function TemplateForm({ categories, initial = EMPTY_FORM, onSubmit, onCancel, su
     if (isNaN(day) || day < 1 || day > 31) return setError('Day of month must be 1–31')
     if (form.period_type === 'annual') {
       const month = parseInt(form.month_of_year)
-      if (isNaN(month) || month < 1 || month > 12) return setError('Month of year is required for annual templates')
+      if (isNaN(month) || month < 1 || month > 12)
+        return setError('Month of year is required for annual templates')
     }
     if (!form.start_date) return setError('Start date is required')
     setSaving(true)
@@ -94,22 +116,31 @@ function TemplateForm({ categories, initial = EMPTY_FORM, onSubmit, onCancel, su
     }
   }
 
-  const inputClass = 'w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-gray-500 focus:outline-none'
+  const inputClass =
+    'w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-gray-500 focus:outline-none'
   const labelClass = 'block text-xs font-medium text-gray-600 mb-1'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-      )}
+      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
           <label className={labelClass}>Description</label>
-          <input className={inputClass} value={form.description} onChange={set('description')} placeholder="e.g. Salary" />
+          <input
+            className={inputClass}
+            value={form.description}
+            onChange={set('description')}
+            placeholder="e.g. Salary"
+          />
         </div>
         <div>
           <label className={labelClass}>Amount (use – for expenses)</label>
-          <input className={inputClass} value={form.amount_cents_input} onChange={set('amount_cents_input')} placeholder="e.g. -2413.96" />
+          <input
+            className={inputClass}
+            value={form.amount_cents_input}
+            onChange={set('amount_cents_input')}
+            placeholder="e.g. -2413.96"
+          />
         </div>
         <div>
           <label className={labelClass}>Period</label>
@@ -131,38 +162,68 @@ function TemplateForm({ categories, initial = EMPTY_FORM, onSubmit, onCancel, su
         {form.period_type === 'annual' && (
           <div>
             <label className={labelClass}>Month of year</label>
-            <select className={inputClass} value={form.month_of_year} onChange={set('month_of_year')}>
+            <select
+              className={inputClass}
+              value={form.month_of_year}
+              onChange={set('month_of_year')}
+            >
               <option value="">— Select month —</option>
               {MONTH_NAMES.map((name, i) => (
-                <option key={i + 1} value={String(i + 1)}>{name}</option>
+                <option key={i + 1} value={String(i + 1)}>
+                  {name}
+                </option>
               ))}
             </select>
           </div>
         )}
         <div>
           <label className={labelClass}>Day of month</label>
-          <input className={inputClass} value={form.day_of_month} onChange={set('day_of_month')} placeholder="e.g. 2" type="number" min="1" max="31" />
+          <input
+            className={inputClass}
+            value={form.day_of_month}
+            onChange={set('day_of_month')}
+            placeholder="e.g. 2"
+            type="number"
+            min="1"
+            max="31"
+          />
         </div>
         <div>
           <label className={labelClass}>Category (optional)</label>
           <select className={inputClass} value={form.category_id} onChange={set('category_id')}>
             <option value="">— None —</option>
             {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
             ))}
           </select>
         </div>
         <div>
           <label className={labelClass}>Start date</label>
-          <input className={inputClass} type="date" value={form.start_date} onChange={set('start_date')} />
+          <input
+            className={inputClass}
+            type="date"
+            value={form.start_date}
+            onChange={set('start_date')}
+          />
         </div>
         <div>
           <label className={labelClass}>End date (optional)</label>
-          <input className={inputClass} type="date" value={form.end_date} onChange={set('end_date')} />
+          <input
+            className={inputClass}
+            type="date"
+            value={form.end_date}
+            onChange={set('end_date')}
+          />
         </div>
       </div>
       <div className="flex justify-end gap-2 pt-2">
-        <button type="button" onClick={onCancel} className="rounded-md px-4 py-2 text-sm text-gray-600 hover:bg-gray-100">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-md px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+        >
           Cancel
         </button>
         <button
@@ -195,7 +256,9 @@ function TemplateRow({ template, categoryMap, onEdit, onToggle, onDelete }: Temp
   const isPositive = template.amount_cents > 0
 
   return (
-    <div className={`flex items-center gap-4 rounded-lg border px-4 py-3 ${template.active ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}>
+    <div
+      className={`flex items-center gap-4 rounded-lg border px-4 py-3 ${template.active ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}
+    >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium text-gray-900 truncate">{template.description}</span>
@@ -208,18 +271,23 @@ function TemplateRow({ template, categoryMap, onEdit, onToggle, onDelete }: Temp
             </span>
           )}
           {!template.active && (
-            <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-500">Inactive</span>
+            <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-500">
+              Inactive
+            </span>
           )}
         </div>
         <div className="mt-0.5 text-xs text-gray-500">
           {template.period_type === 'annual' && template.month_of_year != null
             ? `Every year on ${MONTH_NAMES[template.month_of_year - 1]} ${template.day_of_month}`
             : `Day ${template.day_of_month} of each month`}
-          {' · from '}{formatDate(template.start_date)}
+          {' · from '}
+          {formatDate(template.start_date)}
           {template.end_date ? ` to ${formatDate(template.end_date)}` : ''}
         </div>
       </div>
-      <span className={`shrink-0 text-sm font-semibold tabular-nums ${isPositive ? 'text-green-700' : 'text-red-700'}`}>
+      <span
+        className={`shrink-0 text-sm font-semibold tabular-nums ${isPositive ? 'text-green-700' : 'text-red-700'}`}
+      >
         {formatCents(template.amount_cents)}
       </span>
       <div className="flex items-center gap-1 shrink-0">
@@ -292,24 +360,27 @@ function RecurringPage() {
     setShowCreate(false)
   }, [])
 
-  const handleUpdate = useCallback(async (form: TemplateFormData) => {
-    if (!editingTemplate) return
-    const amount_cents = parseDollarsToAmountCents(form.amount_cents_input)!
-    await updateRecurringTemplate({
-      data: {
-        id: editingTemplate.id,
-        description: form.description.trim(),
-        amount_cents,
-        category_id: form.category_id || null,
-        period_type: form.period_type,
-        day_of_month: parseInt(form.day_of_month),
-        month_of_year: form.period_type === 'annual' ? parseInt(form.month_of_year) : null,
-        start_date: form.start_date,
-        end_date: form.end_date || null,
-      },
-    })
-    setEditingTemplate(null)
-  }, [editingTemplate])
+  const handleUpdate = useCallback(
+    async (form: TemplateFormData) => {
+      if (!editingTemplate) return
+      const amount_cents = parseDollarsToAmountCents(form.amount_cents_input)!
+      await updateRecurringTemplate({
+        data: {
+          id: editingTemplate.id,
+          description: form.description.trim(),
+          amount_cents,
+          category_id: form.category_id || null,
+          period_type: form.period_type,
+          day_of_month: parseInt(form.day_of_month),
+          month_of_year: form.period_type === 'annual' ? parseInt(form.month_of_year) : null,
+          start_date: form.start_date,
+          end_date: form.end_date || null,
+        },
+      })
+      setEditingTemplate(null)
+    },
+    [editingTemplate],
+  )
 
   const handleToggle = useCallback(async (template: RecurringMovementTemplate) => {
     await deactivateRecurringTemplate({ data: { id: template.id, active: !template.active } })
@@ -339,7 +410,10 @@ function RecurringPage() {
           </p>
         </div>
         <button
-          onClick={() => { setShowCreate(true); setEditingTemplate(null) }}
+          onClick={() => {
+            setShowCreate(true)
+            setEditingTemplate(null)
+          }}
           className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
         >
           <Plus size={16} />
@@ -350,7 +424,9 @@ function RecurringPage() {
       {deleteError && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {deleteError}
-          <button onClick={() => setDeleteError(null)} className="ml-3 underline">Dismiss</button>
+          <button onClick={() => setDeleteError(null)} className="ml-3 underline">
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -368,7 +444,9 @@ function RecurringPage() {
 
       {editingTemplate && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-5">
-          <h2 className="mb-4 text-sm font-semibold text-gray-700">Edit: {editingTemplate.description}</h2>
+          <h2 className="mb-4 text-sm font-semibold text-gray-700">
+            Edit: {editingTemplate.description}
+          </h2>
           <TemplateForm
             categories={categories}
             initial={{
@@ -377,7 +455,8 @@ function RecurringPage() {
               category_id: editingTemplate.category_id ?? '',
               period_type: (editingTemplate.period_type ?? 'monthly') as 'monthly' | 'annual',
               day_of_month: String(editingTemplate.day_of_month),
-              month_of_year: editingTemplate.month_of_year != null ? String(editingTemplate.month_of_year) : '',
+              month_of_year:
+                editingTemplate.month_of_year != null ? String(editingTemplate.month_of_year) : '',
               start_date: editingTemplate.start_date,
               end_date: editingTemplate.end_date ?? '',
             }}
@@ -392,7 +471,9 @@ function RecurringPage() {
         <div className="rounded-lg border border-gray-200 bg-white px-6 py-12 text-center">
           <RefreshCw size={24} className="mx-auto mb-3 text-gray-300" />
           <p className="text-gray-500">No recurring templates yet.</p>
-          <p className="mt-1 text-sm text-gray-400">Add salary, mortgage, or any fixed monthly movement.</p>
+          <p className="mt-1 text-sm text-gray-400">
+            Add salary, mortgage, or any fixed monthly movement.
+          </p>
         </div>
       )}
 
@@ -430,4 +511,3 @@ function RecurringPage() {
     </div>
   )
 }
-

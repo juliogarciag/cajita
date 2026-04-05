@@ -14,7 +14,14 @@ function stripFormatting(v: string): string {
   return v.replace(/[^0-9.\-]/g, '')
 }
 
-export function AmountInput({ value, onSave, onCancel, onTab, onEnter, className = '' }: AmountInputProps) {
+export function AmountInput({
+  value,
+  onSave,
+  onCancel,
+  onTab,
+  onEnter,
+  className = '',
+}: AmountInputProps) {
   const [draft, setDraft] = useState(() => stripFormatting(value))
   const inputRef = useRef<HTMLInputElement>(null)
 

@@ -17,7 +17,13 @@ import type { TeamMember } from '#/lib/team-members-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import { createCheckpoint, deleteCheckpoint } from '#/server/checkpoints.js'
-import { upsertMovementNote, deleteMovementNote, upsertBudgetItemNote, deleteBudgetItemNote, getTeamMembers } from '#/server/notes.js'
+import {
+  upsertMovementNote,
+  deleteMovementNote,
+  upsertBudgetItemNote,
+  deleteBudgetItemNote,
+  getTeamMembers,
+} from '#/server/notes.js'
 import { confirmRecurringMovement } from '#/server/recurring-movements.js'
 import { EditableCell } from './EditableCell.js'
 import { SnapshotPanel } from './SnapshotPanel.js'
@@ -62,21 +68,17 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     q.from({ c: checkpointsCollection }).orderBy(({ c }) => c.created_at, 'desc'),
   )
 
-  const { data: budgetItems } = useLiveQuery((q) =>
-    q.from({ bi: budgetItemsCollection }),
-  )
+  const { data: budgetItems } = useLiveQuery((q) => q.from({ bi: budgetItemsCollection }))
 
-  const { data: budgets } = useLiveQuery((q) =>
-    q.from({ b: budgetsCollection }),
-  )
+  const { data: budgets } = useLiveQuery((q) => q.from({ b: budgetsCollection }))
 
-  const { data: movementNotes } = useLiveQuery((q) =>
-    q.from({ n: movementNotesCollection }),
-  )
+  const { data: movementNotes } = useLiveQuery((q) => q.from({ n: movementNotesCollection }))
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   useEffect(() => {
-    getTeamMembers().then(setTeamMembers).catch(() => {})
+    getTeamMembers()
+      .then(setTeamMembers)
+      .catch(() => {})
   }, [])
 
   const categoryMap = useMemo(() => {
@@ -87,9 +89,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     return map
   }, [categories])
 
-  const { data: budgetItemNotes } = useLiveQuery((q) =>
-    q.from({ n: budgetItemNotesCollection }),
-  )
+  const { data: budgetItemNotes } = useLiveQuery((q) => q.from({ n: budgetItemNotesCollection }))
 
   // Map movement IDs to their notes
   const movementNoteMap = useMemo(() => {
@@ -130,7 +130,10 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     return map
   }, [budgetItems, budgets])
 
-  const { activeCheckpoint, boundary: checkpointBoundary } = useCheckpointBoundary(checkpoints, movements)
+  const { activeCheckpoint, boundary: checkpointBoundary } = useCheckpointBoundary(
+    checkpoints,
+    movements,
+  )
 
   // Compute running totals and frozen state
   const allWithTotals: MovementWithTotal[] = useMemo(() => {
@@ -158,7 +161,9 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   // Current balance: sum of confirmed movements with date <= today
   const currentBalance = useMemo(() => {
     return movements
-      .filter((m: Movement) => m.date <= TODAY && (m.confirmed !== false || m.source !== 'recurring'))
+      .filter(
+        (m: Movement) => m.date <= TODAY && (m.confirmed !== false || m.source !== 'recurring'),
+      )
       .reduce((sum: number, m: Movement) => sum + m.amount_cents, 0)
   }, [movements])
 
@@ -202,7 +207,12 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           month: 'long',
           year: 'numeric',
         })
-        result.push({ type: 'month-divider', label, isYearBoundary, height: isYearBoundary ? 32 : 28 })
+        result.push({
+          type: 'month-divider',
+          label,
+          isYearBoundary,
+          height: isYearBoundary ? 32 : 28,
+        })
       }
       result.push({ type: 'row', data: row })
       prevMonth = curMonth
@@ -238,7 +248,9 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     if (initialScroll.current) {
       initialScroll.current = false
       if (highlightId) {
-        const idx = tableItems.findIndex((item) => item.type === 'row' && item.data.id === highlightId)
+        const idx = tableItems.findIndex(
+          (item) => item.type === 'row' && item.data.id === highlightId,
+        )
         if (idx >= 0) {
           setTimeout(() => {
             virtualizer.scrollToIndex(idx, { align: 'center' })
@@ -311,13 +323,10 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     await confirmRecurringMovement({ data: { movementId: id } })
   }, [])
 
-  const handleCreateCheckpoint = useCallback(
-    async (movementId: string, actualCents: number) => {
-      await createCheckpoint({ data: { movement_id: movementId, actual_cents: actualCents } })
-      setCheckpointRowId(null)
-    },
-    [],
-  )
+  const handleCreateCheckpoint = useCallback(async (movementId: string, actualCents: number) => {
+    await createCheckpoint({ data: { movement_id: movementId, actual_cents: actualCents } })
+    setCheckpointRowId(null)
+  }, [])
 
   const handleUnfreeze = useCallback(async () => {
     if (!activeCheckpoint) return
@@ -327,20 +336,24 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   const rowCells = (row: MovementWithTotal) => {
     const isPositive = row.amount_cents > 0
     const frozen = row.frozen
-    const budgetManaged = (row.source === 'budget_sync' || row.source === 'budget_remaining') && movementToBudgetId.has(row.id)
+    const budgetManaged =
+      (row.source === 'budget_sync' || row.source === 'budget_remaining') &&
+      movementToBudgetId.has(row.id)
     const isUnconfirmedRecurring = row.source === 'recurring' && !row.confirmed
     const isFutureUnconfirmedRecurring = isUnconfirmedRecurring && row.date > TODAY
     const disabled = frozen || budgetManaged
     return (
       <>
         <div className="w-[22px] shrink-0 flex items-center pl-[10px]">
-          {frozen
-            ? <Lock size={10} className="text-indigo-400" />
-            : budgetManaged
-            ? <Lock size={10} className="text-cyan-500" />
-            : isUnconfirmedRecurring
-            ? <Clock size={10} className="text-amber-400" />
-            : <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
+          {frozen ? (
+            <Lock size={10} className="text-indigo-400" />
+          ) : budgetManaged ? (
+            <Lock size={10} className="text-cyan-500" />
+          ) : isUnconfirmedRecurring ? (
+            <Clock size={10} className="text-amber-400" />
+          ) : (
+            <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+          )}
         </div>
         <div className="min-w-[260px] flex-1 pr-1" data-cell="description">
           <EditableCell
@@ -400,7 +413,8 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
               ? (budgetItemNoteMap.get(budgetItemId) ?? null)
               : (movementNoteMap.get(row.id) ?? null)
             const onSave = budgetItemId
-              ? (content: string) => upsertBudgetItemNote({ data: { budget_item_id: budgetItemId, content } })
+              ? (content: string) =>
+                  upsertBudgetItemNote({ data: { budget_item_id: budgetItemId, content } })
               : (content: string) => upsertMovementNote({ data: { movement_id: row.id, content } })
             const onDelete = budgetItemId
               ? () => deleteBudgetItemNote({ data: { budget_item_id: budgetItemId } })
@@ -436,7 +450,11 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           {!frozen && (
             <RowActionsMenu
               onCheckpoint={row.date > TODAY ? undefined : () => setCheckpointRowId(row.id)}
-              onDelete={budgetManaged || isFutureUnconfirmedRecurring ? undefined : () => handleDelete(row.id)}
+              onDelete={
+                budgetManaged || isFutureUnconfirmedRecurring
+                  ? undefined
+                  : () => handleDelete(row.id)
+              }
             />
           )}
         </div>
@@ -445,32 +463,37 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   }
 
   const renderRow = (row: MovementWithTotal, virtualStart: number, virtualSize: number) => {
-    const budgetManaged = (row.source === 'budget_sync' || row.source === 'budget_remaining') && movementToBudgetId.has(row.id)
+    const budgetManaged =
+      (row.source === 'budget_sync' || row.source === 'budget_remaining') &&
+      movementToBudgetId.has(row.id)
     const isUnconfirmedRecurring = row.source === 'recurring' && !row.confirmed
     const rowClassName = [
       'w-full transition-colors duration-1000',
       row.source === 'budget_remaining' ? 'italic text-gray-400' : '',
       isUnconfirmedRecurring ? 'italic text-gray-500 bg-amber-50/40' : '',
-    ].filter(Boolean).join(' ')
+    ]
+      .filter(Boolean)
+      .join(' ')
     return (
-    <TableRow
-      key={row.id}
-      frozen={row.frozen || budgetManaged}
-      highlight={highlightedId === row.id}
-      className={rowClassName}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: virtualSize,
-        transform: `translateY(${virtualStart}px)`,
-      }}
-      data-row-id={row.id}
-    >
-      {rowCells(row)}
-    </TableRow>
-  )}
+      <TableRow
+        key={row.id}
+        frozen={row.frozen || budgetManaged}
+        highlight={highlightedId === row.id}
+        className={rowClassName}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: virtualSize,
+          transform: `translateY(${virtualStart}px)`,
+        }}
+        data-row-id={row.id}
+      >
+        {rowCells(row)}
+      </TableRow>
+    )
+  }
 
   // Extra height for the checkpoint divider row
   const dividerHeight = activeCheckpoint && lastFrozenIndex >= 0 ? 32 : 0
@@ -548,7 +571,9 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
       <div
         ref={parentRef}
         className="overflow-auto"
-        style={{ height: Math.min(virtualizer.getTotalSize() + dividerHeight, window.innerHeight - 260) }}
+        style={{
+          height: Math.min(virtualizer.getTotalSize() + dividerHeight, window.innerHeight - 260),
+        }}
       >
         <div
           style={{
@@ -616,9 +641,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
   )
 
   // Find the row for the checkpoint popover
-  const checkpointRow = checkpointRowId
-    ? withTotals.find((m) => m.id === checkpointRowId)
-    : null
+  const checkpointRow = checkpointRowId ? withTotals.find((m) => m.id === checkpointRowId) : null
 
   return (
     <div className="flex flex-col gap-4">
@@ -629,14 +652,22 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
             {withTotals.length > 0 && (
               <>
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Current</span>
-                  <span className={`text-lg font-semibold ${currentBalance >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                    Current
+                  </span>
+                  <span
+                    className={`text-lg font-semibold ${currentBalance >= 0 ? 'text-green-700' : 'text-red-700'}`}
+                  >
                     {formatCents(currentBalance)}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Year-end</span>
-                  <span className={`text-base font-medium ${projectedYearEnd >= 0 ? 'text-green-600' : 'text-red-600'} opacity-70`}>
+                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                    Year-end
+                  </span>
+                  <span
+                    className={`text-base font-medium ${projectedYearEnd >= 0 ? 'text-green-600' : 'text-red-600'} opacity-70`}
+                  >
                     {formatCents(projectedYearEnd)}
                   </span>
                 </div>

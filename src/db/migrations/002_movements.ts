@@ -52,7 +52,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .execute()
 
   // Add check constraint for snapshot type
-  await sql`ALTER TABLE snapshots ADD CONSTRAINT chk_snapshot_type CHECK (type IN ('automatic', 'manual'))`.execute(db)
+  await sql`ALTER TABLE snapshots ADD CONSTRAINT chk_snapshot_type CHECK (type IN ('automatic', 'manual'))`.execute(
+    db,
+  )
 
   // Seed initial categories
   await db

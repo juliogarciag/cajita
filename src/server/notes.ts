@@ -75,10 +75,7 @@ export const deleteMovementNote = createServerFn({ method: 'POST' })
       .where('team_id', '=', teamId)
       .executeTakeFirstOrThrow()
 
-    await db
-      .deleteFrom('movement_notes')
-      .where('movement_id', '=', data.movement_id)
-      .execute()
+    await db.deleteFrom('movement_notes').where('movement_id', '=', data.movement_id).execute()
 
     return { success: true }
   })

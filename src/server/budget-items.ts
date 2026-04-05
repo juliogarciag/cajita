@@ -88,7 +88,8 @@ export const updateBudgetItem = createServerFn({ method: 'POST' })
 
     if (updates.description !== undefined) toSet.description = updates.description
     if (updates.date !== undefined) toSet.date = updates.date
-    if (updates.amount_local_cents !== undefined) toSet.amount_local_cents = updates.amount_local_cents
+    if (updates.amount_local_cents !== undefined)
+      toSet.amount_local_cents = updates.amount_local_cents
     if (updates.amount_cents !== undefined) toSet.amount_cents = updates.amount_cents
     if (updates.accounting_date !== undefined) toSet.accounting_date = updates.accounting_date
 

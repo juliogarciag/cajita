@@ -11,12 +11,8 @@ interface CheckpointBoundary {
  * Computes the checkpoint boundary and set of frozen movement IDs
  * from a list of checkpoints and movements.
  */
-export function useCheckpointBoundary(
-  checkpoints: Checkpoint[],
-  movements: Movement[],
-) {
-  const activeCheckpoint: Checkpoint | null =
-    checkpoints.length > 0 ? checkpoints[0] : null
+export function useCheckpointBoundary(checkpoints: Checkpoint[], movements: Movement[]) {
+  const activeCheckpoint: Checkpoint | null = checkpoints.length > 0 ? checkpoints[0] : null
 
   const boundary = useMemo<CheckpointBoundary | null>(() => {
     if (!activeCheckpoint) return null

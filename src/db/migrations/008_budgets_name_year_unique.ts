@@ -16,8 +16,5 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {
-  await db.schema
-    .alterTable('budgets')
-    .dropConstraint('budgets_name_year_key')
-    .execute()
+  await db.schema.alterTable('budgets').dropConstraint('budgets_name_year_key').execute()
 }

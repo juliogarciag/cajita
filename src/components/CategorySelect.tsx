@@ -10,7 +10,13 @@ interface CategorySelectProps {
   onEnter?: () => void
 }
 
-export function CategorySelect({ value, onChange, autoFocus, onTab, onEnter }: CategorySelectProps) {
+export function CategorySelect({
+  value,
+  onChange,
+  autoFocus,
+  onTab,
+  onEnter,
+}: CategorySelectProps) {
   const { data: categories } = useLiveQuery((q) =>
     q.from({ c: categoriesCollection }).orderBy(({ c }) => c.sort_order, 'asc'),
   )

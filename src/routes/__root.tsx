@@ -31,9 +31,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
-        <TooltipProvider>
-          {children}
-        </TooltipProvider>
+        <TooltipProvider>{children}</TooltipProvider>
         <Toaster position="bottom-right" richColors />
         <Scripts />
       </body>

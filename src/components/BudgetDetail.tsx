@@ -39,15 +39,11 @@ export function BudgetDetail() {
   const [editingAnnual, setEditingAnnual] = useState(false)
   const [annualDraft, setAnnualDraft] = useState('')
 
-  const { data: budgets } = useLiveQuery((q) =>
-    q.from({ b: budgetsCollection }),
-  )
+  const { data: budgets } = useLiveQuery((q) => q.from({ b: budgetsCollection }))
 
   const budget = budgets.find((b) => b.id === budgetId)
 
-  const { data: categories } = useLiveQuery((q) =>
-    q.from({ c: categoriesCollection }),
-  )
+  const { data: categories } = useLiveQuery((q) => q.from({ c: categoriesCollection }))
 
   const budgetColor = budget
     ? (categories.find((c) => c.id === budget.category_id)?.color ?? '#6b7280')
@@ -60,21 +56,19 @@ export function BudgetDetail() {
       .orderBy(({ bi }) => bi.sort_position, 'asc'),
   )
 
-  const { data: movements } = useLiveQuery((q) =>
-    q.from({ m: movementsCollection }),
-  )
+  const { data: movements } = useLiveQuery((q) => q.from({ m: movementsCollection }))
 
   const { data: checkpoints } = useLiveQuery((q) =>
     q.from({ c: checkpointsCollection }).orderBy(({ c }) => c.created_at, 'desc'),
   )
 
-  const { data: budgetItemNotes } = useLiveQuery((q) =>
-    q.from({ n: budgetItemNotesCollection }),
-  )
+  const { data: budgetItemNotes } = useLiveQuery((q) => q.from({ n: budgetItemNotesCollection }))
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   useEffect(() => {
-    getTeamMembers().then(setTeamMembers).catch(() => {})
+    getTeamMembers()
+      .then(setTeamMembers)
+      .catch(() => {})
   }, [])
 
   const budgetItemNoteMap = useMemo(
@@ -125,10 +119,7 @@ export function BudgetDetail() {
     return (
       <div className="flex flex-col items-center gap-4 py-12">
         <p className="text-gray-500">Budget not found.</p>
-        <Link
-          to="/finances/budgets"
-          className="text-sm text-blue-600 hover:underline"
-        >
+        <Link to="/finances/budgets" className="text-sm text-blue-600 hover:underline">
           Back to budgets
         </Link>
       </div>
@@ -166,7 +157,15 @@ export function BudgetDetail() {
     }
   }
 
-  const handleUpdate = async (id: string, updates: Partial<Pick<BudgetItem, 'description' | 'date' | 'amount_local_cents' | 'amount_cents' | 'accounting_date'>>) => {
+  const handleUpdate = async (
+    id: string,
+    updates: Partial<
+      Pick<
+        BudgetItem,
+        'description' | 'date' | 'amount_local_cents' | 'amount_cents' | 'accounting_date'
+      >
+    >,
+  ) => {
     try {
       await updateBudgetItem({ data: { id, ...updates } })
     } catch (err: unknown) {
@@ -284,7 +283,9 @@ export function BudgetDetail() {
             </span>
             <span className="text-gray-500">
               Remaining:{' '}
-              <span className={`font-medium ${remainingCents < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+              <span
+                className={`font-medium ${remainingCents < 0 ? 'text-red-600' : 'text-gray-900'}`}
+              >
                 {formatCents(remainingCents)}
               </span>
             </span>
@@ -300,7 +301,10 @@ export function BudgetDetail() {
       </div>
 
       {/* Items table */}
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white" data-editable-table>
+      <div
+        className="overflow-hidden rounded-lg border border-gray-200 bg-white"
+        data-editable-table
+      >
         <div className="flex border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
           <div className="w-[22px] shrink-0" />
           <div className="min-w-[200px] flex-1 px-3 py-2">Description</div>
@@ -322,9 +326,7 @@ export function BudgetDetail() {
             </div>
           ) : (
             items.map((item: BudgetItem) => {
-              const isFrozen = item.movement_id
-                ? frozenMovementIds.has(item.movement_id)
-                : false
+              const isFrozen = item.movement_id ? frozenMovementIds.has(item.movement_id) : false
               return (
                 <BudgetItemRow
                   key={item.id}
@@ -337,7 +339,9 @@ export function BudgetDetail() {
                   noteOpen={noteOpenId === item.id}
                   teamMembers={teamMembers}
                   onNoteOpenChange={(open) => setNoteOpenId(open ? item.id : null)}
-                  onNoteSave={(content) => upsertBudgetItemNote({ data: { budget_item_id: item.id, content } })}
+                  onNoteSave={(content) =>
+                    upsertBudgetItemNote({ data: { budget_item_id: item.id, content } })
+                  }
                   onNoteDelete={() => deleteBudgetItemNote({ data: { budget_item_id: item.id } })}
                   onUpdate={handleUpdate}
                   onDelete={handleDelete}
@@ -349,8 +353,6 @@ export function BudgetDetail() {
           )}
         </div>
       </div>
-
-
     </div>
   )
 }

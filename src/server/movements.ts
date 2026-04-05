@@ -162,7 +162,11 @@ export const deleteMovement = createServerFn({ method: 'POST' })
       throw new Error('Cannot delete a future unconfirmed recurring movement')
     }
 
-    await db.deleteFrom('movements').where('id', '=', data.id).where('team_id', '=', teamId).execute()
+    await db
+      .deleteFrom('movements')
+      .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
+      .execute()
     return { success: true }
   })
 

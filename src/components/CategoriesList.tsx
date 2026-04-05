@@ -3,7 +3,12 @@ import { useLiveQuery } from '@tanstack/react-db'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
-import { createCategory, updateCategory, deleteCategory, archiveCategory } from '#/server/categories.js'
+import {
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  archiveCategory,
+} from '#/server/categories.js'
 import { budgetColors } from '#/lib/budget-colors.js'
 import { ConfirmButton } from './ConfirmButton.js'
 
@@ -20,10 +25,7 @@ export function CategoriesList() {
     q.from({ c: categoriesCollection }).orderBy(({ c }) => c.sort_order, 'asc'),
   )
 
-  const archivedCount = useMemo(
-    () => categories.filter((c) => c.archived).length,
-    [categories],
-  )
+  const archivedCount = useMemo(() => categories.filter((c) => c.archived).length, [categories])
 
   const visibleCategories = useMemo(
     () => (showArchived ? categories : categories.filter((c) => !c.archived)),
@@ -162,7 +164,11 @@ export function CategoriesList() {
               const isEditing = editingId === cat.id
 
               return (
-                <div key={cat.id} data-category-row={cat.id} className={`flex items-center gap-3 px-4 py-3 ${cat.archived ? 'opacity-50' : ''}`}>
+                <div
+                  key={cat.id}
+                  data-category-row={cat.id}
+                  className={`flex items-center gap-3 px-4 py-3 ${cat.archived ? 'opacity-50' : ''}`}
+                >
                   {isEditing ? (
                     <>
                       <div className="flex gap-1.5">

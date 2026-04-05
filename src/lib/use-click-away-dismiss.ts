@@ -4,10 +4,7 @@ import { useEffect } from 'react'
  * Dismisses a confirmation state when clicking outside a `[data-confirm-delete]` element.
  * Used for delete confirmation buttons that should close on click-away.
  */
-export function useClickAwayDismiss(
-  isActive: boolean,
-  dismiss: () => void,
-) {
+export function useClickAwayDismiss(isActive: boolean, dismiss: () => void) {
   useEffect(() => {
     if (!isActive) return
     const handler = (e: MouseEvent) => {

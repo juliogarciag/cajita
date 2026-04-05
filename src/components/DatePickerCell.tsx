@@ -19,11 +19,14 @@ export function DatePickerCell({ value, onSave, onCancel, onTab, onEnter }: Date
   const { dateFnsFormat } = useDateFormat()
   const savedRef = useRef(false)
 
-  const wrappedOnSave = useCallback((isoDate: string) => {
-    if (savedRef.current) return
-    savedRef.current = true
-    onSave(isoDate)
-  }, [onSave])
+  const wrappedOnSave = useCallback(
+    (isoDate: string) => {
+      if (savedRef.current) return
+      savedRef.current = true
+      onSave(isoDate)
+    },
+    [onSave],
+  )
 
   const wrappedOnCancel = useCallback(() => {
     if (savedRef.current) return

@@ -48,18 +48,12 @@ export async function down(db: Kysely<unknown>): Promise<void> {
     DROP CONSTRAINT IF EXISTS recurring_movement_templates_month_of_year_check
   `.execute(db)
 
-  await db.schema
-    .alterTable('recurring_movement_templates')
-    .dropColumn('month_of_year')
-    .execute()
+  await db.schema.alterTable('recurring_movement_templates').dropColumn('month_of_year').execute()
 
   await sql`
     ALTER TABLE recurring_movement_templates
     DROP CONSTRAINT IF EXISTS recurring_movement_templates_period_type_check
   `.execute(db)
 
-  await db.schema
-    .alterTable('recurring_movement_templates')
-    .dropColumn('period_type')
-    .execute()
+  await db.schema.alterTable('recurring_movement_templates').dropColumn('period_type').execute()
 }

@@ -99,7 +99,10 @@ export const generateRecurringMovements = createServerFn({ method: 'POST' })
           const date = toISODate(year, monthOfYear, day)
 
           // Skip if before start_date
-          if (date < template.start_date) { year++; continue }
+          if (date < template.start_date) {
+            year++
+            continue
+          }
 
           // Stop if after end_date
           if (endDateStr && date > endDateStr) break
@@ -119,10 +122,7 @@ export const generateRecurringMovements = createServerFn({ method: 'POST' })
         let year = genStartYear
         let month = genStartMonth
 
-        while (
-          year < horizon.year ||
-          (year === horizon.year && month <= horizon.month)
-        ) {
+        while (year < horizon.year || (year === horizon.year && month <= horizon.month)) {
           // Respect end_date
           if (endDateStr) {
             const endDate = new Date(endDateStr)
@@ -139,7 +139,10 @@ export const generateRecurringMovements = createServerFn({ method: 'POST' })
           if (result) generated++
 
           month++
-          if (month > 12) { month = 1; year++ }
+          if (month > 12) {
+            month = 1
+            year++
+          }
         }
       }
     }
@@ -212,10 +215,10 @@ export const createRecurringTemplate = createServerFn({ method: 'POST' })
         start_date: z.string(), // YYYY-MM-DD
         end_date: z.string().nullable().optional(),
       })
-      .refine(
-        (d) => d.period_type !== 'annual' || d.month_of_year != null,
-        { message: 'month_of_year is required for annual templates', path: ['month_of_year'] },
-      ),
+      .refine((d) => d.period_type !== 'annual' || d.month_of_year != null, {
+        message: 'month_of_year is required for annual templates',
+        path: ['month_of_year'],
+      }),
   )
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
@@ -306,7 +309,7 @@ export const updateRecurringTemplate = createServerFn({ method: 'POST' })
         .where('confirmed', '=', false)
         .where('date', '>=', today)
         .execute()
-    // Otherwise, delete unconfirmed future instances that fall after the new end_date
+      // Otherwise, delete unconfirmed future instances that fall after the new end_date
     } else if (updates.end_date) {
       await db
         .deleteFrom('movements')

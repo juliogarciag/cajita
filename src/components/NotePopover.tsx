@@ -51,21 +51,30 @@ function Toolbar({ editor }: { editor: Editor | null }) {
     <div className="flex items-center gap-0.5 border-b border-gray-100 px-2 py-1">
       <button
         type="button"
-        onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleBold().run() }}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          editor.chain().focus().toggleBold().run()
+        }}
         className={`rounded p-1 text-xs hover:bg-gray-100 ${editor.isActive('bold') ? 'bg-gray-200 text-gray-900' : 'text-gray-500'}`}
       >
         <Bold size={12} />
       </button>
       <button
         type="button"
-        onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleItalic().run() }}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          editor.chain().focus().toggleItalic().run()
+        }}
         className={`rounded p-1 text-xs hover:bg-gray-100 ${editor.isActive('italic') ? 'bg-gray-200 text-gray-900' : 'text-gray-500'}`}
       >
         <Italic size={12} />
       </button>
       <button
         type="button"
-        onMouseDown={(e) => { e.preventDefault(); setLink() }}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          setLink()
+        }}
         className={`rounded p-1 text-xs hover:bg-gray-100 ${editor.isActive('link') ? 'bg-gray-200 text-gray-900' : 'text-gray-500'}`}
       >
         <Link2 size={12} />
@@ -73,7 +82,10 @@ function Toolbar({ editor }: { editor: Editor | null }) {
       {editor.isActive('link') && (
         <button
           type="button"
-          onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().unsetLink().run() }}
+          onMouseDown={(e) => {
+            e.preventDefault()
+            editor.chain().focus().unsetLink().run()
+          }}
           className="rounded p-1 text-xs text-gray-500 hover:bg-gray-100"
         >
           <Link2Off size={12} />
@@ -83,24 +95,33 @@ function Toolbar({ editor }: { editor: Editor | null }) {
   )
 }
 
-export function NotePopover({ note, onOpenChange, teamMembers, onSave, onDelete }: NotePopoverProps) {
+export function NotePopover({
+  note,
+  onOpenChange,
+  teamMembers,
+  onSave,
+  onDelete,
+}: NotePopoverProps) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const memberMap = new Map(teamMembers.map((m) => [m.id, m.name ?? m.id]))
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ link: false }),
-      Link.configure({
-        openOnClick: false,
-        autolink: true,
-        HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
-      }),
-    ],
-    content: note?.content ?? '',
-    immediatelyRender: false,
-  }, [note?.id ?? 'new', note?.content ?? ''])
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit.configure({ link: false }),
+        Link.configure({
+          openOnClick: false,
+          autolink: true,
+          HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
+        }),
+      ],
+      content: note?.content ?? '',
+      immediatelyRender: false,
+    },
+    [note?.id ?? 'new', note?.content ?? ''],
+  )
 
   const charCount = editor?.getText().length ?? 0
   const MAX_CHARS = 10000
@@ -169,9 +190,17 @@ export function NotePopover({ note, onOpenChange, teamMembers, onSave, onDelete 
           {/* Attribution */}
           {note && (
             <div className="mb-2 text-[11px] text-gray-400">
-              {createdByName && <span>Created by <span className="text-gray-600">{createdByName}</span></span>}
+              {createdByName && (
+                <span>
+                  Created by <span className="text-gray-600">{createdByName}</span>
+                </span>
+              )}
               {showEditor && updatedByName && (
-                <span> · Edited by <span className="text-gray-600">{updatedByName}</span> · {formatRelativeTime(note.updated_at)}</span>
+                <span>
+                  {' '}
+                  · Edited by <span className="text-gray-600">{updatedByName}</span> ·{' '}
+                  {formatRelativeTime(note.updated_at)}
+                </span>
               )}
               {!showEditor && note.updated_at && createdByName && (
                 <span> · {formatRelativeTime(note.updated_at)}</span>
@@ -182,7 +211,9 @@ export function NotePopover({ note, onOpenChange, teamMembers, onSave, onDelete 
           {/* Char count + error */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className={`text-[11px] ${overLimit ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+              <span
+                className={`text-[11px] ${overLimit ? 'text-red-500 font-medium' : 'text-gray-400'}`}
+              >
                 {charCount}/{MAX_CHARS}
               </span>
               {error && <span className="text-[11px] text-red-500">{error}</span>}
@@ -223,7 +254,12 @@ interface NoteIconButtonProps {
   children: React.ReactNode
 }
 
-export function NoteIconButton({ hasNote, open: isOpen, onOpenChange, children }: NoteIconButtonProps) {
+export function NoteIconButton({
+  hasNote,
+  open: isOpen,
+  onOpenChange,
+  children,
+}: NoteIconButtonProps) {
   return (
     <RadixPopover.Root open={isOpen} onOpenChange={onOpenChange}>
       <RadixPopover.Trigger asChild>
@@ -233,8 +269,8 @@ export function NoteIconButton({ hasNote, open: isOpen, onOpenChange, children }
             isOpen
               ? 'bg-amber-100 text-amber-600'
               : hasNote
-              ? 'text-amber-500 hover:bg-amber-50'
-              : 'text-gray-300 hover:bg-gray-100 hover:text-gray-500'
+                ? 'text-amber-500 hover:bg-amber-50'
+                : 'text-gray-300 hover:bg-gray-100 hover:text-gray-500'
           }`}
           title={hasNote ? 'View note' : 'Add note'}
         >

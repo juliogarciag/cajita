@@ -37,9 +37,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn('amount_local_cents', 'integer')
     .addColumn('amount_cents', 'integer', (col) => col.notNull().defaultTo(0))
     .addColumn('accounting_date', 'text')
-    .addColumn('movement_id', 'uuid', (col) =>
-      col.references('movements.id').onDelete('set null'),
-    )
+    .addColumn('movement_id', 'uuid', (col) => col.references('movements.id').onDelete('set null'))
     .addColumn('sort_position', 'integer', (col) => col.notNull().defaultTo(0))
     .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
     .addColumn('updated_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))

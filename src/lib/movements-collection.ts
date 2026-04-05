@@ -24,7 +24,10 @@ export const movementsCollection = createCollection(
   electricCollectionOptions({
     id: 'movements',
     shapeOptions: {
-      url: typeof window !== 'undefined' ? `${window.location.origin}/api/electric/movements` : '/api/electric/movements',
+      url:
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/api/electric/movements`
+          : '/api/electric/movements',
     },
     getKey: (item: Movement) => item.id,
     schema: movementSchema,

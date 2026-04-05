@@ -70,7 +70,9 @@ export function EditableCell({
     if (!cell) return false
     const table = cell.closest('[data-editable-table]')
     if (!table) return false
-    const cells = Array.from(table.querySelectorAll<HTMLElement>('[data-editable-cell]:not([data-disabled])'))
+    const cells = Array.from(
+      table.querySelectorAll<HTMLElement>('[data-editable-cell]:not([data-disabled])'),
+    )
     const idx = cells.indexOf(cell)
     if (idx < 0) return false
     const next = cells[shift ? idx - 1 : idx + 1]

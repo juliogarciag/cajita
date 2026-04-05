@@ -22,13 +22,9 @@ export function BudgetList() {
     q.from({ b: budgetsCollection }).orderBy(({ b }) => b.year, 'desc'),
   )
 
-  const { data: categories } = useLiveQuery((q) =>
-    q.from({ c: categoriesCollection }),
-  )
+  const { data: categories } = useLiveQuery((q) => q.from({ c: categoriesCollection }))
 
-  const { data: budgetItems } = useLiveQuery((q) =>
-    q.from({ bi: budgetItemsCollection }),
-  )
+  const { data: budgetItems } = useLiveQuery((q) => q.from({ bi: budgetItemsCollection }))
 
   // Category color lookup
   const categoryColorMap = useMemo(() => {
@@ -210,13 +206,8 @@ export function BudgetList() {
                     />
                     <div className="mb-2 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: color }}
-                        />
-                        <span className="font-medium text-gray-900">
-                          {budget.name}
-                        </span>
+                        <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+                        <span className="font-medium text-gray-900">{budget.name}</span>
                       </div>
                       {!budgetsWithSyncedItems.has(budget.id) && (
                         <ConfirmButton

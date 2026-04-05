@@ -24,7 +24,10 @@ export function ConfirmButton({
   const confirming = externalConfirming ?? internalConfirming
   const setConfirming = onConfirmingChange ?? setInternalConfirming
 
-  useClickAwayDismiss(confirming, useCallback(() => setConfirming(false), [setConfirming]))
+  useClickAwayDismiss(
+    confirming,
+    useCallback(() => setConfirming(false), [setConfirming]),
+  )
 
   if (confirming) {
     return (

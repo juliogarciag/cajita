@@ -23,10 +23,7 @@ function authHeaders(developerToken: string, userToken: string) {
 // Cache folder ID per user token to avoid creating duplicates
 const folderCache = new Map<string, string>()
 
-async function getOrCreateCajitaFolder(
-  developerToken: string,
-  userToken: string,
-): Promise<string> {
+async function getOrCreateCajitaFolder(developerToken: string, userToken: string): Promise<string> {
   const cached = folderCache.get(userToken)
   if (cached) return cached
 
@@ -40,8 +37,7 @@ async function getOrCreateCajitaFolder(
   if (listRes.ok) {
     const listData = await listRes.json()
     const existing = listData?.data?.find(
-      (f: { attributes?: { name?: string } }) =>
-        f.attributes?.name?.toLowerCase() === FOLDER_NAME,
+      (f: { attributes?: { name?: string } }) => f.attributes?.name?.toLowerCase() === FOLDER_NAME,
     )
     if (existing) {
       folderCache.set(userToken, existing.id)

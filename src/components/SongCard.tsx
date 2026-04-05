@@ -39,11 +39,7 @@ export function SongCard({
         title={hasPreview ? (isPlaying ? 'Pause preview' : 'Play preview') : undefined}
       >
         {song.artworkUrl ? (
-          <img
-            src={song.artworkUrl}
-            alt={`${song.title} artwork`}
-            className="h-10 w-10 rounded"
-          />
+          <img src={song.artworkUrl} alt={`${song.title} artwork`} className="h-10 w-10 rounded" />
         ) : (
           <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-100">
             {song.status === 'not_found' ? (
@@ -76,9 +72,7 @@ export function SongCard({
       </div>
 
       {song.status === 'not_found' && (
-        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">
-          Not found
-        </span>
+        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">Not found</span>
       )}
 
       <div className="flex items-center gap-1">

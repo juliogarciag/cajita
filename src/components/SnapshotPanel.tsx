@@ -84,7 +84,7 @@ export function SnapshotPanel({ open, onClose }: SnapshotPanelProps) {
   )
 
   const handleViewDiff = useCallback(async (id: string) => {
-    const result = await getSnapshotData({ data: { id } }) as { snapshot: { data: unknown } }
+    const result = (await getSnapshotData({ data: { id } })) as { snapshot: { data: unknown } }
     const rawData = result.snapshot.data
     const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData
     setDiffData(data as unknown[])
@@ -236,4 +236,3 @@ function TypeBadge({ type, pinned }: { type: string; pinned: boolean }) {
     </span>
   )
 }
-

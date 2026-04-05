@@ -102,23 +102,19 @@ export function SnapshotDiff({ snapshotData, onConfirm, onCancel }: SnapshotDiff
       {/* Summary */}
       <div className="border-b border-gray-200 px-4 py-3">
         {!hasChanges ? (
-          <p className="text-sm text-gray-500">No differences found. Current data matches this snapshot.</p>
+          <p className="text-sm text-gray-500">
+            No differences found. Current data matches this snapshot.
+          </p>
         ) : (
           <div className="flex flex-wrap gap-3 text-sm">
             {diff.added.length > 0 && (
-              <span className="text-red-600">
-                {diff.added.length} will be removed
-              </span>
+              <span className="text-red-600">{diff.added.length} will be removed</span>
             )}
             {diff.removed.length > 0 && (
-              <span className="text-green-600">
-                {diff.removed.length} will be restored
-              </span>
+              <span className="text-green-600">{diff.removed.length} will be restored</span>
             )}
             {diff.modified.length > 0 && (
-              <span className="text-amber-600">
-                {diff.modified.length} will revert changes
-              </span>
+              <span className="text-amber-600">{diff.modified.length} will revert changes</span>
             )}
             {diff.unchanged > 0 && (
               <span className="text-gray-500">{diff.unchanged} unchanged</span>
@@ -135,7 +131,12 @@ export function SnapshotDiff({ snapshotData, onConfirm, onCancel }: SnapshotDiff
         {diff.added.length > 0 && (
           <DiffSection title="Will be removed" color="red">
             {diff.added.map((m) => (
-              <DiffRow key={m.id} description={m.description} date={m.date} amount={m.amount_cents} />
+              <DiffRow
+                key={m.id}
+                description={m.description}
+                date={m.date}
+                amount={m.amount_cents}
+              />
             ))}
           </DiffSection>
         )}
@@ -143,7 +144,12 @@ export function SnapshotDiff({ snapshotData, onConfirm, onCancel }: SnapshotDiff
         {diff.removed.length > 0 && (
           <DiffSection title="Will be restored" color="green">
             {diff.removed.map((m) => (
-              <DiffRow key={m.id} description={m.description} date={m.date} amount={m.amount_cents} />
+              <DiffRow
+                key={m.id}
+                description={m.description}
+                date={m.date}
+                amount={m.amount_cents}
+              />
             ))}
           </DiffSection>
         )}
@@ -151,7 +157,12 @@ export function SnapshotDiff({ snapshotData, onConfirm, onCancel }: SnapshotDiff
         {diff.modified.length > 0 && (
           <DiffSection title="Will revert changes" color="amber">
             {diff.modified.map(({ current, snapshot, changes }) => (
-              <ModifiedRow key={current.id} current={current} snapshot={snapshot} changes={changes} />
+              <ModifiedRow
+                key={current.id}
+                current={current}
+                snapshot={snapshot}
+                changes={changes}
+              />
             ))}
           </DiffSection>
         )}
@@ -241,14 +252,24 @@ function ModifiedRow({
   )
 }
 
-function DiffRow({ description, date, amount }: { description: string; date: string; amount: number }) {
+function DiffRow({
+  description,
+  date,
+  amount,
+}: {
+  description: string
+  date: string
+  amount: number
+}) {
   const { formatDate } = useDateFormat()
   return (
     <div className="flex items-center justify-between py-1 text-xs">
       <span className="text-gray-700">{description || '(no description)'}</span>
       <div className="flex items-center gap-3">
         <span className="text-gray-500">{formatDate(date)}</span>
-        <span className={amount > 0 ? 'text-green-700' : 'text-red-700'}>{formatCents(amount)}</span>
+        <span className={amount > 0 ? 'text-green-700' : 'text-red-700'}>
+          {formatCents(amount)}
+        </span>
       </div>
     </div>
   )

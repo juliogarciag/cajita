@@ -79,7 +79,17 @@ export function CheckpointPopover({ expectedCents, onConfirm, onClose }: Checkpo
               const allowed = /^[0-9.\-]$/
               if (
                 !allowed.test(e.key) &&
-                !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Escape', 'Enter', 'Home', 'End'].includes(e.key) &&
+                ![
+                  'Backspace',
+                  'Delete',
+                  'ArrowLeft',
+                  'ArrowRight',
+                  'Tab',
+                  'Escape',
+                  'Enter',
+                  'Home',
+                  'End',
+                ].includes(e.key) &&
                 !e.metaKey &&
                 !e.ctrlKey
               ) {
@@ -96,7 +106,9 @@ export function CheckpointPopover({ expectedCents, onConfirm, onClose }: Checkpo
         {diffCents !== null && (
           <div className="mb-4 flex items-center justify-between text-sm">
             <span className="text-gray-500">Difference</span>
-            <span className={`font-medium ${diffCents === 0 ? 'text-green-600' : diffCents > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+            <span
+              className={`font-medium ${diffCents === 0 ? 'text-green-600' : diffCents > 0 ? 'text-blue-600' : 'text-red-600'}`}
+            >
               {formatCents(diffCents)}
             </span>
           </div>

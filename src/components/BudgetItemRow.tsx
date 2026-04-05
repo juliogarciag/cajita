@@ -80,9 +80,11 @@ export function BudgetItemRow({
   return (
     <TableRow id={id} frozen={frozen} highlight={highlight}>
       <div className="w-[22px] shrink-0 flex items-center pl-[10px]">
-        {frozen
-          ? <Lock size={10} className="text-indigo-400" />
-          : <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
+        {frozen ? (
+          <Lock size={10} className="text-indigo-400" />
+        ) : (
+          <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+        )}
       </div>
       <div className="min-w-[200px] flex-1 pr-1">
         <EditableCell
@@ -130,11 +132,7 @@ export function BudgetItemRow({
         />
       </div>
       <div className="flex w-[160px] shrink-0 items-center justify-end gap-1 px-2">
-        <NoteIconButton
-          hasNote={!!note}
-          open={noteOpen}
-          onOpenChange={onNoteOpenChange}
-        >
+        <NoteIconButton hasNote={!!note} open={noteOpen} onOpenChange={onNoteOpenChange}>
           {noteOpen && (
             <NotePopover
               note={note}

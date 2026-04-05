@@ -70,19 +70,13 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
       <div className="flex items-center gap-1">
         <DateInput
           value={value?.from ?? ''}
-          onChange={(v) =>
-            onChange(v ? { from: v, to: value?.to ?? '9999-12-31' } : null)
-          }
+          onChange={(v) => onChange(v ? { from: v, to: value?.to ?? '9999-12-31' } : null)}
           className="w-28 text-xs"
         />
         <span className="text-xs text-gray-400">to</span>
         <DateInput
           value={value?.to ?? ''}
-          onChange={(v) =>
-            onChange(
-              v ? { from: value?.from ?? '0000-01-01', to: v } : null,
-            )
-          }
+          onChange={(v) => onChange(v ? { from: value?.from ?? '0000-01-01', to: v } : null)}
           className="w-28 text-xs"
         />
       </div>

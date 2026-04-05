@@ -85,7 +85,11 @@ export const deleteSnapshot = createServerFn({ method: 'POST' })
       throw new Error('Cannot delete manual or pinned snapshots')
     }
 
-    await db.deleteFrom('snapshots').where('id', '=', data.id).where('team_id', '=', teamId).execute()
+    await db
+      .deleteFrom('snapshots')
+      .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
+      .execute()
     return { success: true }
   })
 

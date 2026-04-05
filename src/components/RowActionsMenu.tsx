@@ -28,7 +28,10 @@ export function RowActionsMenu({ onCheckpoint, onDelete }: RowActionsMenuProps) 
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button tabIndex={-1} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+        <button
+          tabIndex={-1}
+          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        >
           <MoreHorizontal size={16} />
         </button>
       </DropdownMenu.Trigger>

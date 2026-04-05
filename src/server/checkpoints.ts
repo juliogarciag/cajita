@@ -36,15 +36,13 @@ export const createCheckpoint = createServerFn({ method: 'POST' })
       .where((eb) =>
         eb.or([
           eb('date', '<', movement.date),
-          eb.and([eb('date', '=', movement.date), eb('sort_position', '<=', movement.sort_position)]),
+          eb.and([
+            eb('date', '=', movement.date),
+            eb('sort_position', '<=', movement.sort_position),
+          ]),
         ]),
       )
-      .where((eb) =>
-        eb.or([
-          eb('source', '!=', 'recurring'),
-          eb('confirmed', '=', true),
-        ]),
-      )
+      .where((eb) => eb.or([eb('source', '!=', 'recurring'), eb('confirmed', '=', true)]))
       .executeTakeFirstOrThrow()
 
     const expected_cents = Number(result.total) || 0
@@ -69,6 +67,10 @@ export const deleteCheckpoint = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
 
-    await db.deleteFrom('checkpoints').where('id', '=', data.id).where('team_id', '=', teamId).execute()
+    await db
+      .deleteFrom('checkpoints')
+      .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
+      .execute()
     return { success: true }
   })

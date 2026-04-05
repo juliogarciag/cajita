@@ -84,7 +84,11 @@ function AuthenticatedLayout() {
             <Link to="/finances/movements" className={subNavLinkClass}>
               Movements
             </Link>
-            <Link to="/finances/budgets" className={subNavLinkClass} activeOptions={{ exact: false }}>
+            <Link
+              to="/finances/budgets"
+              className={subNavLinkClass}
+              activeOptions={{ exact: false }}
+            >
               Budgets
             </Link>
             <Link to="/finances/categories" className={subNavLinkClass}>

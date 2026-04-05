@@ -18,7 +18,10 @@ export const categoriesCollection = createCollection(
   electricCollectionOptions({
     id: 'categories',
     shapeOptions: {
-      url: typeof window !== 'undefined' ? `${window.location.origin}/api/electric/categories` : '/api/electric/categories',
+      url:
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/api/electric/categories`
+          : '/api/electric/categories',
     },
     getKey: (item: Category) => item.id,
     schema: categorySchema,
