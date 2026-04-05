@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Power, PowerOff, RefreshCw } from 'lucide-react'
 import { recurringMovementTemplatesCollection, type RecurringMovementTemplate } from '#/lib/recurring-movement-templates-collection.js'
 import { categoriesCollection, type Category } from '#/lib/categories-collection.js'
 import { formatCents } from '#/lib/format.js'
+import { useDateFormat } from '#/lib/date-format.js'
 import {
   createRecurringTemplate,
   updateRecurringTemplate,
@@ -148,6 +149,7 @@ interface TemplateRowProps {
 }
 
 function TemplateRow({ template, categoryMap, onEdit, onToggle, onDelete }: TemplateRowProps) {
+  const { formatDate } = useDateFormat()
   const category = template.category_id ? categoryMap.get(template.category_id) : null
   const isPositive = template.amount_cents > 0
 
@@ -169,8 +171,8 @@ function TemplateRow({ template, categoryMap, onEdit, onToggle, onDelete }: Temp
           )}
         </div>
         <div className="mt-0.5 text-xs text-gray-500">
-          Day {template.day_of_month} of each month · from {template.start_date}
-          {template.end_date ? ` to ${template.end_date}` : ''}
+          Day {template.day_of_month} of each month · from {formatDate(template.start_date)}
+          {template.end_date ? ` to ${formatDate(template.end_date)}` : ''}
         </div>
       </div>
       <span className={`shrink-0 text-sm font-semibold tabular-nums ${isPositive ? 'text-green-700' : 'text-red-700'}`}>
