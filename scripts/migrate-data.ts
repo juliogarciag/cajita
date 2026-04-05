@@ -41,6 +41,15 @@ const BUDGETS: Record<number, Record<string, number>> = {
     Goodies: 8_673_74,
     'Discretionary Expenses': 3_000_00,
   },
+  2026: {
+    Puppy: 3_000_00,
+    Health: 8_000_00,
+    'House Improvements': 4_000_00,
+    Goodies: 8_000_00,
+    'Discretionary Expenses': 3_000_00,
+    Emergencies: 1_000_00,
+    'Free Expenses': 1_000_00,
+  },
 }
 
 // Default color palette for categories/budgets
@@ -194,8 +203,9 @@ async function main() {
   const movements2023 = parseFile2023(path.join(dataDir, 'f2023.csv'))
   const movements2024 = parseFile2024or2025(path.join(dataDir, 'f2024.csv'))
   const movements2025 = parseFile2024or2025(path.join(dataDir, 'f2025.csv'))
+  const movements2026 = parseFile2024or2025(path.join(dataDir, 'f2026.csv'))
 
-  // Skip "Initial"/"Inicial" carry-forward entries from 2023-2025
+  // Skip "Initial"/"Inicial" carry-forward entries from 2023-2026
   // (those balances are already accounted for by prior year movements)
   const skipInitial = (movements: RawMovement[]) =>
     movements.filter((m) => !/^Iniciale?s?$|^Initial$/i.test(m.description))
@@ -205,6 +215,7 @@ async function main() {
     ...skipInitial(movements2023),
     ...skipInitial(movements2024),
     ...skipInitial(movements2025),
+    ...skipInitial(movements2026),
   ]
 
   console.log(`Parsed ${allMovements.length} movements total:`)
@@ -212,6 +223,7 @@ async function main() {
   console.log(`  2023:      ${movements2023.length}`)
   console.log(`  2024:      ${movements2024.length}`)
   console.log(`  2025:      ${movements2025.length}`)
+  console.log(`  2026:      ${movements2026.length}`)
 
   // Collect unique category names
   const categoryNames = [...new Set(allMovements.map((m) => m.category))]
