@@ -329,6 +329,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
     const frozen = row.frozen
     const budgetManaged = (row.source === 'budget_sync' || row.source === 'budget_remaining') && movementToBudgetId.has(row.id)
     const isUnconfirmedRecurring = row.source === 'recurring' && !row.confirmed
+    const isFutureUnconfirmedRecurring = isUnconfirmedRecurring && row.date > TODAY
     const disabled = frozen || budgetManaged
     return (
       <>
@@ -422,7 +423,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
               </NoteIconButton>
             )
           })()}
-          {isUnconfirmedRecurring && (
+          {isUnconfirmedRecurring && !isFutureUnconfirmedRecurring && (
             <Tooltip content="Confirm this movement">
               <button
                 onClick={() => handleConfirmRecurring(row.id)}
@@ -435,7 +436,7 @@ export function MovementsTable({ highlightId }: MovementsTableProps) {
           {!frozen && (
             <RowActionsMenu
               onCheckpoint={() => setCheckpointRowId(row.id)}
-              onDelete={budgetManaged ? undefined : () => handleDelete(row.id)}
+              onDelete={budgetManaged || isFutureUnconfirmedRecurring ? undefined : () => handleDelete(row.id)}
             />
           )}
         </div>

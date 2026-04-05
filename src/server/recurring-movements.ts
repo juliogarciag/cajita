@@ -134,6 +134,20 @@ export const confirmRecurringMovement = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
 
+    const existing = await db
+      .selectFrom('movements')
+      .select('date')
+      .where('id', '=', data.movementId)
+      .where('team_id', '=', teamId)
+      .where('source', '=', 'recurring')
+      .where('confirmed', '=', false)
+      .executeTakeFirstOrThrow()
+
+    const today = new Date().toISOString().slice(0, 10)
+    if (existing.date > today) {
+      throw new Error('Cannot confirm a future movement')
+    }
+
     const toSet: Record<string, unknown> = { confirmed: true, updated_at: new Date() }
     if (data.date !== undefined) toSet.date = data.date
     if (data.amountCents !== undefined) toSet.amount_cents = data.amountCents

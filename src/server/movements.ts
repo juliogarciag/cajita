@@ -150,6 +150,18 @@ export const deleteMovement = createServerFn({ method: 'POST' })
       throw new Error('Cannot delete a frozen movement')
     }
 
+    const movement = await db
+      .selectFrom('movements')
+      .select(['date', 'source', 'confirmed'])
+      .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
+      .executeTakeFirstOrThrow()
+
+    const today = new Date().toISOString().slice(0, 10)
+    if (movement.source === 'recurring' && !movement.confirmed && movement.date > today) {
+      throw new Error('Cannot delete a future unconfirmed recurring movement')
+    }
+
     await db.deleteFrom('movements').where('id', '=', data.id).where('team_id', '=', teamId).execute()
     return { success: true }
   })
