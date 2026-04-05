@@ -242,6 +242,16 @@ export const updateRecurringTemplate = createServerFn({ method: 'POST' })
         .execute()
     }
 
+    // Delete unconfirmed future instances that fall after the new end_date
+    if (updates.end_date) {
+      await db
+        .deleteFrom('movements')
+        .where('recurring_template_id', '=', id)
+        .where('confirmed', '=', false)
+        .where('date', '>', updates.end_date)
+        .execute()
+    }
+
     return { template }
   })
 
