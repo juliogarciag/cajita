@@ -7,7 +7,9 @@ const projectionScenarioSchema = z.object({
   team_id: z.string(),
   name: z.string(),
   script_id: z.string(),
-  inputs_json: z.string(), // raw JSON string from pg; parse with JSON.parse()
+  // ElectricSQL may return jsonb columns as already-parsed objects or as strings
+  // — normalize to a JSON string so consumers can always call JSON.parse() safely.
+  inputs_json: z.unknown().transform((v) => (typeof v === 'string' ? v : JSON.stringify(v))),
   active: z.coerce.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
