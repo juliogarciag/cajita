@@ -13,7 +13,9 @@ export interface RecurringMovementTemplatesTable {
   description: string
   amount_cents: number
   category_id: string | null
+  period_type: Generated<string> // 'monthly' | 'annual'
   day_of_month: number
+  month_of_year: number | null   // 1–12, required when period_type = 'annual'
   start_date: string // YYYY-MM-DD
   end_date: string | null
   active: Generated<boolean>
@@ -65,7 +67,7 @@ export interface MovementsTable {
   sort_position: number
   source: Generated<string>
   recurring_template_id: string | null
-  recurring_period: string | null // YYYY-MM-DD, always 1st of month
+  recurring_period: string | null // YYYY-MM-DD; monthly: YYYY-MM-01, annual: YYYY-01-01
   confirmed: Generated<boolean>
   created_at: Generated<Date>
   updated_at: Generated<Date>

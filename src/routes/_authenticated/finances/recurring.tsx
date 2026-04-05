@@ -21,11 +21,18 @@ export const Route = createFileRoute('/_authenticated/finances/recurring')({
 // Template Form
 // ---------------------------------------------------------------------------
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
 interface TemplateFormData {
   description: string
   amount_cents_input: string // dollar string e.g. "-2413.96"
   category_id: string
+  period_type: 'monthly' | 'annual'
   day_of_month: string
+  month_of_year: string // '1'–'12', only used when period_type = 'annual'
   start_date: string
   end_date: string
 }
@@ -34,7 +41,9 @@ const EMPTY_FORM: TemplateFormData = {
   description: '',
   amount_cents_input: '',
   category_id: '',
+  period_type: 'monthly',
   day_of_month: '',
+  month_of_year: '',
   start_date: new Date().toISOString().slice(0, 10),
   end_date: '',
 }
@@ -70,6 +79,10 @@ function TemplateForm({ categories, initial = EMPTY_FORM, onSubmit, onCancel, su
     if (cents === null) return setError('Invalid amount')
     const day = parseInt(form.day_of_month)
     if (isNaN(day) || day < 1 || day > 31) return setError('Day of month must be 1–31')
+    if (form.period_type === 'annual') {
+      const month = parseInt(form.month_of_year)
+      if (isNaN(month) || month < 1 || month > 12) return setError('Month of year is required for annual templates')
+    }
     if (!form.start_date) return setError('Start date is required')
     setSaving(true)
     try {
@@ -98,6 +111,34 @@ function TemplateForm({ categories, initial = EMPTY_FORM, onSubmit, onCancel, su
           <label className={labelClass}>Amount (use – for expenses)</label>
           <input className={inputClass} value={form.amount_cents_input} onChange={set('amount_cents_input')} placeholder="e.g. -2413.96" />
         </div>
+        <div>
+          <label className={labelClass}>Period</label>
+          <select
+            className={inputClass}
+            value={form.period_type}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                period_type: e.target.value as 'monthly' | 'annual',
+                month_of_year: '',
+              }))
+            }
+          >
+            <option value="monthly">Monthly</option>
+            <option value="annual">Annual</option>
+          </select>
+        </div>
+        {form.period_type === 'annual' && (
+          <div>
+            <label className={labelClass}>Month of year</label>
+            <select className={inputClass} value={form.month_of_year} onChange={set('month_of_year')}>
+              <option value="">— Select month —</option>
+              {MONTH_NAMES.map((name, i) => (
+                <option key={i + 1} value={String(i + 1)}>{name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label className={labelClass}>Day of month</label>
           <input className={inputClass} value={form.day_of_month} onChange={set('day_of_month')} placeholder="e.g. 2" type="number" min="1" max="31" />
@@ -171,7 +212,10 @@ function TemplateRow({ template, categoryMap, onEdit, onToggle, onDelete }: Temp
           )}
         </div>
         <div className="mt-0.5 text-xs text-gray-500">
-          Day {template.day_of_month} of each month · from {formatDate(template.start_date)}
+          {template.period_type === 'annual' && template.month_of_year != null
+            ? `Every year on ${MONTH_NAMES[template.month_of_year - 1]} ${template.day_of_month}`
+            : `Day ${template.day_of_month} of each month`}
+          {' · from '}{formatDate(template.start_date)}
           {template.end_date ? ` to ${formatDate(template.end_date)}` : ''}
         </div>
       </div>
@@ -238,7 +282,9 @@ function RecurringPage() {
         description: form.description.trim(),
         amount_cents,
         category_id: form.category_id || null,
+        period_type: form.period_type,
         day_of_month: parseInt(form.day_of_month),
+        month_of_year: form.period_type === 'annual' ? parseInt(form.month_of_year) : null,
         start_date: form.start_date,
         end_date: form.end_date || null,
       },
@@ -255,7 +301,9 @@ function RecurringPage() {
         description: form.description.trim(),
         amount_cents,
         category_id: form.category_id || null,
+        period_type: form.period_type,
         day_of_month: parseInt(form.day_of_month),
+        month_of_year: form.period_type === 'annual' ? parseInt(form.month_of_year) : null,
         start_date: form.start_date,
         end_date: form.end_date || null,
       },
@@ -327,7 +375,9 @@ function RecurringPage() {
               description: editingTemplate.description,
               amount_cents_input: String(editingTemplate.amount_cents / 100),
               category_id: editingTemplate.category_id ?? '',
+              period_type: (editingTemplate.period_type ?? 'monthly') as 'monthly' | 'annual',
               day_of_month: String(editingTemplate.day_of_month),
+              month_of_year: editingTemplate.month_of_year != null ? String(editingTemplate.month_of_year) : '',
               start_date: editingTemplate.start_date,
               end_date: editingTemplate.end_date ?? '',
             }}

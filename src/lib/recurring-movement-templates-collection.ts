@@ -8,7 +8,9 @@ const recurringMovementTemplateSchema = z.object({
   description: z.string(),
   amount_cents: z.coerce.number(),
   category_id: z.string().nullable(),
+  period_type: z.string(), // 'monthly' | 'annual'
   day_of_month: z.coerce.number(),
+  month_of_year: z.coerce.number().nullable(),
   start_date: z.string(),
   end_date: z.string().nullable(),
   active: z.coerce.boolean(),

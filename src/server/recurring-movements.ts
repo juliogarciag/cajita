@@ -49,68 +49,97 @@ export const generateRecurringMovements = createServerFn({ method: 'POST' })
     const horizon = getHorizon()
     let generated = 0
 
+    // Helper: insert one movement instance (idempotent via ON CONFLICT DO NOTHING)
+    const insertInstance = async (
+      template: (typeof templates)[number],
+      date: string,
+      recurringPeriod: string,
+    ) => {
+      const maxPos = await db
+        .selectFrom('movements')
+        .select(db.fn.max('sort_position').as('max_pos'))
+        .where('date', '=', date)
+        .where('team_id', '=', teamId)
+        .executeTakeFirst()
+
+      const sort_position = ((maxPos?.max_pos as number) ?? 0) + 1000
+
+      const result = await db
+        .insertInto('movements')
+        .values({
+          team_id: teamId,
+          description: template.description,
+          date,
+          amount_cents: template.amount_cents,
+          category_id: template.category_id ?? null,
+          sort_position,
+          source: 'recurring',
+          recurring_template_id: template.id,
+          recurring_period: recurringPeriod,
+          confirmed: false,
+        })
+        .onConflict((oc) => oc.doNothing())
+        .returning('id')
+        .executeTakeFirst()
+
+      return result
+    }
+
     for (const template of templates) {
       const startDate = new Date(template.start_date)
-      const endDate = template.end_date ? new Date(template.end_date) : null
+      const endDateStr = template.end_date ?? null
 
-      // Start from the template's start month (but no earlier than today's month)
-      const genStartYear = startDate.getFullYear()
-      const genStartMonth = startDate.getMonth() + 1
+      if (template.period_type === 'annual') {
+        // Generate one instance per year
+        const monthOfYear = template.month_of_year!
+        let year = startDate.getFullYear()
 
-      let year = genStartYear
-      let month = genStartMonth
+        while (year <= horizon.year) {
+          const day = clampDay(year, monthOfYear, template.day_of_month)
+          const date = toISODate(year, monthOfYear, day)
 
-      while (
-        year < horizon.year ||
-        (year === horizon.year && month <= horizon.month)
-      ) {
-        // Respect end_date
-        if (endDate) {
-          const endYear = endDate.getFullYear()
-          const endMonth = endDate.getMonth() + 1
-          if (year > endYear || (year === endYear && month > endMonth)) break
-        }
+          // Skip if before start_date
+          if (date < template.start_date) { year++; continue }
 
-        const day = clampDay(year, month, template.day_of_month)
-        const date = toISODate(year, month, day)
-        const recurringPeriod = toISODate(year, month, 1) // always 1st of month
+          // Stop if after end_date
+          if (endDateStr && date > endDateStr) break
 
-        // Get max sort_position for this date to append after existing movements
-        const maxPos = await db
-          .selectFrom('movements')
-          .select(db.fn.max('sort_position').as('max_pos'))
-          .where('date', '=', date)
-          .where('team_id', '=', teamId)
-          .executeTakeFirst()
+          const recurringPeriod = toISODate(year, 1, 1) // YYYY-01-01
 
-        const sort_position = ((maxPos?.max_pos as number) ?? 0) + 1000
+          const result = await insertInstance(template, date, recurringPeriod)
+          if (result) generated++
 
-        // INSERT ... ON CONFLICT DO NOTHING (unique index on recurring_template_id + recurring_period)
-        const result = await db
-          .insertInto('movements')
-          .values({
-            team_id: teamId,
-            description: template.description,
-            date,
-            amount_cents: template.amount_cents,
-            category_id: template.category_id ?? null,
-            sort_position,
-            source: 'recurring',
-            recurring_template_id: template.id,
-            recurring_period: recurringPeriod,
-            confirmed: false,
-          })
-          .onConflict((oc) => oc.doNothing())
-          .returning('id')
-          .executeTakeFirst()
-
-        if (result) generated++
-
-        // Advance to next month
-        month++
-        if (month > 12) {
-          month = 1
           year++
+        }
+      } else {
+        // Monthly: existing logic
+        const genStartYear = startDate.getFullYear()
+        const genStartMonth = startDate.getMonth() + 1
+
+        let year = genStartYear
+        let month = genStartMonth
+
+        while (
+          year < horizon.year ||
+          (year === horizon.year && month <= horizon.month)
+        ) {
+          // Respect end_date
+          if (endDateStr) {
+            const endDate = new Date(endDateStr)
+            const endYear = endDate.getFullYear()
+            const endMonth = endDate.getMonth() + 1
+            if (year > endYear || (year === endYear && month > endMonth)) break
+          }
+
+          const day = clampDay(year, month, template.day_of_month)
+          const date = toISODate(year, month, day)
+          const recurringPeriod = toISODate(year, month, 1)
+
+          const result = await insertInstance(template, date, recurringPeriod)
+          if (result) generated++
+
+          month++
+          if (month > 12) { month = 1; year++ }
         }
       }
     }
@@ -172,14 +201,21 @@ export const confirmRecurringMovement = createServerFn({ method: 'POST' })
 export const createRecurringTemplate = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(
-    z.object({
-      description: z.string().min(1).max(255),
-      amount_cents: z.number().int(),
-      category_id: z.string().uuid().nullable().optional(),
-      day_of_month: z.number().int().min(1).max(31),
-      start_date: z.string(), // YYYY-MM-DD
-      end_date: z.string().nullable().optional(),
-    }),
+    z
+      .object({
+        description: z.string().min(1).max(255),
+        amount_cents: z.number().int(),
+        category_id: z.string().uuid().nullable().optional(),
+        period_type: z.enum(['monthly', 'annual']).default('monthly'),
+        day_of_month: z.number().int().min(1).max(31),
+        month_of_year: z.number().int().min(1).max(12).nullable().optional(),
+        start_date: z.string(), // YYYY-MM-DD
+        end_date: z.string().nullable().optional(),
+      })
+      .refine(
+        (d) => d.period_type !== 'annual' || d.month_of_year != null,
+        { message: 'month_of_year is required for annual templates', path: ['month_of_year'] },
+      ),
   )
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
@@ -191,7 +227,9 @@ export const createRecurringTemplate = createServerFn({ method: 'POST' })
         description: data.description,
         amount_cents: data.amount_cents,
         category_id: data.category_id ?? null,
+        period_type: data.period_type,
         day_of_month: data.day_of_month,
+        month_of_year: data.month_of_year ?? null,
         start_date: data.start_date,
         end_date: data.end_date ?? null,
       })
@@ -213,7 +251,9 @@ export const updateRecurringTemplate = createServerFn({ method: 'POST' })
       description: z.string().min(1).max(255).optional(),
       amount_cents: z.number().int().optional(),
       category_id: z.string().uuid().nullable().optional(),
+      period_type: z.enum(['monthly', 'annual']).optional(),
       day_of_month: z.number().int().min(1).max(31).optional(),
+      month_of_year: z.number().int().min(1).max(12).nullable().optional(),
       start_date: z.string().optional(),
       end_date: z.string().nullable().optional(),
     }),
@@ -227,7 +267,9 @@ export const updateRecurringTemplate = createServerFn({ method: 'POST' })
     if (updates.description !== undefined) toSet.description = updates.description
     if (updates.amount_cents !== undefined) toSet.amount_cents = updates.amount_cents
     if (updates.category_id !== undefined) toSet.category_id = updates.category_id
+    if (updates.period_type !== undefined) toSet.period_type = updates.period_type
     if (updates.day_of_month !== undefined) toSet.day_of_month = updates.day_of_month
+    if (updates.month_of_year !== undefined) toSet.month_of_year = updates.month_of_year
     if (updates.start_date !== undefined) toSet.start_date = updates.start_date
     if (updates.end_date !== undefined) toSet.end_date = updates.end_date
 
@@ -256,8 +298,16 @@ export const updateRecurringTemplate = createServerFn({ method: 'POST' })
         .execute()
     }
 
-    // Delete unconfirmed future instances that fall after the new end_date
-    if (updates.end_date) {
+    // When period_type changes, delete all unconfirmed future instances so they regenerate cleanly
+    if (updates.period_type !== undefined) {
+      await db
+        .deleteFrom('movements')
+        .where('recurring_template_id', '=', id)
+        .where('confirmed', '=', false)
+        .where('date', '>=', today)
+        .execute()
+    // Otherwise, delete unconfirmed future instances that fall after the new end_date
+    } else if (updates.end_date) {
       await db
         .deleteFrom('movements')
         .where('recurring_template_id', '=', id)
