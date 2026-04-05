@@ -301,12 +301,37 @@ async function main() {
 
   for (const [yearStr, budgetDefs] of Object.entries(BUDGETS)) {
     const year = parseInt(yearStr)
+    const eoyDate = `${year}-12-31`
+
     for (const [name, annualCents] of Object.entries(budgetDefs)) {
       const categoryId = categoryMap.get(name)
       if (!categoryId) {
         console.warn(`  WARNING: No category found for budget "${name}" (${year}), skipping`)
         continue
       }
+
+      // Create the EOY [Remaining] placeholder movement (same as createBudget server fn)
+      const maxPos = await db
+        .selectFrom('movements')
+        .select(db.fn.max('sort_position').as('max_pos'))
+        .where('date', '=', eoyDate)
+        .where('team_id', '=', teamId)
+        .executeTakeFirst()
+
+      const remainingMovement = await db
+        .insertInto('movements')
+        .values({
+          team_id: teamId,
+          description: `[Remaining] ${name}`,
+          date: eoyDate,
+          amount_cents: -annualCents, // starts as full negative; recalculated as items are added
+          category_id: categoryId,
+          sort_position: ((maxPos?.max_pos as number) ?? 0) + 1000,
+          source: 'budget_remaining',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+
       await db
         .insertInto('budgets')
         .values({
@@ -315,8 +340,10 @@ async function main() {
           name,
           year,
           annual_amount_cents: annualCents,
+          remaining_movement_id: remainingMovement.id,
         })
         .execute()
+
       budgetCount++
     }
   }
@@ -385,6 +412,35 @@ async function main() {
 
   console.log(`Inserted ${allMovements.length} movements.`)
   console.log(`Created ${budgetItemCount} budget items.`)
+
+  // ---------------------------------------------------------------------------
+  // Recalculate [Remaining] amounts now that all budget items are inserted
+  // ---------------------------------------------------------------------------
+  console.log('\nRecalculating remaining budget amounts...')
+  const allBudgetsForRecalc = await db
+    .selectFrom('budgets')
+    .select(['id', 'annual_amount_cents', 'remaining_movement_id'])
+    .where('team_id', '=', teamId)
+    .where('remaining_movement_id', 'is not', null)
+    .execute()
+
+  for (const budget of allBudgetsForRecalc) {
+    const result = await db
+      .selectFrom('budget_items')
+      .select(db.fn.sum<number>('amount_cents').as('total'))
+      .where('budget_id', '=', budget.id)
+      .executeTakeFirst()
+
+    const itemsTotal = Number(result?.total) || 0
+    const remaining = -((budget.annual_amount_cents as number) + itemsTotal)
+
+    await db
+      .updateTable('movements')
+      .set({ amount_cents: remaining, updated_at: new Date() })
+      .where('id', '=', budget.remaining_movement_id!)
+      .execute()
+  }
+  console.log(`Recalculated ${allBudgetsForRecalc.length} remaining movements.`)
 
   // ---------------------------------------------------------------------------
   // Summary
