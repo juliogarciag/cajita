@@ -42,3 +42,7 @@ npm run dev
 This starts both Vite (port 3000) and Caddy together. Access the app at **https://localhost:3000**. Vite runs internally on port 3001.
 
 The `Caddyfile` at the project root configures this. No changes to the app code are needed — `window.location.origin` picks up the new origin automatically.
+
+## Git Workflow
+
+- **Never run `git push` unless explicitly asked.** Always commit when work is done, but wait for the user to say "push" before pushing to the remote.
