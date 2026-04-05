@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { eq } from '@tanstack/db'
 import { Link, useParams, useSearch } from '@tanstack/react-router'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft, Plus, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { budgetItemsCollection, type BudgetItem } from '#/lib/budget-items-collection.js'
 import { budgetsCollection } from '#/lib/budgets-collection.js'
@@ -12,6 +12,7 @@ import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
 import { budgetItemNotesCollection } from '#/lib/budget-item-notes-collection.js'
 import type { TeamMember } from '#/lib/team-members-collection.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
+import { useDateFormat } from '#/lib/date-format.js'
 import { useCheckpointBoundary } from '#/lib/use-checkpoint-boundary.js'
 import {
   createBudgetItem,
@@ -28,6 +29,7 @@ import { ROW_HEIGHT } from './TableRow.js'
 export function BudgetDetail() {
   const { budgetId } = useParams({ strict: false }) as { budgetId: string }
   const { highlight } = useSearch({ strict: false }) as { highlight?: string }
+  const { formatDate } = useDateFormat()
 
   const [newItemId, setNewItemId] = useState<string | null>(null)
   const [isAdding, setIsAdding] = useState(false)
@@ -177,6 +179,28 @@ export function BudgetDetail() {
     }
   }
 
+  const handleDownloadCsv = useCallback(() => {
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
+    const rows = [
+      ['Description', 'Date', 'Amount (USD)', 'Amount (Soles)', 'Accounting Date'],
+      ...items.map((item: BudgetItem) => [
+        escape(item.description || ''),
+        escape(formatDate(item.date)),
+        (item.amount_cents / 100).toFixed(2),
+        item.amount_local_cents != null ? (item.amount_local_cents / 100).toFixed(2) : '',
+        item.accounting_date ? escape(formatDate(item.accounting_date)) : '',
+      ]),
+    ]
+    const csv = rows.map((r) => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${budget?.name ?? 'budget'}-${budget?.year ?? ''}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [items, budget, formatDate])
+
   const handleUpdateAnnual = async () => {
     const cents = parseDollarsTocents(annualDraft)
     if (cents === null || cents <= 0) return
@@ -201,14 +225,25 @@ export function BudgetDetail() {
             <span className="text-lg text-gray-500">{budget.year}</span>
           </div>
         </div>
-        <button
-          onClick={handleAdd}
-          disabled={isAdding}
-          className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-        >
-          <Plus size={16} />
-          {isAdding ? 'Adding…' : 'Add Item'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownloadCsv}
+            disabled={items.length === 0}
+            className="flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+            title="Download as CSV"
+          >
+            <Download size={16} />
+            CSV
+          </button>
+          <button
+            onClick={handleAdd}
+            disabled={isAdding}
+            className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            <Plus size={16} />
+            {isAdding ? 'Adding…' : 'Add Item'}
+          </button>
+        </div>
       </div>
 
       {/* Summary bar */}
