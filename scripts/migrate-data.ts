@@ -310,27 +310,33 @@ async function main() {
         continue
       }
 
-      // Create the EOY [Remaining] placeholder movement (same as createBudget server fn)
-      const maxPos = await db
-        .selectFrom('movements')
-        .select(db.fn.max('sort_position').as('max_pos'))
-        .where('date', '=', eoyDate)
-        .where('team_id', '=', teamId)
-        .executeTakeFirst()
+      // Only create [Remaining] placeholder movements for the current year (2026).
+      // Past years already have their actuals fully accounted for in the CSV data.
+      let remainingMovementId: string | null = null
+      if (year === 2026) {
+        const maxPos = await db
+          .selectFrom('movements')
+          .select(db.fn.max('sort_position').as('max_pos'))
+          .where('date', '=', eoyDate)
+          .where('team_id', '=', teamId)
+          .executeTakeFirst()
 
-      const remainingMovement = await db
-        .insertInto('movements')
-        .values({
-          team_id: teamId,
-          description: `[Remaining] ${name}`,
-          date: eoyDate,
-          amount_cents: -annualCents, // starts as full negative; recalculated as items are added
-          category_id: categoryId,
-          sort_position: ((maxPos?.max_pos as number) ?? 0) + 1000,
-          source: 'budget_remaining',
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow()
+        const remainingMovement = await db
+          .insertInto('movements')
+          .values({
+            team_id: teamId,
+            description: `[Remaining] ${name}`,
+            date: eoyDate,
+            amount_cents: -annualCents,
+            category_id: categoryId,
+            sort_position: ((maxPos?.max_pos as number) ?? 0) + 1000,
+            source: 'budget_remaining',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+
+        remainingMovementId = remainingMovement.id
+      }
 
       await db
         .insertInto('budgets')
@@ -340,7 +346,7 @@ async function main() {
           name,
           year,
           annual_amount_cents: annualCents,
-          remaining_movement_id: remainingMovement.id,
+          remaining_movement_id: remainingMovementId,
         })
         .execute()
 
@@ -414,13 +420,14 @@ async function main() {
   console.log(`Created ${budgetItemCount} budget items.`)
 
   // ---------------------------------------------------------------------------
-  // Recalculate [Remaining] amounts now that all budget items are inserted
+  // Recalculate [Remaining] amounts now that all budget items are inserted (2026 only)
   // ---------------------------------------------------------------------------
   console.log('\nRecalculating remaining budget amounts...')
   const allBudgetsForRecalc = await db
     .selectFrom('budgets')
     .select(['id', 'annual_amount_cents', 'remaining_movement_id'])
     .where('team_id', '=', teamId)
+    .where('year', '=', 2026)
     .where('remaining_movement_id', 'is not', null)
     .execute()
 
