@@ -11,6 +11,8 @@ interface RowActionsMenuProps {
 export function RowActionsMenu({ onCheckpoint, onDelete }: RowActionsMenuProps) {
   const [confirming, setConfirming] = useState(false)
 
+  if (!onCheckpoint && !onDelete) return null
+
   if (confirming && onDelete) {
     return (
       <ConfirmButton
