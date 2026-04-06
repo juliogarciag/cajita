@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
@@ -18,8 +18,12 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
   component: DashboardPage,
 })
 
+const YEAR_OPTIONS = [5, 10, 15, 20, 30] as const
+type YearOption = (typeof YEAR_OPTIONS)[number]
+
 function DashboardPage() {
   const { user } = Route.useRouteContext()
+  const [years, setYears] = useState<YearOption>(5)
 
   const { data: checkpoints } = useLiveQuery((q) =>
     q.from({ c: checkpointsCollection }).orderBy(({ c }) => c.created_at, 'desc'),
@@ -46,8 +50,6 @@ function DashboardPage() {
   }, [movements])
 
   // Starting balance: checkpoint-corrected when available
-  // Formula: checkpoint.actual_cents + (ledger balance - checkpoint.expected_cents)
-  // This anchors to the last verified bank balance and adds any confirmed drift since then.
   const startingBalance = useMemo(() => {
     const latest = checkpoints[0] ?? null
     if (!latest) return currentLedgerBalance
@@ -55,10 +57,11 @@ function DashboardPage() {
   }, [checkpoints, currentLedgerBalance])
 
   const currentYear = new Date().getFullYear()
+  const months = years * 12
 
   const projectionData = useMemo(
-    () => buildProjectionData(startingBalance, templates, budgets, currentYear),
-    [startingBalance, templates, budgets, currentYear],
+    () => buildProjectionData(startingBalance, templates, budgets, currentYear, months),
+    [startingBalance, templates, budgets, currentYear, months],
   )
 
   // Build scenario lines — one per active, valid scenario
@@ -92,7 +95,13 @@ function DashboardPage() {
       }
 
       const adjustedTemplates = applyAdjustments(templates, adjustments)
-      const data = buildProjectionData(startingBalance, adjustedTemplates, budgets, currentYear)
+      const data = buildProjectionData(
+        startingBalance,
+        adjustedTemplates,
+        budgets,
+        currentYear,
+        months,
+      )
 
       lines.push({
         name: scenario.name,
@@ -103,7 +112,7 @@ function DashboardPage() {
     }
 
     return lines
-  }, [scenarios, templates, budgets, startingBalance, currentYear])
+  }, [scenarios, templates, budgets, startingBalance, currentYear, months])
 
   return (
     <div className="flex flex-col gap-6">
@@ -113,11 +122,26 @@ function DashboardPage() {
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <div className="mb-4">
-          <h2 className="text-sm font-semibold text-gray-700">5-Year Balance Projection</h2>
-          <p className="mt-0.5 text-xs text-gray-400">
-            Based on active recurring templates and current-year budgets
-          </p>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700">{years}-Year Balance Projection</h2>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Based on active recurring templates and current-year budgets
+            </p>
+          </div>
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+            {YEAR_OPTIONS.map((y) => (
+              <button
+                key={y}
+                onClick={() => setYears(y)}
+                className={`px-2.5 py-1 font-medium transition-colors ${
+                  y === years ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                {y}Y
+              </button>
+            ))}
+          </div>
         </div>
         <ProjectionChart data={projectionData} scenarios={scenarioLines} />
       </div>
