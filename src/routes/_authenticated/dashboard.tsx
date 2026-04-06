@@ -89,7 +89,7 @@ function DashboardPage() {
 
       let adjustments
       try {
-        adjustments = script.run(raw as never, { today })
+        adjustments = script.run(raw as never, { today, templates })
       } catch {
         continue
       }

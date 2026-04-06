@@ -238,6 +238,27 @@ function ScenarioModal({ mode, scenario, templates, onClose, onSaved }: Scenario
                   />
                 </div>
               )}
+
+              {def.kind === 'percentage' && (
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="0.00"
+                    value={inputValues[key] != null ? String(inputValues[key] as number) : ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setInputValue(key, v !== '' ? parseFloat(v) : undefined)
+                    }}
+                    className="w-full rounded border border-gray-300 py-1.5 pl-2 pr-8 text-sm focus:border-gray-500 focus:outline-none"
+                  />
+                  <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-sm text-gray-400">
+                    %
+                  </span>
+                </div>
+              )}
             </div>
           ))}
 
