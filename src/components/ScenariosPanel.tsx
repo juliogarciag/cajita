@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react'
+import { Plus, Pencil, Trash2, Copy, AlertTriangle } from 'lucide-react'
 import type { ProjectionScenario } from '#/lib/projection-scenarios-collection.js'
 import type { RecurringMovementTemplate } from '#/lib/recurring-movement-templates-collection.js'
 import { SCRIPTS, findScript } from '#/lib/projection-scripts/index.js'
@@ -307,11 +307,19 @@ interface ScenarioCardProps {
   scenario: ProjectionScenario
   templates: RecurringMovementTemplate[]
   onEdit: () => void
+  onDuplicate: () => void
   onDeleted: () => void
   onToggled: () => void
 }
 
-function ScenarioCard({ scenario, templates, onEdit, onDeleted, onToggled }: ScenarioCardProps) {
+function ScenarioCard({
+  scenario,
+  templates,
+  onEdit,
+  onDuplicate,
+  onDeleted,
+  onToggled,
+}: ScenarioCardProps) {
   const [deleting, setDeleting] = useState(false)
 
   const script = findScript(scenario.script_id)
@@ -374,6 +382,13 @@ function ScenarioCard({ scenario, templates, onEdit, onDeleted, onToggled }: Sce
       {/* Actions */}
       <div className="flex shrink-0 items-center gap-1">
         <button
+          onClick={onDuplicate}
+          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          title="Duplicate"
+        >
+          <Copy size={13} />
+        </button>
+        <button
           onClick={onEdit}
           className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           title="Edit"
@@ -400,6 +415,7 @@ function ScenarioCard({ scenario, templates, onEdit, onDeleted, onToggled }: Sce
 export function ScenariosPanel({ scenarios, templates }: ScenariosPanelProps) {
   const [addOpen, setAddOpen] = useState(false)
   const [editingScenario, setEditingScenario] = useState<ProjectionScenario | null>(null)
+  const [duplicatingScenario, setDuplicatingScenario] = useState<ProjectionScenario | null>(null)
   // Trigger re-render after mutations (ElectricSQL will sync, but we may want
   // a local nudge; in practice the live query re-renders automatically)
   const [, setRefreshKey] = useState(0)
@@ -434,6 +450,7 @@ export function ScenariosPanel({ scenarios, templates }: ScenariosPanelProps) {
               scenario={scenario}
               templates={templates}
               onEdit={() => setEditingScenario(scenario)}
+              onDuplicate={() => setDuplicatingScenario(scenario)}
               onDeleted={refresh}
               onToggled={refresh}
             />
@@ -458,6 +475,17 @@ export function ScenariosPanel({ scenarios, templates }: ScenariosPanelProps) {
           scenario={editingScenario}
           templates={templates}
           onClose={() => setEditingScenario(null)}
+          onSaved={refresh}
+        />
+      )}
+
+      {/* Duplicate modal — add mode pre-populated from source scenario */}
+      {duplicatingScenario && (
+        <ScenarioModal
+          mode="add"
+          scenario={{ ...duplicatingScenario, name: `Copy of ${duplicatingScenario.name}` }}
+          templates={templates}
+          onClose={() => setDuplicatingScenario(null)}
           onSaved={refresh}
         />
       )}

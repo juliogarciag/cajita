@@ -23,7 +23,7 @@ type YearOption = (typeof YEAR_OPTIONS)[number]
 
 function DashboardPage() {
   const { user } = Route.useRouteContext()
-  const [years, setYears] = useState<YearOption>(5)
+  const [years, setYears] = useState<YearOption>(10)
 
   const { data: checkpoints } = useLiveQuery((q) =>
     q.from({ c: checkpointsCollection }).orderBy(({ c }) => c.created_at, 'desc'),
