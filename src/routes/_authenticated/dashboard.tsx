@@ -41,7 +41,7 @@ function PromptModal({ prompt, onClose }: { prompt: string; onClose: () => void 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
       <div
         className="flex w-full max-w-2xl flex-col rounded-lg bg-white shadow-xl"
-        style={{ maxHeight: '85vh' }}
+        style={{ height: '85vh' }}
       >
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
           <div>
