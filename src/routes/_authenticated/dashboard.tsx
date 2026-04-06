@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback, useRef } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
+import { Sparkles, Copy, Check } from 'lucide-react'
 import { checkpointsCollection } from '#/lib/checkpoints-collection.js'
 import { movementsCollection } from '#/lib/movements-collection.js'
 import { recurringMovementTemplatesCollection } from '#/lib/recurring-movement-templates-collection.js'
@@ -10,6 +11,7 @@ import { toISODate } from '#/lib/format.js'
 import { buildProjectionData } from '#/lib/projection.js'
 import { findScript } from '#/lib/projection-scripts/index.js'
 import { applyAdjustments } from '#/lib/projection-scripts/apply.js'
+import { generateFinancialPrompt } from '#/lib/generate-financial-prompt.js'
 import { ProjectionChart, SCENARIO_COLORS } from '#/components/ProjectionChart.js'
 import { ScenariosPanel } from '#/components/ScenariosPanel.js'
 import type { ScenarioLine } from '#/components/ProjectionChart.js'
@@ -21,9 +23,72 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
 const YEAR_OPTIONS = [5, 10, 15, 20, 30, 50] as const
 type YearOption = (typeof YEAR_OPTIONS)[number]
 
+// ---------------------------------------------------------------------------
+// Prompt modal
+// ---------------------------------------------------------------------------
+
+function PromptModal({ prompt, onClose }: { prompt: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(prompt)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [prompt])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+      <div
+        className="flex w-full max-w-2xl flex-col rounded-lg bg-white shadow-xl"
+        style={{ maxHeight: '85vh' }}
+      >
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+          <div>
+            <h3 className="font-semibold text-gray-900">AI prompt</h3>
+            <p className="text-xs text-gray-400">
+              Copy and paste into Claude, ChatGPT, or any chatbot
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
+            ✕
+          </button>
+        </div>
+
+        <textarea
+          ref={textareaRef}
+          readOnly
+          value={prompt}
+          className="min-h-0 flex-1 resize-none overflow-auto p-4 font-mono text-xs text-gray-700 focus:outline-none"
+        />
+
+        <div className="flex justify-end gap-2 border-t border-gray-200 px-4 py-3">
+          <button
+            onClick={onClose}
+            className="rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+          >
+            Close
+          </button>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+            {copied ? 'Copied!' : 'Copy to clipboard'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DashboardPage() {
   const { user } = Route.useRouteContext()
   const [years, setYears] = useState<YearOption>(10)
+  const [promptText, setPromptText] = useState<string | null>(null)
 
   const { data: checkpoints } = useLiveQuery((q) =>
     q.from({ c: checkpointsCollection }).orderBy(({ c }) => c.created_at, 'desc'),
@@ -114,11 +179,33 @@ function DashboardPage() {
     return lines
   }, [scenarios, templates, budgets, startingBalance, currentYear, months])
 
+  const handleGeneratePrompt = useCallback(() => {
+    const today = toISODate(new Date())
+    const prompt = generateFinancialPrompt(
+      startingBalance,
+      templates,
+      budgets,
+      scenarios,
+      today,
+      currentYear,
+    )
+    setPromptText(prompt)
+  }, [startingBalance, templates, budgets, scenarios, currentYear])
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="mt-1 text-gray-600">Welcome back, {user.name ?? user.email}.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="mt-1 text-gray-600">Welcome back, {user.name ?? user.email}.</p>
+        </div>
+        <button
+          onClick={handleGeneratePrompt}
+          className="flex items-center gap-1.5 rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          <Sparkles size={14} />
+          Ask AI
+        </button>
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -149,6 +236,10 @@ function DashboardPage() {
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <ScenariosPanel scenarios={scenarios} templates={templates} />
       </div>
+
+      {promptText !== null && (
+        <PromptModal prompt={promptText} onClose={() => setPromptText(null)} />
+      )}
     </div>
   )
 }
