@@ -1,4 +1,12 @@
 ### Short term
+- Movement should auto-scroll to the most recent, not in the future, element, not to the bottom.
+- Add a way to change budget's category color from the budget page itself.
+- One of:
+  - An option to change budget movements date column order (desc vs asc)
+  - End-of-month markers in budget movements
+- Export snapshots to apple drive
+- Search feature (by amount or by description) with the option to filter by category.
+- Replace category select with radix's selector
 
 ### Finances
 
@@ -8,8 +16,6 @@
 - Dashboard charts:
   - Line chart
   - Linear regression chart for predictions
-- Option to Ask AI about movements data.
-- Export snapshots to (google drive?, apple drive?)
 
 ### Tools
 
