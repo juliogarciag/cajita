@@ -80,25 +80,36 @@ export const mortgagePayoffScript = defineScript({
     originalAmount: amountInput({ label: 'Original loan amount' }),
     annualRate: percentageInput({ label: 'Annual interest rate (%)' }),
     extraMonthly: amountInput({ label: 'Extra monthly payment', optional: true }),
+    repaymentStartDate: dateInput({ label: 'Extra payments start date', optional: true }),
   },
-  run({ mortgage, loanStartDate, originalAmount, annualRate, extraMonthly }, { today, templates }) {
+  run(
+    { mortgage, loanStartDate, originalAmount, annualRate, extraMonthly, repaymentStartDate },
+    { today, templates },
+  ) {
     const template = templates.find((t) => t.id === mortgage.templateId)
     if (!template) throw new Error(`Template ${mortgage.templateId} not found`)
 
     const monthlyPayment = Math.abs(template.amount_cents)
     const extra = extraMonthly ?? 0
+    const extraStartDate = repaymentStartDate ?? today
 
-    // Derive current balance from original loan terms
-    const currentBalance = balanceAt(
-      originalAmount,
+    // Derive balance at loan start → today with regular payment only
+    const balanceToday = balanceAt(originalAmount, annualRate, monthlyPayment, loanStartDate, today)
+
+    // If extra payments start in the future, coast with regular payments until then
+    const balanceAtExtraStart =
+      extraStartDate > today
+        ? balanceAt(balanceToday, annualRate, monthlyPayment, today, extraStartDate)
+        : balanceToday
+
+    // Compute payoff date from the extra-payment start date
+    const payoffDate = computePayoffDate(
+      balanceAtExtraStart,
       annualRate,
       monthlyPayment,
-      loanStartDate,
-      today,
+      extra,
+      extraStartDate,
     )
-
-    // Compute new payoff date with extra payment
-    const payoffDate = computePayoffDate(currentBalance, annualRate, monthlyPayment, extra, today)
 
     return [
       { type: 'end-template', templateId: mortgage.templateId, at: payoffDate },
@@ -110,7 +121,7 @@ export const mortgagePayoffScript = defineScript({
                 description: 'Extra mortgage payment',
                 amount_cents: -extra,
                 period_type: 'monthly' as const,
-                start_date: today,
+                start_date: extraStartDate,
                 end_date: payoffDate,
               },
             },
