@@ -141,6 +141,68 @@ export function generateFinancialPrompt(
     lines.push('')
   }
 
+  // Mortgage terms — extracted from active mortgage-payoff scenarios
+  const mortgageScenarios = activeScenarios.filter((s) => s.script_id === 'mortgage-payoff')
+  if (mortgageScenarios.length > 0) {
+    lines.push('## Mortgage Terms')
+    lines.push('')
+
+    for (const scenario of mortgageScenarios) {
+      const script = findScript(scenario.script_id)
+      if (!script) continue
+
+      let raw: Record<string, unknown>
+      try {
+        const v = scenario.inputs_json
+        raw = (typeof v === 'object' && v !== null ? v : JSON.parse(v as string)) as Record<
+          string,
+          unknown
+        >
+      } catch {
+        continue
+      }
+
+      const mortgageInput = raw['mortgage'] as { templateId: string } | undefined
+      const loanStartDate = raw['loanStartDate'] as string | undefined
+      const originalAmount = raw['originalAmount'] as number | undefined
+      const annualRate = raw['annualRate'] as number | undefined
+      const extraMonthly = raw['extraMonthly'] as number | undefined
+      const repaymentStartDate = raw['repaymentStartDate'] as string | undefined
+
+      const loanTemplate = mortgageInput
+        ? templates.find((t) => t.id === mortgageInput.templateId)
+        : undefined
+
+      lines.push(`### ${scenario.name}`)
+
+      if (originalAmount != null)
+        lines.push(`- **Original loan amount**: ${dollars(originalAmount)}`)
+      if (annualRate != null) lines.push(`- **Annual interest rate**: ${annualRate}%`)
+      if (loanTemplate)
+        lines.push(`- **Monthly payment**: ${dollars(Math.abs(loanTemplate.amount_cents))}`)
+      if (loanStartDate) lines.push(`- **Loan start date**: ${formatMonthShort(loanStartDate)}`)
+
+      if (extraMonthly && extraMonthly > 0) {
+        lines.push(`- **Extra monthly payment**: ${dollars(extraMonthly)}`)
+        if (repaymentStartDate)
+          lines.push(`- **Extra payments start**: ${formatMonthShort(repaymentStartDate)}`)
+      }
+
+      // Extract payoff date from script output
+      try {
+        const adjustments = script.run(raw as never, { today, templates })
+        const endEntry = adjustments.find((a) => a.type === 'end-template')
+        if (endEntry && 'at' in endEntry) {
+          lines.push(`- **Estimated payoff date**: ${formatMonthShort(endEntry.at)}`)
+        }
+      } catch {
+        // skip
+      }
+
+      lines.push('')
+    }
+  }
+
   // Base 50-year projection
   lines.push('## 50-Year Base Projection')
   lines.push('Assumes current income and expenses continue unchanged:')
