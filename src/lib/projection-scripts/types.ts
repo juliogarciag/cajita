@@ -5,8 +5,9 @@
 export type TemplateInputDef = { kind: 'template'; label: string; optional?: boolean }
 export type DateInputDef = { kind: 'date'; label: string; optional?: boolean }
 export type AmountInputDef = { kind: 'amount'; label: string; optional?: boolean }
+export type PercentageInputDef = { kind: 'percentage'; label: string; optional?: boolean }
 
-export type InputDef = TemplateInputDef | DateInputDef | AmountInputDef
+export type InputDef = TemplateInputDef | DateInputDef | AmountInputDef | PercentageInputDef
 
 // ---------------------------------------------------------------------------
 // Input values — what gets stored in inputs_json and passed to run()
@@ -15,6 +16,7 @@ export type InputDef = TemplateInputDef | DateInputDef | AmountInputDef
 export type TemplateInputValue = { templateId: string }
 export type DateInputValue = string // YYYY-MM-DD
 export type AmountInputValue = number // cents
+export type PercentageInputValue = number // e.g. 8.0 for 8%
 
 /** Resolve the runtime value type for a given InputDef */
 type ResolveValue<T extends InputDef> = T extends TemplateInputDef
@@ -29,7 +31,11 @@ type ResolveValue<T extends InputDef> = T extends TemplateInputDef
       ? T extends { optional: true }
         ? AmountInputValue | undefined
         : AmountInputValue
-      : never
+      : T extends PercentageInputDef
+        ? T extends { optional: true }
+          ? PercentageInputValue | undefined
+          : PercentageInputValue
+        : never
 
 export type InputValues<T extends Record<string, InputDef>> = {
   [K in keyof T]: ResolveValue<T[K]>
@@ -67,6 +73,14 @@ export type Adjustment =
 export type ScriptContext = {
   /** Today's date as YYYY-MM-DD, for convenience */
   today: string
+  /** All active recurring templates — lets scripts read template amounts without extra inputs */
+  templates: Array<{
+    id: string
+    amount_cents: number
+    description: string
+    start_date: string
+    end_date: string | null
+  }>
 }
 
 // ---------------------------------------------------------------------------
@@ -101,5 +115,13 @@ export const dateInput = (opts: { label: string; optional?: boolean }): DateInpu
 
 export const amountInput = (opts: { label: string; optional?: boolean }): AmountInputDef => ({
   kind: 'amount',
+  ...opts,
+})
+
+export const percentageInput = (opts: {
+  label: string
+  optional?: boolean
+}): PercentageInputDef => ({
+  kind: 'percentage',
   ...opts,
 })
