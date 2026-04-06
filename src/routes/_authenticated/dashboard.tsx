@@ -18,7 +18,7 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
   component: DashboardPage,
 })
 
-const YEAR_OPTIONS = [5, 10, 15, 20, 30] as const
+const YEAR_OPTIONS = [5, 10, 15, 20, 30, 50] as const
 type YearOption = (typeof YEAR_OPTIONS)[number]
 
 function DashboardPage() {
