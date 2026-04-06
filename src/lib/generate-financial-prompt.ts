@@ -141,6 +141,8 @@ export function generateFinancialPrompt(
     lines.push('')
   }
 
+  const activeScenarios = scenarios.filter((s) => s.active)
+
   // Mortgage terms — extracted from active mortgage-payoff scenarios
   const mortgageScenarios = activeScenarios.filter((s) => s.script_id === 'mortgage-payoff')
   if (mortgageScenarios.length > 0) {
@@ -215,7 +217,6 @@ export function generateFinancialPrompt(
   lines.push('')
 
   // Scenarios
-  const activeScenarios = scenarios.filter((s) => s.active)
   if (activeScenarios.length > 0) {
     lines.push('## What-If Scenarios')
     lines.push('')
