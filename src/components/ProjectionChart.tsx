@@ -112,7 +112,20 @@ export function ProjectionChart({
   data: MonthDatum[]
   scenarios?: ScenarioLine[]
 }) {
-  const yearStartMonths = data.filter((d) => d.isYearStart).map((d) => d.month)
+  const allYearStartMonths = data.filter((d) => d.isYearStart)
+
+  // Thin out x-axis labels so they don't overlap on longer ranges.
+  // Target ~6 visible ticks regardless of total years shown.
+  const totalYears = Math.round(data.length / 12)
+  const tickEvery = totalYears <= 6 ? 1 : totalYears <= 12 ? 2 : 5
+
+  const yearStartMonths = allYearStartMonths
+    .filter((d) => parseInt(d.yearLabel) % tickEvery === 0)
+    .map((d) => d.month)
+
+  // Keep all year boundaries for the faint vertical reference lines
+  const allYearStartMonthKeys = allYearStartMonths.map((d) => d.month)
+
   const mergedData = mergeChartData(data, scenarios)
 
   return (
@@ -123,7 +136,7 @@ export function ProjectionChart({
           <ReferenceLine y={0} stroke="#d1d5db" strokeDasharray="4 4" />
 
           {/* Vertical year-boundary markers */}
-          {yearStartMonths.map((m) => (
+          {allYearStartMonthKeys.map((m) => (
             <ReferenceLine key={m} x={m} stroke="#f3f4f6" strokeWidth={1} />
           ))}
 
