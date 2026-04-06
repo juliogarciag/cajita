@@ -204,7 +204,7 @@ function DashboardPage() {
           className="flex items-center gap-1.5 rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
         >
           <Sparkles size={14} />
-          Ask AI
+          Generate AI prompt
         </button>
       </div>
 
