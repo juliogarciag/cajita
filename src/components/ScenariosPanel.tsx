@@ -18,6 +18,15 @@ import { DateInput } from './DateInput.js'
 
 type RawInputValues = Record<string, unknown>
 
+/**
+ * ElectricSQL delivers jsonb columns as already-parsed JS objects, not strings.
+ * TanStack DB doesn't apply Zod transforms at runtime, so we normalize here.
+ */
+function parseInputsJson(value: unknown): RawInputValues {
+  if (typeof value === 'object' && value !== null) return value as RawInputValues
+  return JSON.parse(value as string) as RawInputValues
+}
+
 interface ScenariosPanelProps {
   scenarios: ProjectionScenario[]
   templates: RecurringMovementTemplate[]
@@ -68,9 +77,7 @@ interface ScenarioModalProps {
 
 function ScenarioModal({ mode, scenario, templates, onClose, onSaved }: ScenarioModalProps) {
   const initialScriptId = scenario?.script_id ?? SCRIPTS[0]?.id ?? ''
-  const initialInputs: RawInputValues = scenario
-    ? (JSON.parse(scenario.inputs_json) as RawInputValues)
-    : {}
+  const initialInputs: RawInputValues = scenario ? parseInputsJson(scenario.inputs_json) : {}
   const initialName = scenario?.name ?? ''
 
   const [selectedScriptId, setSelectedScriptId] = useState(initialScriptId)
@@ -281,7 +288,7 @@ function ScenarioCard({ scenario, templates, onEdit, onDeleted, onToggled }: Sce
   let parseError: string | null = null
   let raw: RawInputValues = {}
   try {
-    raw = JSON.parse(scenario.inputs_json) as RawInputValues
+    raw = parseInputsJson(scenario.inputs_json)
   } catch {
     parseError = 'Inputs data is corrupt'
   }

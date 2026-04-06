@@ -7,9 +7,10 @@ const projectionScenarioSchema = z.object({
   team_id: z.string(),
   name: z.string(),
   script_id: z.string(),
-  // ElectricSQL may return jsonb columns as already-parsed objects or as strings
-  // — normalize to a JSON string so consumers can always call JSON.parse() safely.
-  inputs_json: z.unknown().transform((v) => (typeof v === 'string' ? v : JSON.stringify(v))),
+  // ElectricSQL delivers jsonb columns as already-parsed JS objects (not strings).
+  // TanStack DB does not apply Zod transforms at runtime, so we use z.unknown()
+  // and handle both string/object at the usage sites via parseInputsJson().
+  inputs_json: z.unknown(),
   active: z.coerce.boolean(),
   created_at: z.string(),
   updated_at: z.string(),

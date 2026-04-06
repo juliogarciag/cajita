@@ -75,7 +75,11 @@ function DashboardPage() {
 
       let raw: Record<string, unknown>
       try {
-        raw = JSON.parse(scenario.inputs_json) as Record<string, unknown>
+        const v = scenario.inputs_json
+        raw = (typeof v === 'object' && v !== null ? v : JSON.parse(v as string)) as Record<
+          string,
+          unknown
+        >
       } catch {
         continue
       }
