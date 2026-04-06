@@ -216,17 +216,27 @@ function ScenarioModal({ mode, scenario, templates, onClose, onSaved }: Scenario
               )}
 
               {def.kind === 'amount' && (
-                <input
-                  type="number"
-                  step="1"
-                  placeholder="Amount in cents"
-                  value={inputValues[key] != null ? String(inputValues[key] as number) : ''}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setInputValue(key, v !== '' ? parseInt(v, 10) : undefined)
-                  }}
-                  className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
-                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-2 flex items-center text-sm text-gray-400">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={
+                      inputValues[key] != null
+                        ? ((inputValues[key] as number) / 100).toFixed(2)
+                        : ''
+                    }
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setInputValue(key, v !== '' ? Math.round(parseFloat(v) * 100) : undefined)
+                    }}
+                    className="w-full rounded border border-gray-300 py-1.5 pl-6 pr-2 text-sm focus:border-gray-500 focus:outline-none"
+                  />
+                </div>
               )}
             </div>
           ))}
