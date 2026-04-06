@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "concurrently \"vite dev --port 3001\" \"caddy run --watch\"",
     "dev:docker": "docker compose up",
-    "dev:preview": "vite dev --port 3003",
+    "dev:preview": "concurrently \"vite dev --port 3004\" \"caddy run --watch --config CaddyfilePreview\"",
     "dev:test": "dotenv -e .env.test -- vite dev --port 3002",
     "build": "vite build",
     "preview": "vite preview",

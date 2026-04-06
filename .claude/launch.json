@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "/Users/julio/.asdf/shims/npm",
-      "runtimeArgs": ["run", "dev:preview"],
-      "port": 3003
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "PATH=/opt/homebrew/bin:/Users/julio/.asdf/shims:$PATH npm run dev:preview"],
+      "port": 3005
     },
     {
       "name": "docker",
