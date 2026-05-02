@@ -1,6 +1,7 @@
 import { createCollection } from '@tanstack/react-db'
 import { electricCollectionOptions } from '@tanstack/electric-db-collection'
 import { z } from 'zod'
+import { electricShapeUrl } from '#/lib/electric-url'
 
 const movementNoteSchema = z.object({
   id: z.string(),
@@ -19,10 +20,7 @@ export const movementNotesCollection = createCollection(
   electricCollectionOptions({
     id: 'movement_notes',
     shapeOptions: {
-      url:
-        typeof window !== 'undefined'
-          ? `${window.location.origin}/api/electric/movement_notes`
-          : '/api/electric/movement_notes',
+      url: electricShapeUrl('movement_notes'),
     },
     getKey: (item: MovementNote) => item.id,
     schema: movementNoteSchema,

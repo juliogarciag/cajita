@@ -1,6 +1,7 @@
 import { createCollection } from '@tanstack/react-db'
 import { electricCollectionOptions } from '@tanstack/electric-db-collection'
 import { z } from 'zod'
+import { electricShapeUrl } from '#/lib/electric-url'
 
 const budgetItemNoteSchema = z.object({
   id: z.string(),
@@ -19,10 +20,7 @@ export const budgetItemNotesCollection = createCollection(
   electricCollectionOptions({
     id: 'budget_item_notes',
     shapeOptions: {
-      url:
-        typeof window !== 'undefined'
-          ? `${window.location.origin}/api/electric/budget_item_notes`
-          : '/api/electric/budget_item_notes',
+      url: electricShapeUrl('budget_item_notes'),
     },
     getKey: (item: BudgetItemNote) => item.id,
     schema: budgetItemNoteSchema,

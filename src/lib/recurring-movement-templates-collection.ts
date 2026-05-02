@@ -1,6 +1,7 @@
 import { createCollection } from '@tanstack/react-db'
 import { electricCollectionOptions } from '@tanstack/electric-db-collection'
 import { z } from 'zod'
+import { electricShapeUrl } from '#/lib/electric-url'
 
 const recurringMovementTemplateSchema = z.object({
   id: z.string(),
@@ -25,10 +26,7 @@ export const recurringMovementTemplatesCollection = createCollection(
   electricCollectionOptions({
     id: 'recurring_movement_templates',
     shapeOptions: {
-      url:
-        typeof window !== 'undefined'
-          ? `${window.location.origin}/api/electric/recurring_movement_templates`
-          : '/api/electric/recurring_movement_templates',
+      url: electricShapeUrl('recurring_movement_templates'),
     },
     getKey: (item: RecurringMovementTemplate) => item.id,
     schema: recurringMovementTemplateSchema,

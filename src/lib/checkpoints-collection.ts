@@ -1,6 +1,7 @@
 import { createCollection } from '@tanstack/react-db'
 import { electricCollectionOptions } from '@tanstack/electric-db-collection'
 import { z } from 'zod'
+import { electricShapeUrl } from '#/lib/electric-url'
 
 const checkpointSchema = z.object({
   id: z.string(),
@@ -17,10 +18,7 @@ export const checkpointsCollection = createCollection(
   electricCollectionOptions({
     id: 'checkpoints',
     shapeOptions: {
-      url:
-        typeof window !== 'undefined'
-          ? `${window.location.origin}/api/electric/checkpoints`
-          : '/api/electric/checkpoints',
+      url: electricShapeUrl('checkpoints'),
     },
     getKey: (item: Checkpoint) => item.id,
     schema: checkpointSchema,

@@ -1,6 +1,7 @@
 import { createCollection } from '@tanstack/react-db'
 import { electricCollectionOptions } from '@tanstack/electric-db-collection'
 import { z } from 'zod'
+import { electricShapeUrl } from '#/lib/electric-url'
 
 const projectionScenarioSchema = z.object({
   id: z.string(),
@@ -22,10 +23,7 @@ export const projectionScenariosCollection = createCollection(
   electricCollectionOptions({
     id: 'projection_scenarios',
     shapeOptions: {
-      url:
-        typeof window !== 'undefined'
-          ? `${window.location.origin}/api/electric/projection_scenarios`
-          : '/api/electric/projection_scenarios',
+      url: electricShapeUrl('projection_scenarios'),
     },
     getKey: (item: ProjectionScenario) => item.id,
     schema: projectionScenarioSchema,
