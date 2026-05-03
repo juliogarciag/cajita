@@ -39,7 +39,7 @@ npm run migrate
 npm run dev
 ```
 
-The app runs at `http://localhost:3000`.
+The app runs at `https://localhost:3000`.
 
 ## Google OAuth Setup
 
@@ -51,7 +51,7 @@ The app runs at `http://localhost:3000`.
 6. Click **Create Credentials > OAuth 2.0 Client ID**.
 7. Application type: **Web application**.
 8. Under **Authorized redirect URIs**, add:
-   - `http://localhost:3000/api/auth/callback` (for local development)
+   - `https://localhost:3000/api/auth/callback` (for local development)
    - `https://your-production-domain.com/api/auth/callback` (for production)
 9. Click **Create**. Copy the **Client ID** and **Client Secret**.
 10. Paste them into your `.env` file as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.

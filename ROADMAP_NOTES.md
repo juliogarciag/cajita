@@ -5,8 +5,8 @@
   - An option to change budget movements date column order (desc vs asc)
   - End-of-month markers in budget movements
 - Export snapshots to apple drive
-- Search feature (by amount or by description) with the option to filter by category.
 - Replace category select with radix's selector
+- How to get to the current movement scroll position after scrolling back a lot?
 
 ### Finances
 
