@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react'
 import { createFileRoute, Link, Outlet, redirect, useMatches } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { authMiddleware } from '#/server/middleware.js'
 import { DateFormatProvider } from '#/lib/date-format.js'
+import { SearchButton } from '#/components/search/SearchButton'
+import { SearchPalette } from '#/components/search/SearchPalette'
 
 const getAuthenticatedUser = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
@@ -31,6 +34,19 @@ function AuthenticatedLayout() {
   const { user } = Route.useRouteContext()
   const matches = useMatches()
   const isFinancesRoute = matches.some((m) => m.fullPath.startsWith('/finances'))
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  // Global Cmd+K / Ctrl+K toggle for the search palette.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearchOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   return (
     <div className="min-h-screen">
@@ -57,6 +73,7 @@ function AuthenticatedLayout() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <SearchButton onClick={() => setSearchOpen(true)} />
             {user.picture && (
               <img
                 src={user.picture}
@@ -78,6 +95,7 @@ function AuthenticatedLayout() {
           </div>
         </div>
       </nav>
+      {searchOpen && <SearchPalette open={searchOpen} onOpenChange={setSearchOpen} />}
       {isFinancesRoute && (
         <div className="border-b border-gray-200 bg-white">
           <div className="mx-auto flex max-w-5xl items-center gap-1 px-4 py-1.5">

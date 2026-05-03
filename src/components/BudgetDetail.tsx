@@ -27,7 +27,10 @@ import { BudgetItemRow } from './BudgetItemRow.js'
 
 export function BudgetDetail() {
   const { budgetId } = useParams({ strict: false }) as { budgetId: string }
-  const { highlight } = useSearch({ strict: false }) as { highlight?: string }
+  const { highlight, highlightItem } = useSearch({ strict: false }) as {
+    highlight?: string
+    highlightItem?: string
+  }
   const { formatDate } = useDateFormat()
 
   const [newItemId, setNewItemId] = useState<string | null>(null)
@@ -35,6 +38,7 @@ export function BudgetDetail() {
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null)
   const [noteOpenId, setNoteOpenId] = useState<string | null>(null)
   const scrolledRef = useRef(false)
+  const scrolledItemRef = useRef(false)
   const tableBodyRef = useRef<HTMLDivElement>(null)
   const [editingAnnual, setEditingAnnual] = useState(false)
   const [annualDraft, setAnnualDraft] = useState('')
@@ -114,6 +118,23 @@ export function BudgetDetail() {
       }
     }, 100)
   }, [highlight, items])
+
+  // Sibling effect for the search palette: ?highlightItem=<budget_item_id>
+  // looks the row up by id directly (not via movement_id).
+  useEffect(() => {
+    if (!highlightItem || items.length === 0 || scrolledItemRef.current) return
+    const item = items.find((i) => i.id === highlightItem)
+    if (!item) return
+    scrolledItemRef.current = true
+    setTimeout(() => {
+      const el = document.getElementById(item.id)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setHighlightedItemId(item.id)
+        setTimeout(() => setHighlightedItemId(null), 2000)
+      }
+    }, 100)
+  }, [highlightItem, items])
 
   if (!budget) {
     return (
