@@ -74,33 +74,32 @@ export function SearchPalette({ open, onOpenChange }: Props) {
       onOpenChange={onOpenChange}
       label="Search movements and budget items"
       shouldFilter={false}
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4 pt-[15vh]"
+      overlayClassName="fixed inset-0 z-40 bg-black/30"
+      contentClassName="fixed left-1/2 top-[15vh] z-50 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black/5 outline-none"
     >
-      <div className="w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black/5">
-        <Dialog.Title className="sr-only">Search movements and budget items</Dialog.Title>
-        <Command.Input
-          value={input}
-          onValueChange={setInput}
-          placeholder="Search movements and budget items…"
-          autoFocus
-          className="w-full border-b border-gray-200 px-4 py-3 text-base outline-none placeholder:text-gray-400"
-        />
+      <Dialog.Title className="sr-only">Search movements and budget items</Dialog.Title>
+      <Command.Input
+        value={input}
+        onValueChange={setInput}
+        placeholder="Search movements and budget items…"
+        autoFocus
+        className="w-full border-b border-gray-200 px-4 py-3 text-base outline-none placeholder:text-gray-400"
+      />
 
-        <Command.List className="max-h-[60vh] overflow-y-auto p-2">
-          {debouncedQuery.trim() && results.length === 0 ? (
-            <Command.Empty className="px-3 py-8 text-center text-sm text-gray-500">
-              No movements or budget items match.
-            </Command.Empty>
-          ) : null}
+      <Command.List className="max-h-[60vh] overflow-y-auto p-2">
+        {debouncedQuery.trim() && results.length === 0 ? (
+          <Command.Empty className="px-3 py-8 text-center text-sm text-gray-500">
+            No movements or budget items match.
+          </Command.Empty>
+        ) : null}
 
-          {results.map((result) => (
-            <ResultRow key={resultKey(result)} result={result} onSelect={handleSelect} />
-          ))}
-        </Command.List>
+        {results.map((result) => (
+          <ResultRow key={resultKey(result)} result={result} onSelect={handleSelect} />
+        ))}
+      </Command.List>
 
-        <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-500">
-          Tip: type a number to search by amount.
-        </div>
+      <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-500">
+        Tip: type a number to search by amount.
       </div>
     </Command.Dialog>
   )
