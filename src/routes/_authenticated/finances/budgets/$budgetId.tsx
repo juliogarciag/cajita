@@ -7,7 +7,11 @@ const BudgetDetailPage = lazy(() =>
 )
 
 const searchSchema = z.object({
+  // Existing param: a movement_id used to find-by-movement on linked items
+  // (cross-link from the movements table).
   highlight: z.string().optional(),
+  // New param: a budget_item_id used to find-by-id (search palette navigation).
+  highlightItem: z.string().optional(),
 })
 
 export const Route = createFileRoute('/_authenticated/finances/budgets/$budgetId')({
