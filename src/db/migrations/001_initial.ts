@@ -28,6 +28,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
     .execute()
 
+  // Seed the default team — real (non-isolated) logins are attached to it
+  // by ensureTeamMembership, which looks up the team with is_default = true.
+  await sql`INSERT INTO teams (name, is_default) VALUES ('Default', true)`.execute(db)
+
   await db.schema
     .createTable('team_memberships')
     .addColumn('id', 'uuid', (col) => col.primaryKey().defaultTo(sql`gen_random_uuid()`))
