@@ -1,6 +1,6 @@
-export const DEFAULT_BUDGET_COLOR = '#22c55e'
+export const DEFAULT_CATEGORY_COLOR = '#22c55e'
 
-export const budgetColors = [
+export const categoryColors = [
   { name: 'Green', value: '#22c55e' },
   { name: 'Blue', value: '#3b82f6' },
   { name: 'Purple', value: '#a855f7' },

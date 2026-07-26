@@ -16,14 +16,14 @@ This creates an isolated user + team with no data — safe for testing without a
 
 After authenticating, navigate to any route normally:
 ```js
-window.location.href = '/finances/movements'
+window.location.href = '/finances/expense-categories'
 ```
 
 The same endpoint is used by e2e tests via `tests/e2e/fixtures.ts`.
 
 ## Local HTTP/2 Setup (required for dev with many Electric shapes)
 
-Browsers allow only 6 concurrent HTTP/1.1 connections per host. The app uses 7 Electric long-poll connections, which saturates the pool and causes navigation to stall. In production this is fine (Railway uses HTTP/2). Locally, run Caddy as a reverse proxy to get HTTP/2.
+Browsers allow only 6 concurrent HTTP/1.1 connections per host. The app uses several Electric long-poll connections, which can saturate the pool and cause navigation to stall. In production this is fine (Railway uses HTTP/2). Locally, run Caddy as a reverse proxy to get HTTP/2.
 
 **One-time setup:**
 

@@ -1,16 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { AmountInput } from './AmountInput.js'
-import { CategorySelect } from './CategorySelect.js'
 import { DatePickerCell } from './DatePickerCell.js'
 import { useDateFormat } from '#/lib/date-format.js'
 
-type CellType = 'text' | 'date' | 'amount' | 'category'
+type CellType = 'text' | 'date' | 'amount'
 
 interface EditableCellProps {
   value: string
   type: CellType
-  categoryId?: string | null
-  categoryColor?: string | null
   onSave: (value: string) => void
   onTab?: (shift: boolean) => void
   onEnter?: () => void
@@ -22,8 +19,6 @@ interface EditableCellProps {
 export function EditableCell({
   value,
   type,
-  categoryId,
-  categoryColor,
   onSave,
   onTab,
   onEnter,
@@ -117,33 +112,10 @@ export function EditableCell({
         ref={cellRef}
         data-editable-cell
         {...(disabled ? { 'data-disabled': true } : {})}
-        className={`w-full rounded border border-transparent px-2 py-1.5 ${disabled ? '' : 'cursor-pointer hover:bg-gray-100'} ${type === 'category' ? 'flex items-center gap-1.5' : ''} ${className}`}
+        className={`w-full rounded border border-transparent px-2 py-1.5 ${disabled ? '' : 'cursor-pointer hover:bg-gray-100'} ${className}`}
         onClick={disabled ? undefined : () => setEditing(true)}
       >
-        {type === 'category' && categoryColor && (
-          <span
-            className="inline-block h-2 w-2 shrink-0 rounded-full"
-            style={{ backgroundColor: categoryColor }}
-          />
-        )}
         {displayValue || <span className="text-gray-400">—</span>}
-      </div>
-    )
-  }
-
-  if (type === 'category') {
-    return (
-      <div ref={cellRef} data-editable-cell onBlur={save}>
-        <CategorySelect
-          value={categoryId ?? null}
-          onChange={(id) => {
-            onSave(id ?? '')
-            setEditing(false)
-          }}
-          autoFocus
-          onTab={onTab ?? ((shift) => focusAdjacentCell(shift))}
-          onEnter={onEnter ?? (() => focusAdjacentCell(false))}
-        />
       </div>
     )
   }

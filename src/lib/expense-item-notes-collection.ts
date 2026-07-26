@@ -3,9 +3,9 @@ import { electricCollectionOptions } from '@tanstack/electric-db-collection'
 import { z } from 'zod'
 import { electricShapeUrl } from '#/lib/electric-url'
 
-const movementNoteSchema = z.object({
+const expenseItemNoteSchema = z.object({
   id: z.string(),
-  movement_id: z.string(),
+  expense_item_id: z.string(),
   team_id: z.string(),
   content: z.string(),
   created_by_user_id: z.string().nullable(),
@@ -14,15 +14,15 @@ const movementNoteSchema = z.object({
   updated_at: z.string(),
 })
 
-export type MovementNote = z.infer<typeof movementNoteSchema>
+export type ExpenseItemNote = z.infer<typeof expenseItemNoteSchema>
 
-export const movementNotesCollection = createCollection(
+export const expenseItemNotesCollection = createCollection(
   electricCollectionOptions({
-    id: 'movement_notes',
+    id: 'expense_item_notes',
     shapeOptions: {
-      url: electricShapeUrl('movement_notes'),
+      url: electricShapeUrl('expense_item_notes'),
     },
-    getKey: (item: MovementNote) => item.id,
-    schema: movementNoteSchema,
+    getKey: (item: ExpenseItemNote) => item.id,
+    schema: expenseItemNoteSchema,
   }),
 )

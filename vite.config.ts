@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import path from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 import tsconfigPaths from 'vite-tsconfig-paths'
@@ -22,6 +23,10 @@ function printPublicUrl(): Plugin {
 }
 
 const config = defineConfig({
+  test: {
+    // Playwright owns tests/e2e — vitest only runs unit tests in src/
+    include: ['src/**/*.test.{ts,tsx}'],
+  },
   server: {
     port: 3001,
     strictPort: true,

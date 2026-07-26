@@ -1,22 +1,19 @@
 // Pure search/rank module for the global Cmd+K palette.
 //
-// Searches movements (description + their movement_notes content) and
-// budget items (description + their budget_item_notes content) and ranks
-// the combined results. Bare numeric tokens additionally match against
-// |amount_cents| (and |amount_local_cents| for budget items).
+// Searches expense items (description + their expense_item_notes content)
+// and ranks the results. Bare numeric tokens additionally match against
+// amount_usd_cents and amount_soles_cents.
 
-import type { Movement } from '#/lib/movements-collection'
-import type { MovementNote } from '#/lib/movement-notes-collection'
-import type { BudgetItem } from '#/lib/budget-items-collection'
-import type { BudgetItemNote } from '#/lib/budget-item-notes-collection'
+import type { ExpenseItem } from '#/lib/expense-items-collection'
+import type { ExpenseItemNote } from '#/lib/expense-item-notes-collection'
 
 const RESULT_CAP = 30
 const NOTE_EXCERPT_RADIUS = 40 // chars on each side of the first match
 
-export type MovementResult = {
-  kind: 'movement'
-  movement: Movement
-  note?: MovementNote
+export type ExpenseItemResult = {
+  kind: 'expense_item'
+  item: ExpenseItem
+  note?: ExpenseItemNote
   noteText: string
   score: number
   descHits: string[]
@@ -24,24 +21,11 @@ export type MovementResult = {
   amountHits: string[]
 }
 
-export type BudgetItemResult = {
-  kind: 'budget_item'
-  item: BudgetItem
-  note?: BudgetItemNote
-  noteText: string
-  score: number
-  descHits: string[]
-  noteHits: string[]
-  amountHits: string[]
-}
-
-export type SearchResult = MovementResult | BudgetItemResult
+export type SearchResult = ExpenseItemResult
 
 export type SearchData = {
-  movements: readonly Movement[]
-  movementNotes: readonly MovementNote[]
-  budgetItems: readonly BudgetItem[]
-  budgetItemNotes: readonly BudgetItemNote[]
+  expenseItems: readonly ExpenseItem[]
+  expenseItemNotes: readonly ExpenseItemNote[]
 }
 
 // --- Tokenization ----------------------------------------------------------
@@ -130,45 +114,17 @@ export function runSearch(query: string, data: SearchData): SearchResult[] {
   const tokens = tokenize(query)
   if (tokens.length === 0) return []
 
-  const movementNoteByMovementId = new Map<string, MovementNote>()
-  for (const n of data.movementNotes) movementNoteByMovementId.set(n.movement_id, n)
-
-  const budgetItemNoteByItemId = new Map<string, BudgetItemNote>()
-  for (const n of data.budgetItemNotes) budgetItemNoteByItemId.set(n.budget_item_id, n)
+  const noteByItemId = new Map<string, ExpenseItemNote>()
+  for (const n of data.expenseItemNotes) noteByItemId.set(n.expense_item_id, n)
 
   const scored: Scored<SearchResult>[] = []
 
-  for (const m of data.movements) {
-    const note = movementNoteByMovementId.get(m.id)
+  for (const it of data.expenseItems) {
+    const note = noteByItemId.get(it.id)
     const noteText = note ? htmlToText(note.content) : ''
-    const result = scoreCandidate({
-      tokens,
-      description: m.description,
-      noteText,
-      amountsCents: [Math.abs(m.amount_cents)],
-    })
-    if (!result) continue
-    scored.push({
-      value: {
-        kind: 'movement',
-        movement: m,
-        note,
-        noteText,
-        score: result.score,
-        descHits: result.descHits,
-        noteHits: result.noteHits,
-        amountHits: result.amountHits,
-      },
-      score: result.score,
-      date: m.date,
-    })
-  }
-
-  for (const it of data.budgetItems) {
-    const note = budgetItemNoteByItemId.get(it.id)
-    const noteText = note ? htmlToText(note.content) : ''
-    const amounts: number[] = [Math.abs(it.amount_cents)]
-    if (it.amount_local_cents != null) amounts.push(Math.abs(it.amount_local_cents))
+    const amounts: number[] = []
+    if (it.amount_usd_cents != null) amounts.push(Math.abs(it.amount_usd_cents))
+    if (it.amount_soles_cents != null) amounts.push(Math.abs(it.amount_soles_cents))
     const result = scoreCandidate({
       tokens,
       description: it.description,
@@ -178,7 +134,7 @@ export function runSearch(query: string, data: SearchData): SearchResult[] {
     if (!result) continue
     scored.push({
       value: {
-        kind: 'budget_item',
+        kind: 'expense_item',
         item: it,
         note,
         noteText,

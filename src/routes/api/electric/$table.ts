@@ -4,26 +4,8 @@ import { parseCookies } from '#/server/cookies.js'
 import { validateSession } from '#/server/session.js'
 
 const ELECTRIC_URL = process.env.ELECTRIC_URL ?? 'http://localhost:3060'
-const ALLOWED_TABLES = [
-  'movements',
-  'categories',
-  'checkpoints',
-  'budgets',
-  'budget_items',
-  'movement_notes',
-  'budget_item_notes',
-  'team_members',
-  'recurring_movement_templates',
-  'projection_scenarios',
-]
-const TEAM_SCOPED_TABLES = [
-  'movements',
-  'categories',
-  'checkpoints',
-  'budgets',
-  'recurring_movement_templates',
-  'projection_scenarios',
-]
+const ALLOWED_TABLES = ['expense_categories', 'expense_items', 'expense_item_notes', 'team_members']
+const TEAM_SCOPED_TABLES = ['expense_categories', 'expense_items', 'expense_item_notes']
 
 // Electric protocol query params to forward
 const ELECTRIC_PARAMS = ['offset', 'handle', 'live', 'cursor', 'where', 'columns', 'replica']
@@ -64,25 +46,6 @@ export const Route = createFileRoute('/api/electric/$table')({
 
         // Scope team-scoped tables by the user's team
         if (TEAM_SCOPED_TABLES.includes(table) && user.teamId) {
-          const existingWhere = electricUrl.searchParams.get('where')
-          const teamClause = `"team_id" = '${user.teamId}'`
-          electricUrl.searchParams.set(
-            'where',
-            existingWhere ? `(${existingWhere}) AND ${teamClause}` : teamClause,
-          )
-        }
-
-        // Scope note tables directly via team_id (added in migration 014)
-        if (table === 'movement_notes' && user.teamId) {
-          const existingWhere = electricUrl.searchParams.get('where')
-          const teamClause = `"team_id" = '${user.teamId}'`
-          electricUrl.searchParams.set(
-            'where',
-            existingWhere ? `(${existingWhere}) AND ${teamClause}` : teamClause,
-          )
-        }
-
-        if (table === 'budget_item_notes' && user.teamId) {
           const existingWhere = electricUrl.searchParams.get('where')
           const teamClause = `"team_id" = '${user.teamId}'`
           electricUrl.searchParams.set(

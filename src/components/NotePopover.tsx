@@ -5,11 +5,10 @@ import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import { type Editor } from '@tiptap/react'
 import { MessageSquare, Bold, Italic, Link2, Link2Off, Save, Trash2 } from 'lucide-react'
-import type { MovementNote } from '#/lib/movement-notes-collection.js'
-import type { BudgetItemNote } from '#/lib/budget-item-notes-collection.js'
+import type { ExpenseItemNote } from '#/lib/expense-item-notes-collection.js'
 import type { TeamMember } from '#/lib/team-members-collection.js'
 
-type Note = MovementNote | BudgetItemNote
+type Note = ExpenseItemNote
 
 interface NotePopoverProps {
   note: Note | null

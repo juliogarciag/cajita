@@ -15,7 +15,6 @@
     "start": "npm run migrate && node .output/server/index.mjs",
     "migrate": "tsx src/db/migrate.ts",
     "migrate:test": "dotenv -e .env.test -- tsx src/db/migrate.ts",
-    "migrate:data": "tsx scripts/migrate-data.ts",
     "lint": "eslint",
     "format": "prettier --write .",
     "test": "vitest run",

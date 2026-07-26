@@ -61,7 +61,7 @@ function AuthenticatedLayout() {
                 Dashboard
               </Link>
               <Link
-                to="/finances/movements"
+                to="/finances/expense-categories"
                 className={isFinancesRoute ? `${navLinkClass} !text-gray-900` : navLinkClass}
                 activeOptions={{ exact: false }}
               >
@@ -99,21 +99,12 @@ function AuthenticatedLayout() {
       {isFinancesRoute && (
         <div className="border-b border-gray-200 bg-white">
           <div className="mx-auto flex max-w-5xl items-center gap-1 px-4 py-1.5">
-            <Link to="/finances/movements" className={subNavLinkClass}>
-              Movements
-            </Link>
             <Link
-              to="/finances/budgets"
+              to="/finances/expense-categories"
               className={subNavLinkClass}
               activeOptions={{ exact: false }}
             >
-              Budgets
-            </Link>
-            <Link to="/finances/categories" className={subNavLinkClass}>
-              Categories
-            </Link>
-            <Link to="/finances/recurring" className={subNavLinkClass}>
-              Recurring
+              Expense Categories
             </Link>
             <Link to="/finances/settings" className={subNavLinkClass}>
               Settings

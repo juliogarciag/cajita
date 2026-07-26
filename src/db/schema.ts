@@ -7,22 +7,6 @@ export interface TeamsTable {
   created_at: Generated<Date>
 }
 
-export interface RecurringMovementTemplatesTable {
-  id: Generated<string>
-  team_id: string
-  description: string
-  amount_cents: number
-  category_id: string | null
-  period_type: Generated<string> // 'monthly' | 'annual'
-  day_of_month: number
-  month_of_year: number | null // 1–12, required when period_type = 'annual'
-  start_date: string // YYYY-MM-DD
-  end_date: string | null
-  active: Generated<boolean>
-  created_at: Generated<Date>
-  updated_at: Generated<Date>
-}
-
 export interface TeamMembershipsTable {
   id: Generated<string>
   team_id: string
@@ -46,76 +30,37 @@ export interface SessionsTable {
   created_at: Generated<Date>
 }
 
-export interface CategoriesTable {
+export interface ExpenseCategoriesTable {
   id: Generated<string>
   team_id: string
   name: string
   color: string
-  budget_id: string | null
-  sort_order: number
-  archived: Generated<boolean>
-  created_at: Generated<Date>
-}
-
-export interface MovementsTable {
-  id: Generated<string>
-  team_id: string
-  description: string
-  date: string
-  amount_cents: number
-  category_id: string | null
-  sort_position: number
-  source: Generated<string>
-  recurring_template_id: string | null
-  recurring_period: string | null // YYYY-MM-DD; monthly: YYYY-MM-01, annual: YYYY-01-01
-  confirmed: Generated<boolean>
   created_at: Generated<Date>
   updated_at: Generated<Date>
 }
 
-export interface BudgetsTable {
+export interface ExpenseItemsTable {
   id: Generated<string>
   team_id: string
-  category_id: string
-  name: string
-  year: number
-  annual_amount_cents: number
-  remaining_movement_id: string | null
-  created_at: Generated<Date>
-  updated_at: Generated<Date>
-}
-
-export interface BudgetItemsTable {
-  id: Generated<string>
-  budget_id: string
+  expense_category_id: string
   description: string
   date: string
-  amount_local_cents: number | null
-  amount_cents: number
-  accounting_date: string | null
-  movement_id: string | null
+  amount_soles_cents: number | null
+  amount_usd_cents: number | null
   sort_position: number
   created_at: Generated<Date>
   updated_at: Generated<Date>
 }
 
-export interface SnapshotsTable {
+export interface ExpenseItemNotesTable {
   id: Generated<string>
+  expense_item_id: string
   team_id: string
-  name: string | null
-  type: 'automatic' | 'manual'
-  data: string
-  pinned: Generated<boolean>
+  content: string
+  created_by_user_id: string | null
+  updated_by_user_id: string | null
   created_at: Generated<Date>
-}
-
-export interface CheckpointsTable {
-  id: Generated<string>
-  team_id: string
-  movement_id: string
-  expected_cents: number
-  actual_cents: number
-  created_at: Generated<Date>
+  updated_at: Generated<Date>
 }
 
 export interface UserPreferencesTable {
@@ -126,53 +71,13 @@ export interface UserPreferencesTable {
   updated_at: Generated<Date>
 }
 
-export interface MovementNotesTable {
-  id: Generated<string>
-  movement_id: string
-  team_id: string
-  content: string
-  created_by_user_id: string | null
-  updated_by_user_id: string | null
-  created_at: Generated<Date>
-  updated_at: Generated<Date>
-}
-
-export interface BudgetItemNotesTable {
-  id: Generated<string>
-  budget_item_id: string
-  team_id: string
-  content: string
-  created_by_user_id: string | null
-  updated_by_user_id: string | null
-  created_at: Generated<Date>
-  updated_at: Generated<Date>
-}
-
-export interface ProjectionScenariosTable {
-  id: Generated<string>
-  team_id: string
-  name: string
-  script_id: string
-  inputs_json: string // jsonb — pg driver serializes to string; parse with JSON.parse()
-  active: Generated<boolean>
-  created_at: Generated<string>
-  updated_at: Generated<string>
-}
-
 export interface Database {
   teams: TeamsTable
   team_memberships: TeamMembershipsTable
-  recurring_movement_templates: RecurringMovementTemplatesTable
   users: UsersTable
   sessions: SessionsTable
-  categories: CategoriesTable
-  movements: MovementsTable
-  snapshots: SnapshotsTable
-  checkpoints: CheckpointsTable
-  budgets: BudgetsTable
-  budget_items: BudgetItemsTable
+  expense_categories: ExpenseCategoriesTable
+  expense_items: ExpenseItemsTable
+  expense_item_notes: ExpenseItemNotesTable
   user_preferences: UserPreferencesTable
-  movement_notes: MovementNotesTable
-  budget_item_notes: BudgetItemNotesTable
-  projection_scenarios: ProjectionScenariosTable
 }
