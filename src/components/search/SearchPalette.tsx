@@ -51,7 +51,12 @@ export function SearchPalette({ open, onOpenChange }: Props) {
     void navigate({
       to: '/finances/expense-categories/$categoryId',
       params: { categoryId: result.item.expense_category_id },
-      search: { highlightItem: result.item.id },
+      search: {
+        highlightItem: result.item.id,
+        // The detail page filters by year — jump to the item's year so the
+        // highlighted row is actually in the list.
+        year: Number(result.item.date.slice(0, 4)),
+      },
     })
   }
 

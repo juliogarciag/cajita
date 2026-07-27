@@ -11,6 +11,8 @@ const ExpenseCategoryDetailPage = lazy(() =>
 const searchSchema = z.object({
   // An expense_item_id used to scroll-and-flash a row (search palette navigation).
   highlightItem: z.string().optional(),
+  // Year filter for the items list. Absent = current year.
+  year: z.coerce.number().int().min(2000).max(2100).optional(),
 })
 
 export const Route = createFileRoute('/_authenticated/finances/expense-categories/$categoryId')({

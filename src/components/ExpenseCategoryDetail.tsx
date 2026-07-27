@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { eq } from '@tanstack/db'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Link, useParams, useSearch } from '@tanstack/react-router'
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { ArrowLeft, Plus, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { expenseItemsCollection, type ExpenseItem } from '#/lib/expense-items-collection.js'
@@ -20,8 +20,15 @@ import { ROW_HEIGHT } from './TableRow.js'
 
 export function ExpenseCategoryDetail() {
   const { categoryId } = useParams({ strict: false }) as { categoryId: string }
-  const { highlightItem } = useSearch({ strict: false }) as { highlightItem?: string }
+  const { highlightItem, year } = useSearch({ strict: false }) as {
+    highlightItem?: string
+    year?: number
+  }
   const { formatDate } = useDateFormat()
+  const navigate = useNavigate()
+
+  const currentYear = new Date().getFullYear()
+  const selectedYear = year ?? currentYear
 
   const parentRef = useRef<HTMLDivElement>(null)
   const [newItemId, setNewItemId] = useState<string | null>(null)
@@ -38,13 +45,40 @@ export function ExpenseCategoryDetail() {
 
   const category = categories.find((c) => c.id === categoryId)
 
-  const { data: items } = useLiveQuery((q) =>
+  const { data: allItems } = useLiveQuery((q) =>
     q
       .from({ i: expenseItemsCollection })
       .where(({ i }) => eq(i.expense_category_id, categoryId as typeof i.expense_category_id))
       .orderBy(({ i }) => i.date, 'asc')
       .orderBy(({ i }) => i.sort_position, 'asc'),
   )
+
+  // Items shown: only the selected year
+  const items = useMemo(
+    () => allItems.filter((i: ExpenseItem) => i.date.slice(0, 4) === String(selectedYear)),
+    [allItems, selectedYear],
+  )
+
+  // Years offered by the switcher: every year with data, plus the current and
+  // selected years so the active button always exists.
+  const availableYears = useMemo(() => {
+    const years = new Set<number>([currentYear, selectedYear])
+    for (const i of allItems) years.add(Number(i.date.slice(0, 4)))
+    return [...years].sort((a, b) => a - b)
+  }, [allItems, currentYear, selectedYear])
+
+  const handleSelectYear = (y: number) => {
+    void navigate({
+      to: '/finances/expense-categories/$categoryId',
+      params: { categoryId },
+      search: { year: y },
+    })
+  }
+
+  // Re-run the initial scroll (to the newest items) when switching years
+  useEffect(() => {
+    initialScroll.current = true
+  }, [selectedYear])
 
   const { data: itemNotes } = useLiveQuery((q) => q.from({ n: expenseItemNotesCollection }))
 
@@ -153,7 +187,7 @@ export function ExpenseCategoryDetail() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${category?.name ?? 'expenses'}.csv`
+    a.download = `${category?.name ?? 'expenses'}-${selectedYear}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -179,11 +213,14 @@ export function ExpenseCategoryDetail() {
   const handleAdd = async () => {
     setIsAdding(true)
     try {
+      // New expenses land in the year being viewed: today for the current
+      // year, Dec 31 for past years (so the row appears at the end either way).
+      const date = selectedYear === currentYear ? toISODate(new Date()) : `${selectedYear}-12-31`
       const result = await createExpenseItem({
         data: {
           expense_category_id: categoryId,
           description: '',
-          date: toISODate(new Date()),
+          date,
         },
       })
       setNewItemId(result.item.id)
@@ -324,17 +361,33 @@ export function ExpenseCategoryDetail() {
 
       {/* Summary bar */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex items-center gap-6 text-sm">
-          <span className="text-gray-500">
-            Expenses: <span className="font-medium text-gray-900">{items.length}</span>
-          </span>
-          <span className="text-gray-500">
-            Total (Soles):{' '}
-            <span className="font-medium text-gray-900">{formatSoles(totalSoles)}</span>
-          </span>
-          <span className="text-gray-500">
-            Total (USD): <span className="font-medium text-gray-900">{formatCents(totalUsd)}</span>
-          </span>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-6 text-sm">
+            <span className="text-gray-500">
+              Expenses: <span className="font-medium text-gray-900">{items.length}</span>
+            </span>
+            <span className="text-gray-500">
+              Total (Soles):{' '}
+              <span className="font-medium text-gray-900">{formatSoles(totalSoles)}</span>
+            </span>
+            <span className="text-gray-500">
+              Total (USD):{' '}
+              <span className="font-medium text-gray-900">{formatCents(totalUsd)}</span>
+            </span>
+          </div>
+          <div className="flex overflow-hidden rounded-lg border border-gray-200 text-xs">
+            {availableYears.map((y) => (
+              <button
+                key={y}
+                onClick={() => handleSelectYear(y)}
+                className={`px-2.5 py-1 font-medium transition-colors ${
+                  y === selectedYear ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -354,7 +407,7 @@ export function ExpenseCategoryDetail() {
 
         {items.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-gray-400">
-            No expenses yet. Add your first one.
+            No expenses in {selectedYear}. Add your first one.
           </div>
         ) : (
           <div

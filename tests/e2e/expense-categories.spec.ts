@@ -66,15 +66,38 @@ test.describe('Expense Categories', () => {
     await expect(option).toBeVisible({ timeout: 10000 })
     await option.click()
 
-    // Navigates to the category detail with highlightItem param
-    await expect(page).toHaveURL(/\/finances\/expense-categories\/.+\?highlightItem=/, {
+    // Navigates to the category detail with highlightItem + year params
+    await expect(page).toHaveURL(/\/finances\/expense-categories\/.+[?&]highlightItem=/, {
       timeout: 10000,
     })
+    await expect(page).toHaveURL(/[?&]year=\d{4}/)
 
     // The highlighted row flashes blue
     await expect(page.locator('.bg-blue-100').first()).toBeVisible({
       timeout: 5000,
     })
+  })
+
+  test('year filter is tied to the URL', async () => {
+    await openCategory(page, CATEGORY_NAME)
+
+    const currentYear = new Date().getFullYear()
+
+    // The expense added earlier (dated today) is visible in the default view
+    await expect(page.getByText(ITEM_DESC, { exact: true })).toBeVisible({ timeout: 10000 })
+
+    // Jump to an empty year via the URL
+    const url = page.url().split('?')[0]
+    await page.goto(`${url}?year=2020`)
+    await expect(page.getByText('No expenses in 2020.', { exact: false })).toBeVisible({
+      timeout: 10000,
+    })
+    await expect(page.getByText(ITEM_DESC, { exact: true })).not.toBeVisible()
+
+    // Switch back via the year buttons — URL updates and the item reappears
+    await page.getByRole('button', { name: String(currentYear), exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(`[?&]year=${currentYear}`), { timeout: 10000 })
+    await expect(page.getByText(ITEM_DESC, { exact: true })).toBeVisible({ timeout: 10000 })
   })
 
   test('can rename the category from the detail page', async () => {
