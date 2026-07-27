@@ -13,7 +13,7 @@ import { createExpenseCategory, deleteExpenseCategory } from '#/server/expense-c
 import { categoryColors, DEFAULT_CATEGORY_COLOR } from '#/lib/category-colors.js'
 import { ConfirmButton } from './ConfirmButton.js'
 
-type CategoryTotals = { usd: number; soles: number; count: number }
+type CategoryTotals = { usd: number; pendingSoles: number; count: number }
 
 export function ExpenseCategoryList() {
   const [showAddForm, setShowAddForm] = useState(false)
@@ -26,12 +26,16 @@ export function ExpenseCategoryList() {
 
   const { data: items } = useLiveQuery((q) => q.from({ i: expenseItemsCollection }))
 
+  // USD is the canonical total; soles on items without a USD amount are
+  // "pending" (not yet exchanged) and tracked separately.
   const totalsByCategory = useMemo(() => {
     const map = new Map<string, CategoryTotals>()
     for (const item of items) {
-      const totals = map.get(item.expense_category_id) ?? { usd: 0, soles: 0, count: 0 }
+      const totals = map.get(item.expense_category_id) ?? { usd: 0, pendingSoles: 0, count: 0 }
       totals.usd += item.amount_usd_cents ?? 0
-      totals.soles += item.amount_soles_cents ?? 0
+      if (item.amount_usd_cents == null && item.amount_soles_cents != null) {
+        totals.pendingSoles += item.amount_soles_cents
+      }
       totals.count += 1
       map.set(item.expense_category_id, totals)
     }
@@ -136,7 +140,11 @@ export function ExpenseCategoryList() {
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((category: ExpenseCategory) => {
-            const totals = totalsByCategory.get(category.id) ?? { usd: 0, soles: 0, count: 0 }
+            const totals = totalsByCategory.get(category.id) ?? {
+              usd: 0,
+              pendingSoles: 0,
+              count: 0,
+            }
 
             return (
               <div
@@ -171,8 +179,15 @@ export function ExpenseCategoryList() {
                     {totals.count} {totals.count === 1 ? 'expense' : 'expenses'}
                   </span>
                   <span className="flex items-center gap-2">
-                    {totals.soles !== 0 && <span>{formatSoles(totals.soles)}</span>}
-                    {totals.usd !== 0 && <span>{formatCents(totals.usd)}</span>}
+                    {totals.pendingSoles > 0 && (
+                      <span
+                        className="text-amber-600"
+                        title="Soles on items with no USD amount yet — pending exchange"
+                      >
+                        {formatSoles(totals.pendingSoles)} pending
+                      </span>
+                    )}
+                    <span>{formatCents(totals.usd)}</span>
                   </span>
                 </div>
               </div>

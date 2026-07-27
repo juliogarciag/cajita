@@ -65,10 +65,16 @@ export function ExpenseItemRow({
     [item.id, onUpdate],
   )
 
+  // Soles amount with no USD amount = money not exchanged yet
+  const isPending = item.amount_soles_cents != null && item.amount_usd_cents == null
+
   return (
     <TableRow id={id} highlight={highlight} style={style} data-row-id={item.id}>
       <div className="w-[22px] shrink-0 flex items-center pl-[10px]">
-        <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+        <div
+          title={isPending ? 'Pending — no USD amount yet' : undefined}
+          className={`w-1.5 h-1.5 rounded-full ${isPending ? 'bg-amber-400' : 'bg-gray-300'}`}
+        />
       </div>
       <div className="min-w-[200px] flex-1 pr-1">
         <EditableCell

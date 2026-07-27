@@ -45,9 +45,24 @@ test.describe('Expense Categories', () => {
     })
     await expect(row.getByText('$350.00')).toBeVisible({ timeout: 10000 })
 
-    // Summary bar reflects totals
-    await expect(page.getByText(/Total \(Soles\)/)).toBeVisible()
+    // Summary bar: USD is the canonical total; this item has a USD amount,
+    // so nothing is pending.
     await expect(page.getByText(/Total \(USD\)/)).toBeVisible()
+    await expect(page.getByText('$350.00').first()).toBeVisible()
+    await expect(page.getByText(/Pending \(Soles\)/)).toBeVisible()
+    await expect(page.getByText(/S\/\s?0\.00/)).toBeVisible()
+  })
+
+  test('soles-only expenses count as pending', async () => {
+    await openCategory(page, CATEGORY_NAME)
+
+    await addExpense(page, `Pending-${UNIQUE}`, { soles: '800' })
+
+    // The pending bucket picks up the soles-only item; the USD total doesn't move
+    const summary = page.getByText(/Pending \(Soles\)/)
+    await expect(summary).toBeVisible()
+    await expect(summary.getByText(/S\/\s?800\.00/)).toBeVisible({ timeout: 10000 })
+    await expect(summary.getByText(/1 item/)).toBeVisible()
     await expect(page.getByText('$350.00').first()).toBeVisible()
   })
 

@@ -203,9 +203,14 @@ export function ExpenseCategoryDetail() {
     )
   }
 
-  // Totals
+  // Totals. USD is the canonical spent amount. Items with a soles amount but
+  // no USD amount are "pending" — money not yet exchanged (or paid from
+  // stray soles) — and are tracked as a separate bucket, never blended in.
   const totalUsd = items.reduce((sum: number, i: ExpenseItem) => sum + (i.amount_usd_cents ?? 0), 0)
-  const totalSoles = items.reduce(
+  const pendingItems = items.filter(
+    (i: ExpenseItem) => i.amount_soles_cents != null && i.amount_usd_cents == null,
+  )
+  const pendingSoles = pendingItems.reduce(
     (sum: number, i: ExpenseItem) => sum + (i.amount_soles_cents ?? 0),
     0,
   )
@@ -367,12 +372,25 @@ export function ExpenseCategoryDetail() {
               Expenses: <span className="font-medium text-gray-900">{items.length}</span>
             </span>
             <span className="text-gray-500">
-              Total (Soles):{' '}
-              <span className="font-medium text-gray-900">{formatSoles(totalSoles)}</span>
-            </span>
-            <span className="text-gray-500">
               Total (USD):{' '}
               <span className="font-medium text-gray-900">{formatCents(totalUsd)}</span>
+            </span>
+            <span
+              className="text-gray-500"
+              title="Soles spent on items that have no USD amount yet — money not exchanged so far"
+            >
+              Pending (Soles):{' '}
+              <span
+                className={`font-medium ${pendingSoles > 0 ? 'text-amber-600' : 'text-gray-900'}`}
+              >
+                {formatSoles(pendingSoles)}
+              </span>
+              {pendingItems.length > 0 && (
+                <span className="text-xs text-gray-400">
+                  {' '}
+                  · {pendingItems.length} {pendingItems.length === 1 ? 'item' : 'items'}
+                </span>
+              )}
             </span>
           </div>
           <div className="flex overflow-hidden rounded-lg border border-gray-200 text-xs">
