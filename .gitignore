@@ -12,3 +12,6 @@ playwright-report/
 blob-report/
 test-results/
 .playwright-cli/
+
+# TanStack Start build cache
+.tanstack/

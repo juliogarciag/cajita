@@ -9,6 +9,9 @@ const ALLOWED_TABLES = [
   'expense_items',
   'expense_item_notes',
   'color_bookmarks',
+  'wealth_sources',
+  'balance_snapshots',
+  'balance_entries',
   'team_members',
 ]
 const TEAM_SCOPED_TABLES = [
@@ -16,6 +19,9 @@ const TEAM_SCOPED_TABLES = [
   'expense_items',
   'expense_item_notes',
   'color_bookmarks',
+  'wealth_sources',
+  'balance_snapshots',
+  'balance_entries',
 ]
 
 // Electric protocol query params to forward

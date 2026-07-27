@@ -345,8 +345,81 @@ async function seed() {
     console.log(`  ${spec.name}: ${count} items (${pendingIndices.size} pending), ${count} notes`)
   }
 
+  await seedNetWorth(team.id)
+
   await db.destroy()
   console.log('Done.')
+}
+
+// --- Net worth -------------------------------------------------------------
+
+const WEALTH_SOURCES = [
+  { name: 'Bank account', color: '#3b82f6', start: 30_000, drift: 260, wobble: 700 },
+  { name: 'IBKR — VTI', color: '#14b8a6', start: 230, drift: 42, wobble: 30 },
+  { name: 'Crypto (Splits)', color: '#a855f7', start: 100, drift: 6, wobble: 45 },
+]
+
+// Monthly readings for the last two years. The newest one is left partial so
+// the "N of M" state is visible without having to break something by hand.
+const NET_WORTH_MONTHS = 24
+
+async function seedNetWorth(teamId: string) {
+  await db.deleteFrom('balance_snapshots').where('team_id', '=', teamId).execute()
+  await db.deleteFrom('wealth_sources').where('team_id', '=', teamId).execute()
+
+  const sources = []
+  for (const [index, spec] of WEALTH_SOURCES.entries()) {
+    const source = await db
+      .insertInto('wealth_sources')
+      .values({
+        team_id: teamId,
+        name: spec.name,
+        color: spec.color,
+        sort_order: index * 10,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow()
+    sources.push({ ...spec, id: source.id })
+  }
+
+  const today = new Date()
+  let readings = 0
+  let entries = 0
+
+  for (let monthsAgo = NET_WORTH_MONTHS - 1; monthsAgo >= 0; monthsAgo--) {
+    const date = new Date(today.getFullYear(), today.getMonth() - monthsAgo, 15)
+    if (date > today) continue
+
+    const snapshot = await db
+      .insertInto('balance_snapshots')
+      .values({ team_id: teamId, date: toISODate(date) })
+      .returning('id')
+      .executeTakeFirstOrThrow()
+    readings++
+
+    const elapsed = NET_WORTH_MONTHS - 1 - monthsAgo
+    for (const [index, source] of sources.entries()) {
+      // Crypto only shows up partway through, so early readings are legitimately
+      // short a source rather than looking like gaps.
+      if (source.name.startsWith('Crypto') && elapsed < 8) continue
+      // Leave the newest reading missing its last source — a sweep in progress.
+      if (monthsAgo === 0 && index === sources.length - 1) continue
+
+      const units = source.start + source.drift * elapsed + randomInt(-source.wobble, source.wobble)
+      await db
+        .insertInto('balance_entries')
+        .values({
+          team_id: teamId,
+          balance_snapshot_id: snapshot.id,
+          wealth_source_id: source.id,
+          amount_usd_cents: Math.max(0, Math.round(units * 100)),
+        })
+        .execute()
+      entries++
+    }
+  }
+
+  console.log(`  Net worth: ${sources.length} sources, ${readings} readings, ${entries} balances`)
 }
 
 seed().catch((err) => {

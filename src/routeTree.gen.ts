@@ -20,6 +20,7 @@ import { Route as ApiAuthDevLoginRouteImport } from './routes/api/auth/dev-login
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 import { Route as AuthenticatedToolsCreatePlaylistRouteImport } from './routes/_authenticated/tools/create-playlist'
 import { Route as AuthenticatedFinancesSettingsRouteImport } from './routes/_authenticated/finances/settings'
+import { Route as AuthenticatedFinancesNetWorthRouteImport } from './routes/_authenticated/finances/net-worth'
 import { Route as AuthenticatedFinancesExpenseCategoriesIndexRouteImport } from './routes/_authenticated/finances/expense-categories/index'
 import { Route as AuthenticatedFinancesExpenseCategoriesCategoryIdRouteImport } from './routes/_authenticated/finances/expense-categories/$categoryId'
 
@@ -79,6 +80,12 @@ const AuthenticatedFinancesSettingsRoute =
     path: '/finances/settings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedFinancesNetWorthRoute =
+  AuthenticatedFinancesNetWorthRouteImport.update({
+    id: '/finances/net-worth',
+    path: '/finances/net-worth',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedFinancesExpenseCategoriesIndexRoute =
   AuthenticatedFinancesExpenseCategoriesIndexRouteImport.update({
     id: '/finances/expense-categories/',
@@ -95,6 +102,7 @@ const AuthenticatedFinancesExpenseCategoriesCategoryIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
   '/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -109,6 +117,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
   '/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -125,6 +134,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
   '/_authenticated/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/_authenticated/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/finances/net-worth'
     | '/finances/settings'
     | '/tools/create-playlist'
     | '/api/auth/callback'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/finances/net-worth'
     | '/finances/settings'
     | '/tools/create-playlist'
     | '/api/auth/callback'
@@ -170,6 +182,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/_authenticated/dashboard'
+    | '/_authenticated/finances/net-worth'
     | '/_authenticated/finances/settings'
     | '/_authenticated/tools/create-playlist'
     | '/api/auth/callback'
@@ -271,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFinancesSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/finances/net-worth': {
+      id: '/_authenticated/finances/net-worth'
+      path: '/finances/net-worth'
+      fullPath: '/finances/net-worth'
+      preLoaderRoute: typeof AuthenticatedFinancesNetWorthRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/finances/expense-categories/': {
       id: '/_authenticated/finances/expense-categories/'
       path: '/finances/expense-categories'
@@ -290,6 +310,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedFinancesNetWorthRoute: typeof AuthenticatedFinancesNetWorthRoute
   AuthenticatedFinancesSettingsRoute: typeof AuthenticatedFinancesSettingsRoute
   AuthenticatedToolsCreatePlaylistRoute: typeof AuthenticatedToolsCreatePlaylistRoute
   AuthenticatedToolsIndexRoute: typeof AuthenticatedToolsIndexRoute
@@ -299,6 +320,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedFinancesNetWorthRoute: AuthenticatedFinancesNetWorthRoute,
   AuthenticatedFinancesSettingsRoute: AuthenticatedFinancesSettingsRoute,
   AuthenticatedToolsCreatePlaylistRoute: AuthenticatedToolsCreatePlaylistRoute,
   AuthenticatedToolsIndexRoute: AuthenticatedToolsIndexRoute,

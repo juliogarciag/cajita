@@ -63,6 +63,35 @@ export interface ExpenseItemNotesTable {
   updated_at: Generated<Date>
 }
 
+export interface WealthSourcesTable {
+  id: Generated<string>
+  team_id: string
+  name: string
+  color: string
+  sort_order: Generated<number>
+  archived: Generated<boolean>
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
+export interface BalanceSnapshotsTable {
+  id: Generated<string>
+  team_id: string
+  date: string
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
+export interface BalanceEntriesTable {
+  id: Generated<string>
+  team_id: string
+  balance_snapshot_id: string
+  wealth_source_id: string
+  amount_usd_cents: number
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
 export interface ColorBookmarksTable {
   id: Generated<string>
   team_id: string
@@ -88,5 +117,8 @@ export interface Database {
   expense_items: ExpenseItemsTable
   expense_item_notes: ExpenseItemNotesTable
   color_bookmarks: ColorBookmarksTable
+  wealth_sources: WealthSourcesTable
+  balance_snapshots: BalanceSnapshotsTable
+  balance_entries: BalanceEntriesTable
   user_preferences: UserPreferencesTable
 }
