@@ -19,11 +19,28 @@ export const createBalanceSnapshot = createServerFn({ method: 'POST' })
     return { snapshot }
   })
 
+/** Loads a reading in the caller's team, refusing the write when it's frozen. */
+async function requireUnlocked(id: string, teamId: string, action: string) {
+  const snapshot = await db
+    .selectFrom('balance_snapshots')
+    .select(['id', 'locked'])
+    .where('id', '=', id)
+    .where('team_id', '=', teamId)
+    .executeTakeFirstOrThrow()
+
+  if (snapshot.locked) {
+    throw new Error(`This reading is frozen. Unfreeze it before ${action}.`)
+  }
+
+  return snapshot
+}
+
 export const updateBalanceSnapshot = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ id: z.string().uuid(), date: z.string() }))
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
+    await requireUnlocked(data.id, teamId, 'changing its date')
 
     const snapshot = await db
       .updateTable('balance_snapshots')
@@ -41,6 +58,7 @@ export const deleteBalanceSnapshot = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
+    await requireUnlocked(data.id, teamId, 'deleting it')
 
     // Entries cascade — a reading is meaningless without its values
     await db
@@ -50,6 +68,53 @@ export const deleteBalanceSnapshot = createServerFn({ method: 'POST' })
       .execute()
 
     return { success: true }
+  })
+
+export const setBalanceSnapshotLocked = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ id: z.string().uuid(), locked: z.boolean() }))
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
+    const snapshot = await db
+      .updateTable('balance_snapshots')
+      .set({ locked: data.locked, updated_at: new Date() })
+      .where('id', '=', data.id)
+      .where('team_id', '=', teamId)
+      .returningAll()
+      .executeTakeFirstOrThrow()
+
+    return { snapshot }
+  })
+
+/**
+ * Freeze everything except the newest reading — the usual case, since the
+ * sweep in progress is the only one still being edited.
+ */
+export const freezePreviousReadings = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const teamId = context.user.teamId
+
+    const newest = await db
+      .selectFrom('balance_snapshots')
+      .select('id')
+      .where('team_id', '=', teamId)
+      .orderBy('date', 'desc')
+      .orderBy('created_at', 'desc')
+      .executeTakeFirst()
+
+    if (!newest) return { frozen: 0 }
+
+    const result = await db
+      .updateTable('balance_snapshots')
+      .set({ locked: true, updated_at: new Date() })
+      .where('team_id', '=', teamId)
+      .where('locked', '=', false)
+      .where('id', '!=', newest.id)
+      .executeTakeFirst()
+
+    return { frozen: Number(result.numUpdatedRows ?? 0) }
   })
 
 // Writing a value creates or replaces the entry; clearing it removes the row,
@@ -66,13 +131,9 @@ export const setBalanceEntry = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
 
-    // Both sides must belong to the caller's team
-    await db
-      .selectFrom('balance_snapshots')
-      .select('id')
-      .where('id', '=', data.balance_snapshot_id)
-      .where('team_id', '=', teamId)
-      .executeTakeFirstOrThrow()
+    // Both sides must belong to the caller's team, and a frozen reading is
+    // settled history — its values don't move
+    await requireUnlocked(data.balance_snapshot_id, teamId, 'changing its balances')
 
     await db
       .selectFrom('wealth_sources')

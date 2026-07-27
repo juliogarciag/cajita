@@ -9,6 +9,8 @@ interface ConfirmButtonProps {
   confirming?: boolean
   onConfirmingChange?: (confirming: boolean) => void
   tabIndex?: number
+  /** Names the action — icon-only buttons have no accessible name without it. */
+  title?: string
 }
 
 export function ConfirmButton({
@@ -19,6 +21,7 @@ export function ConfirmButton({
   confirming: externalConfirming,
   onConfirmingChange,
   tabIndex,
+  title,
 }: ConfirmButtonProps) {
   const [internalConfirming, setInternalConfirming] = useState(false)
   const confirming = externalConfirming ?? internalConfirming
@@ -46,7 +49,13 @@ export function ConfirmButton({
   }
 
   return (
-    <button tabIndex={tabIndex} onClick={() => setConfirming(true)} className={className}>
+    <button
+      tabIndex={tabIndex}
+      title={title}
+      aria-label={title}
+      onClick={() => setConfirming(true)}
+      className={className}
+    >
       {children}
     </button>
   )

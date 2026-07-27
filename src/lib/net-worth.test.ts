@@ -21,9 +21,10 @@ const source = (id: string, overrides: Partial<WealthSource> = {}): WealthSource
   ...overrides,
 })
 
-const snapshot = (id: string, date: string): BalanceSnapshot => ({
+const snapshot = (id: string, date: string, locked = false): BalanceSnapshot => ({
   id,
   date,
+  locked,
   created_at: `${date}T00:00:00Z`,
   updated_at: `${date}T00:00:00Z`,
 })

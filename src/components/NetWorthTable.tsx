@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
-import { Plus, Download, Trash2, Settings2 } from 'lucide-react'
+import { Plus, Download, Trash2, Settings2, Lock, LockOpen, Snowflake } from 'lucide-react'
 import { toast } from 'sonner'
 import { wealthSourcesCollection } from '#/lib/wealth-sources-collection.js'
 import { balanceSnapshotsCollection } from '#/lib/balance-snapshots-collection.js'
@@ -19,6 +19,8 @@ import {
   updateBalanceSnapshot,
   deleteBalanceSnapshot,
   setBalanceEntry,
+  setBalanceSnapshotLocked,
+  freezePreviousReadings,
 } from '#/server/balance-snapshots.js'
 import { EditableCell } from './EditableCell.js'
 import { ConfirmButton } from './ConfirmButton.js'
@@ -51,6 +53,10 @@ export function NetWorthTable() {
   )
 
   const headline = latestComplete(readings)
+
+  // Readings older than the newest that are still editable — the bulk freeze
+  // only has something to do while at least one exists.
+  const unfrozenPrevious = readings.slice(1).filter((r) => !r.snapshot.locked).length
 
   const handleAddReading = async () => {
     setIsAdding(true)
@@ -95,6 +101,27 @@ export function NetWorthTable() {
       await deleteBalanceSnapshot({ data: { id: snapshotId } })
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete reading')
+    }
+  }
+
+  const handleSetLocked = async (snapshotId: string, locked: boolean) => {
+    try {
+      await setBalanceSnapshotLocked({ data: { id: snapshotId, locked } })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to change the lock')
+    }
+  }
+
+  const handleFreezePrevious = async () => {
+    try {
+      const { frozen } = await freezePreviousReadings()
+      toast.success(
+        frozen === 0
+          ? 'Nothing to freeze — everything older is already frozen.'
+          : `Froze ${frozen} ${frozen === 1 ? 'reading' : 'readings'}.`,
+      )
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to freeze readings')
     }
   }
 
@@ -158,6 +185,16 @@ export function NetWorthTable() {
             <Settings2 size={16} />
             Sources
           </button>
+          {unfrozenPrevious > 0 && (
+            <button
+              onClick={handleFreezePrevious}
+              className="flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              title="Freeze every reading except the newest"
+            >
+              <Snowflake size={16} />
+              Freeze previous
+            </button>
+          )}
           <button
             onClick={handleDownloadCsv}
             disabled={readings.length === 0}
@@ -226,18 +263,28 @@ export function NetWorthTable() {
               ) : (
                 readings.map((reading) => {
                   const isNew = reading.snapshot.id === newSnapshotId
+                  const locked = reading.snapshot.locked
                   return (
                     <tr
                       key={reading.snapshot.id}
                       data-reading-id={reading.snapshot.id}
-                      className="border-b border-gray-100 hover:bg-gray-50"
+                      data-locked={locked ? 'true' : undefined}
+                      className={`border-b border-gray-100 ${
+                        locked ? 'bg-indigo-50/40' : 'hover:bg-gray-50'
+                      }`}
                     >
                       <td className="px-1 py-1">
-                        <EditableCell
-                          value={reading.snapshot.date}
-                          type="date"
-                          onSave={(v) => handleSetDate(reading.snapshot.id, v)}
-                        />
+                        <div className="flex items-center gap-1">
+                          {locked && (
+                            <Lock size={11} className="shrink-0 text-indigo-400" aria-hidden />
+                          )}
+                          <EditableCell
+                            value={reading.snapshot.date}
+                            type="date"
+                            disabled={locked}
+                            onSave={(v) => handleSetDate(reading.snapshot.id, v)}
+                          />
+                        </div>
                       </td>
                       {sources.map((source, index) => {
                         const cents = reading.amounts.get(source.id)
@@ -247,6 +294,7 @@ export function NetWorthTable() {
                               value={cents == null ? '' : formatCents(cents)}
                               type="amount"
                               className="text-right"
+                              disabled={locked}
                               autoEdit={isNew && index === 0}
                               onSave={(v) => handleSetAmount(reading.snapshot.id, source.id, v)}
                             />
@@ -279,14 +327,41 @@ export function NetWorthTable() {
                               </div>
                             )}
                       </td>
-                      <td className="px-1 py-1 text-right">
-                        <ConfirmButton
-                          onConfirm={() => handleDeleteReading(reading.snapshot.id)}
-                          tabIndex={-1}
-                          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
-                        >
-                          <Trash2 size={13} />
-                        </ConfirmButton>
+                      <td className="px-1 py-1">
+                        <div className="flex items-center justify-end gap-0.5">
+                          {locked ? (
+                            // Unfreezing is the deliberate step — deletion only
+                            // becomes possible once it's done
+                            <ConfirmButton
+                              onConfirm={() => handleSetLocked(reading.snapshot.id, false)}
+                              tabIndex={-1}
+                              title="Unfreeze this reading"
+                              className="rounded p-1 text-indigo-400 hover:bg-indigo-100 hover:text-indigo-700"
+                            >
+                              <LockOpen size={13} />
+                            </ConfirmButton>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleSetLocked(reading.snapshot.id, true)}
+                                tabIndex={-1}
+                                title="Freeze this reading"
+                                aria-label="Freeze this reading"
+                                className="rounded p-1 text-gray-300 hover:bg-gray-100 hover:text-indigo-600"
+                              >
+                                <Lock size={13} />
+                              </button>
+                              <ConfirmButton
+                                onConfirm={() => handleDeleteReading(reading.snapshot.id)}
+                                tabIndex={-1}
+                                title="Delete this reading"
+                                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                              >
+                                <Trash2 size={13} />
+                              </ConfirmButton>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )

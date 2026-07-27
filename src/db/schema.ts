@@ -78,6 +78,8 @@ export interface BalanceSnapshotsTable {
   id: Generated<string>
   team_id: string
   date: string
+  /** Frozen: the reading is settled history and refuses edits or deletion. */
+  locked: Generated<boolean>
   created_at: Generated<Date>
   updated_at: Generated<Date>
 }

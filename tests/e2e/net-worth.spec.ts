@@ -117,6 +117,52 @@ test.describe('Net worth', () => {
     })
   })
 
+  test('a frozen reading refuses edits and deletion', async () => {
+    const row = page.locator('tbody tr').first()
+    await row.getByRole('button', { name: 'Freeze this reading' }).click()
+
+    const frozen = page.locator('tbody tr[data-locked="true"]')
+    await expect(frozen).toHaveCount(1, { timeout: 10000 })
+
+    // No delete button while frozen — unfreezing is the deliberate first step
+    await expect(frozen.getByRole('button', { name: 'Delete this reading' })).toHaveCount(0)
+    await expect(frozen.getByRole('button', { name: 'Unfreeze this reading' })).toBeVisible()
+
+    // Cells no longer open for editing
+    await frozen.locator('[data-editable-cell]').nth(1).click()
+    await expect(frozen.locator('input')).toHaveCount(0)
+  })
+
+  test('a frozen reading can be unfrozen again', async () => {
+    const frozen = page.locator('tbody tr[data-locked="true"]').first()
+    await frozen.getByRole('button', { name: 'Unfreeze this reading' }).click()
+    await page.getByRole('button', { name: 'Sure?' }).click({ force: true })
+
+    await expect(page.locator('tbody tr[data-locked="true"]')).toHaveCount(0, { timeout: 10000 })
+    await expect(
+      page.locator('tbody tr').first().getByRole('button', { name: 'Delete this reading' }),
+    ).toBeVisible()
+  })
+
+  test('freeze previous locks everything but the newest reading', async () => {
+    await page.getByRole('button', { name: 'Freeze previous' }).click()
+
+    // Two readings exist, so exactly the older one freezes
+    await expect(page.locator('tbody tr[data-locked="true"]')).toHaveCount(1, { timeout: 10000 })
+    await expect(page.locator('tbody tr').first()).not.toHaveAttribute('data-locked', 'true')
+
+    // Nothing left to freeze, so the action disappears
+    await expect(page.getByRole('button', { name: 'Freeze previous' })).toHaveCount(0)
+
+    // Unfreeze so the deletion test below still has an unlocked row
+    await page
+      .locator('tbody tr[data-locked="true"]')
+      .getByRole('button', { name: 'Unfreeze this reading' })
+      .click()
+    await page.getByRole('button', { name: 'Sure?' }).click({ force: true })
+    await expect(page.locator('tbody tr[data-locked="true"]')).toHaveCount(0, { timeout: 10000 })
+  })
+
   test('a reading can be deleted', async () => {
     await expect(page.locator('tbody tr')).toHaveCount(2)
     await page.locator('tbody tr').first().getByRole('button').last().click({ force: true })

@@ -6,6 +6,7 @@ import { electricShapeUrl } from '#/lib/electric-url'
 const balanceSnapshotSchema = z.object({
   id: z.string(),
   date: z.string(),
+  locked: z.coerce.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
 })
