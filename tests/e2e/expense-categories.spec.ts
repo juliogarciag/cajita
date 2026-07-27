@@ -138,6 +138,29 @@ test.describe('Expense Categories', () => {
     await expect(page.getByRole('button', { name: 'Next year' })).toBeDisabled()
   })
 
+  test('category card totals are scoped to the selected year', async () => {
+    const currentYear = new Date().getFullYear()
+    const card = page.locator('[data-category-card]', {
+      has: page.getByText(CATEGORY_NAME, { exact: true }),
+    })
+
+    // Default view is the current year, where both expenses live
+    await expect(card.getByText('2 expenses')).toBeVisible({ timeout: 10000 })
+    await expect(card.getByText('$350.00')).toBeVisible()
+
+    // A past year has none of them
+    await page.goto(`/finances/expense-categories?year=${currentYear - 1}`)
+    await expect(card.getByText('0 expenses')).toBeVisible({ timeout: 10000 })
+    await expect(card.getByText('$0.00')).toBeVisible()
+
+    // ...but deletion still counts every year, so it stays blocked
+    await expect(card.getByLabel('Cannot delete a category with expenses')).toBeVisible()
+
+    // Opening the category carries the year through
+    await page.getByText(CATEGORY_NAME, { exact: true }).click({ force: true })
+    await expect(page).toHaveURL(new RegExp(`[?&]year=${currentYear - 1}`), { timeout: 10000 })
+  })
+
   test('can rename the category from the detail page', async () => {
     await openCategory(page, CATEGORY_NAME)
 

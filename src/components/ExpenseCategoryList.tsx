@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -13,6 +13,7 @@ import { createExpenseCategory, deleteExpenseCategory } from '#/server/expense-c
 import { DEFAULT_CATEGORY_COLOR } from '#/lib/category-colors.js'
 import { ColorPicker } from './ColorPicker.js'
 import { ConfirmButton } from './ConfirmButton.js'
+import { YearSwitcher } from './YearSwitcher.js'
 
 type CategoryTotals = { usd: number; pendingSoles: number; count: number }
 
@@ -21,17 +22,24 @@ export function ExpenseCategoryList() {
   const [addName, setAddName] = useState('')
   const [addColor, setAddColor] = useState(DEFAULT_CATEGORY_COLOR)
 
+  const { year } = useSearch({ strict: false }) as { year?: number }
+  const navigate = useNavigate()
+
+  const currentYear = new Date().getFullYear()
+  const selectedYear = year ?? currentYear
+
   const { data: categories } = useLiveQuery((q) =>
     q.from({ c: expenseCategoriesCollection }).orderBy(({ c }) => c.name, 'asc'),
   )
 
   const { data: items } = useLiveQuery((q) => q.from({ i: expenseItemsCollection }))
 
-  // USD is the canonical total; soles on items without a USD amount are
-  // "pending" (not yet exchanged) and tracked separately.
+  // Totals cover the selected year only. USD is the canonical total; soles on
+  // items without a USD amount are "pending" (not yet exchanged).
   const totalsByCategory = useMemo(() => {
     const map = new Map<string, CategoryTotals>()
     for (const item of items) {
+      if (item.date.slice(0, 4) !== String(selectedYear)) continue
       const totals = map.get(item.expense_category_id) ?? { usd: 0, pendingSoles: 0, count: 0 }
       totals.usd += item.amount_usd_cents ?? 0
       if (item.amount_usd_cents == null && item.amount_soles_cents != null) {
@@ -41,7 +49,27 @@ export function ExpenseCategoryList() {
       map.set(item.expense_category_id, totals)
     }
     return map
+  }, [items, selectedYear])
+
+  // Deletion cascades across every year, so the guard counts all items — not
+  // just the ones in view.
+  const allTimeCountByCategory = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const item of items) {
+      map.set(item.expense_category_id, (map.get(item.expense_category_id) ?? 0) + 1)
+    }
+    return map
   }, [items])
+
+  const availableYears = useMemo(() => {
+    const years = new Set<number>([currentYear, selectedYear])
+    for (const item of items) years.add(Number(item.date.slice(0, 4)))
+    return [...years].sort((a, b) => b - a)
+  }, [items, currentYear, selectedYear])
+
+  const handleSelectYear = (y: number) => {
+    void navigate({ to: '/finances/expense-categories', search: { year: y } })
+  }
 
   const canCreate = addName.trim().length > 0
 
@@ -73,13 +101,20 @@ export function ExpenseCategoryList() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Categories</h1>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          <Plus size={16} />
-          Add Category
-        </button>
+        <div className="flex items-center gap-3">
+          <YearSwitcher
+            years={availableYears}
+            selected={selectedYear}
+            onSelect={handleSelectYear}
+          />
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            <Plus size={16} />
+            Add Category
+          </button>
+        </div>
       </div>
 
       {showAddForm && (
@@ -135,6 +170,7 @@ export function ExpenseCategoryList() {
               pendingSoles: 0,
               count: 0,
             }
+            const allTimeCount = allTimeCountByCategory.get(category.id) ?? 0
 
             return (
               <div
@@ -145,6 +181,7 @@ export function ExpenseCategoryList() {
                 <Link
                   to="/finances/expense-categories/$categoryId"
                   params={{ categoryId: category.id }}
+                  search={{ year: selectedYear }}
                   className="absolute inset-0 rounded-lg"
                 />
                 <div className="mb-2 flex items-center justify-between">
@@ -155,9 +192,9 @@ export function ExpenseCategoryList() {
                     />
                     <span className="font-medium text-gray-900">{category.name}</span>
                   </div>
-                  {totals.count > 0 ? (
+                  {allTimeCount > 0 ? (
                     <span
-                      title="Delete the expenses in this category first"
+                      title={`Delete the ${allTimeCount} expenses in this category first`}
                       aria-label="Cannot delete a category with expenses"
                       className="relative z-10 cursor-not-allowed px-2 py-0.5 text-xs text-gray-200"
                     >

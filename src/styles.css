@@ -1,1 +1,13 @@
 @import 'tailwindcss';
+
+/* Tailwind v4's preflight leaves buttons with the default arrow cursor
+   (v3 set a pointer). Put it back, but not while disabled — those keep
+   whatever cursor their disabled: utilities ask for. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+}

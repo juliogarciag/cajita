@@ -3,7 +3,7 @@ import { useLiveQuery } from '@tanstack/react-db'
 import { eq } from '@tanstack/db'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import { ArrowLeft, Plus, Download, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Plus, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { expenseItemsCollection, type ExpenseItem } from '#/lib/expense-items-collection.js'
 import { expenseCategoriesCollection } from '#/lib/expense-categories-collection.js'
@@ -16,6 +16,7 @@ import { upsertExpenseItemNote, deleteExpenseItemNote, getTeamMembers } from '#/
 import { updateExpenseCategory } from '#/server/expense-categories.js'
 import { ColorPicker } from './ColorPicker.js'
 import { ExpenseItemRow } from './ExpenseItemRow.js'
+import { YearSwitcher } from './YearSwitcher.js'
 import { ROW_HEIGHT } from './TableRow.js'
 
 export function ExpenseCategoryDetail() {
@@ -67,10 +68,6 @@ export function ExpenseCategoryDetail() {
     for (const i of allItems) years.add(Number(i.date.slice(0, 4)))
     return [...years].sort((a, b) => b - a)
   }, [allItems, currentYear, selectedYear])
-
-  const yearIndex = availableYears.indexOf(selectedYear)
-  const olderYear = yearIndex < availableYears.length - 1 ? availableYears[yearIndex + 1] : null
-  const newerYear = yearIndex > 0 ? availableYears[yearIndex - 1] : null
 
   const handleSelectYear = (y: number) => {
     void navigate({
@@ -388,38 +385,11 @@ export function ExpenseCategoryDetail() {
               )}
             </span>
           </div>
-          <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-gray-200 text-xs">
-            <button
-              onClick={() => olderYear != null && handleSelectYear(olderYear)}
-              disabled={olderYear == null}
-              title={olderYear != null ? `Go to ${olderYear}` : 'No earlier year'}
-              aria-label="Previous year"
-              className="px-1.5 py-1 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <select
-              value={selectedYear}
-              onChange={(e) => handleSelectYear(Number(e.target.value))}
-              aria-label="Year"
-              className="cursor-pointer border-x border-gray-200 bg-white px-2 py-1 font-medium text-gray-900 focus:outline-none"
-            >
-              {availableYears.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => newerYear != null && handleSelectYear(newerYear)}
-              disabled={newerYear == null}
-              title={newerYear != null ? `Go to ${newerYear}` : 'No later year'}
-              aria-label="Next year"
-              className="px-1.5 py-1 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
+          <YearSwitcher
+            years={availableYears}
+            selected={selectedYear}
+            onSelect={handleSelectYear}
+          />
         </div>
       </div>
 
