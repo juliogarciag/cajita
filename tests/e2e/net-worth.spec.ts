@@ -1,5 +1,6 @@
 import { expect, loginIsolated } from './fixtures'
 import { test, type Page, type BrowserContext } from '@playwright/test'
+import { confirmDialog } from './helpers'
 
 // Builds up one team's net worth history across the file
 test.describe.configure({ mode: 'serial' })
@@ -136,7 +137,7 @@ test.describe('Net worth', () => {
   test('a frozen reading can be unfrozen again', async () => {
     const frozen = page.locator('tbody tr[data-locked="true"]').first()
     await frozen.getByRole('button', { name: 'Unfreeze this reading' }).click()
-    await page.getByRole('button', { name: 'Sure?' }).click({ force: true })
+    await confirmDialog(page, 'Unfreeze')
 
     await expect(page.locator('tbody tr[data-locked="true"]')).toHaveCount(0, { timeout: 10000 })
     await expect(
@@ -159,14 +160,18 @@ test.describe('Net worth', () => {
       .locator('tbody tr[data-locked="true"]')
       .getByRole('button', { name: 'Unfreeze this reading' })
       .click()
-    await page.getByRole('button', { name: 'Sure?' }).click({ force: true })
+    await confirmDialog(page, 'Unfreeze')
     await expect(page.locator('tbody tr[data-locked="true"]')).toHaveCount(0, { timeout: 10000 })
   })
 
   test('a reading can be deleted', async () => {
     await expect(page.locator('tbody tr')).toHaveCount(2)
-    await page.locator('tbody tr').first().getByRole('button').last().click({ force: true })
-    await page.getByRole('button', { name: 'Sure?' }).click({ force: true })
+    await page
+      .locator('tbody tr')
+      .first()
+      .getByRole('button', { name: 'Delete this reading?' })
+      .click()
+    await confirmDialog(page, 'Delete reading')
     await expect(page.locator('tbody tr')).toHaveCount(1, { timeout: 10000 })
   })
 

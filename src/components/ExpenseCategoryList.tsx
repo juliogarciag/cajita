@@ -203,8 +203,15 @@ export function ExpenseCategoryList() {
                   ) : (
                     <ConfirmButton
                       onConfirm={() => handleDelete(category.id)}
+                      title="Delete category?"
+                      description={
+                        <>
+                          <span className="font-medium text-gray-900">{category.name}</span> will be
+                          removed. It has no expenses, so nothing else is lost.
+                        </>
+                      }
+                      confirmLabel="Delete category"
                       className="relative z-10 rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
-                      confirmClassName="relative z-10 rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
                     >
                       ×
                     </ConfirmButton>

@@ -156,6 +156,14 @@ export function WealthSourcesPanel({ sources, sourcesWithHistory }: WealthSource
                 ) : (
                   <ConfirmButton
                     onConfirm={() => handleDelete(source.id)}
+                    title="Delete source?"
+                    description={
+                      <>
+                        <span className="font-medium text-gray-900">{source.name}</span> will be
+                        removed. It has no recorded balances, so no reading changes.
+                      </>
+                    }
+                    confirmLabel="Delete source"
                     className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
                   >
                     <Trash2 size={13} />

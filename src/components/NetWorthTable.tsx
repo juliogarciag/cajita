@@ -336,6 +336,17 @@ export function NetWorthTable() {
                               onConfirm={() => handleSetLocked(reading.snapshot.id, false)}
                               tabIndex={-1}
                               title="Unfreeze this reading"
+                              description={
+                                <>
+                                  The reading from{' '}
+                                  <span className="font-medium text-gray-900">
+                                    {formatDate(reading.snapshot.date)}
+                                  </span>{' '}
+                                  becomes editable again, and can be deleted.
+                                </>
+                              }
+                              confirmLabel="Unfreeze"
+                              tone="neutral"
                               className="rounded p-1 text-indigo-400 hover:bg-indigo-100 hover:text-indigo-700"
                             >
                               <LockOpen size={13} />
@@ -354,7 +365,18 @@ export function NetWorthTable() {
                               <ConfirmButton
                                 onConfirm={() => handleDeleteReading(reading.snapshot.id)}
                                 tabIndex={-1}
-                                title="Delete this reading"
+                                title="Delete this reading?"
+                                description={
+                                  <>
+                                    The sweep from{' '}
+                                    <span className="font-medium text-gray-900">
+                                      {formatDate(reading.snapshot.date)}
+                                    </span>{' '}
+                                    and all {reading.filled} of its balances will be removed. Freeze
+                                    it instead to keep it safe.
+                                  </>
+                                }
+                                confirmLabel="Delete reading"
                                 className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
                               >
                                 <Trash2 size={13} />

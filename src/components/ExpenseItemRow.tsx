@@ -118,6 +118,16 @@ export function ExpenseItemRow({
         <ConfirmButton
           onConfirm={() => onDelete(item.id)}
           tabIndex={-1}
+          title="Delete expense?"
+          description={
+            <>
+              <span className="font-medium text-gray-900">
+                {item.description || 'This expense'}
+              </span>{' '}
+              and its note will be removed.
+            </>
+          }
+          confirmLabel="Delete expense"
           className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
         >
           <Trash2 size={12} />

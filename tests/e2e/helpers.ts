@@ -91,3 +91,15 @@ async function fillAmountCell(page: Page, row: Locator, cellIndex: number, value
     }
   }
 }
+
+/**
+ * Confirm a destructive action in the alert dialog. Scoped to the dialog
+ * because trigger and confirm labels deliberately overlap ("Delete expense?"
+ * opens it, "Delete expense" commits).
+ */
+export async function confirmDialog(page: Page, label: string) {
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: label }).click();
+  await expect(dialog).toHaveCount(0, { timeout: 10000 });
+}

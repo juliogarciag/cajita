@@ -1,6 +1,6 @@
 import { expect, loginIsolated } from './fixtures'
 import { test, type Page, type BrowserContext } from '@playwright/test'
-import { createCategory, openCategory, addExpense } from './helpers'
+import { createCategory, openCategory, addExpense, confirmDialog } from './helpers'
 
 // These tests build on shared state and must run serially
 test.describe.configure({ mode: 'serial' })
@@ -181,8 +181,8 @@ test.describe('Expense Categories', () => {
     await expect(row).toBeVisible({ timeout: 10000 })
 
     // Trash button → confirm
-    await row.getByRole('button').last().click({ force: true })
-    await page.getByRole('button', { name: 'Sure?' }).click({ force: true })
+    await row.getByRole('button', { name: 'Delete expense?' }).click({ force: true })
+    await confirmDialog(page, 'Delete expense')
 
     await expect(page.getByText(ITEM_DESC, { exact: true })).not.toBeVisible({
       timeout: 10000,
@@ -196,7 +196,7 @@ test.describe('Expense Categories', () => {
     })
     await expect(card).toBeVisible({ timeout: 10000 })
     await expect(card.getByLabel('Cannot delete a category with expenses')).toBeVisible()
-    await expect(card.getByRole('button', { name: '×' })).toHaveCount(0)
+    await expect(card.getByRole('button', { name: 'Delete category?' })).toHaveCount(0)
   })
 
   test('can delete the category once it is empty', async () => {
@@ -206,8 +206,8 @@ test.describe('Expense Categories', () => {
       has: page.getByText(PENDING_DESC, { exact: true }),
     })
     await expect(row).toBeVisible({ timeout: 10000 })
-    await row.getByRole('button').last().click({ force: true })
-    await page.getByRole('button', { name: 'Sure?' }).click({ force: true })
+    await row.getByRole('button', { name: 'Delete expense?' }).click({ force: true })
+    await confirmDialog(page, 'Delete expense')
     await expect(page.getByText(PENDING_DESC, { exact: true })).not.toBeVisible({
       timeout: 10000,
     })
@@ -216,10 +216,10 @@ test.describe('Expense Categories', () => {
     const card = page.locator('[data-category-card]', {
       has: page.getByText(RENAMED_NAME, { exact: true }),
     })
-    const deleteBtn = card.getByRole('button', { name: '×' })
+    const deleteBtn = card.getByRole('button', { name: 'Delete category?' })
     await expect(deleteBtn).toBeVisible({ timeout: 10000 })
     await deleteBtn.click({ force: true })
-    await page.getByRole('button', { name: 'Sure?' }).click({ force: true })
+    await confirmDialog(page, 'Delete category')
 
     await expect(page.getByText(RENAMED_NAME, { exact: true })).not.toBeVisible({ timeout: 10000 })
   })
