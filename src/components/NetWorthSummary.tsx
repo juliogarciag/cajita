@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { wealthSourcesCollection } from '#/lib/wealth-sources-collection.js'
 import { balanceSnapshotsCollection } from '#/lib/balance-snapshots-collection.js'
 import { balanceEntriesCollection } from '#/lib/balance-entries-collection.js'
@@ -16,13 +16,28 @@ import { useDateFormat } from '#/lib/date-format.js'
 
 const CHART_WIDTH = 620
 const CHART_HEIGHT = 120
-const MAX_POINTS = 12
+
+// Windows in years, not counts of readings: "the last 12 readings" only means a
+// year while sweeps stay monthly.
+export const CHART_RANGES = [
+  { key: '1y', label: '1Y', years: 1 },
+  { key: '5y', label: '5Y', years: 5 },
+  { key: 'all', label: 'All', years: null },
+] as const
+
+export type ChartRangeKey = (typeof CHART_RANGES)[number]['key']
 
 type Hover = { index: number; left: number; top: number }
 
 export function NetWorthSummary() {
   const { formatDate } = useDateFormat()
+  const navigate = useNavigate()
+  const { range } = useSearch({ strict: false }) as { range?: ChartRangeKey }
   const [hover, setHover] = useState<Hover | null>(null)
+
+  // Everything by default — a decade of monthly readings is ~120 points, which
+  // one polyline draws happily, so there's no reason to hide history on arrival.
+  const selectedRange = CHART_RANGES.find((r) => r.key === range) ?? CHART_RANGES[2]
 
   const { data: allSources } = useLiveQuery((q) => q.from({ s: wealthSourcesCollection }))
   const { data: snapshots } = useLiveQuery((q) => q.from({ b: balanceSnapshotsCollection }))
@@ -39,8 +54,17 @@ export function NetWorthSummary() {
   // Only complete readings are plotted — a half-filled sweep would read as a crash
   const points = useMemo(() => {
     const complete = readings.filter((r) => r.complete)
-    return complete.slice(0, MAX_POINTS).reverse()
-  }, [readings])
+    if (selectedRange.years === null) return complete.slice().reverse()
+
+    const cutoff = new Date()
+    cutoff.setFullYear(cutoff.getFullYear() - selectedRange.years)
+    const cutoffDate = cutoff.toISOString().slice(0, 10)
+    return complete.filter((r) => r.snapshot.date >= cutoffDate).reverse()
+  }, [readings, selectedRange])
+
+  const handleSelectRange = (key: ChartRangeKey) => {
+    void navigate({ to: '/dashboard', search: key === 'all' ? {} : { range: key } })
+  }
 
   const path = useMemo(() => {
     if (points.length < 2) return null
@@ -94,6 +118,7 @@ export function NetWorthSummary() {
   }
 
   const previous = readings.filter((r) => r.complete)[1] ?? null
+  const completeCount = readings.filter((r) => r.complete).length
 
   return (
     <div className="flex flex-col gap-4">
@@ -119,13 +144,45 @@ export function NetWorthSummary() {
               {describeAge(daysSince(headline.snapshot.date, new Date()))}
             </div>
           </div>
-          <Link
-            to="/finances/net-worth"
-            className="shrink-0 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            Add reading
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            {completeCount >= 2 && (
+              <div
+                role="group"
+                aria-label="Chart range"
+                className="flex overflow-hidden rounded-lg border border-gray-200 text-xs"
+              >
+                {CHART_RANGES.map((option) => (
+                  <button
+                    key={option.key}
+                    onClick={() => handleSelectRange(option.key)}
+                    aria-pressed={option.key === selectedRange.key}
+                    className={`px-2.5 py-1 font-medium transition-colors ${
+                      option.key === selectedRange.key
+                        ? 'bg-gray-900 text-white'
+                        : 'text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Link
+              to="/finances/net-worth"
+              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              Add reading
+            </Link>
+          </div>
         </div>
+
+        {!path && completeCount >= 2 && (
+          <p className="mt-4 rounded-lg bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+            {points.length === 0 ? 'No readings fall' : 'Only one reading falls'} in the last{' '}
+            {selectedRange.years} {selectedRange.years === 1 ? 'year' : 'years'} — pick a wider
+            range to see the trend.
+          </p>
+        )}
 
         {path && (
           <div className="relative mt-4">
@@ -134,7 +191,7 @@ export function NetWorthSummary() {
               className="w-full"
               style={{ overflow: 'visible' }}
               role="img"
-              aria-label={`Net worth across the last ${points.length} complete readings. Full history is on the net worth page.`}
+              aria-label={`Net worth across ${points.length} complete readings. Full history is on the net worth page.`}
               onMouseMove={handleMove}
               onMouseLeave={() => setHover(null)}
             >

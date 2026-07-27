@@ -1,12 +1,19 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
 
 const NetWorthSummary = lazy(() =>
   import('#/components/NetWorthSummary.js').then((m) => ({ default: m.NetWorthSummary })),
 )
 
+const searchSchema = z.object({
+  // How far back the net worth chart reaches. Absent = all of it.
+  range: z.enum(['1y', '5y', 'all']).optional(),
+})
+
 export const Route = createFileRoute('/_authenticated/dashboard')({
   component: DashboardPage,
+  validateSearch: searchSchema,
 })
 
 function DashboardPage() {
