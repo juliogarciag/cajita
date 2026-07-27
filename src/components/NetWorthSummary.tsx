@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { Link } from '@tanstack/react-router'
 import { wealthSourcesCollection } from '#/lib/wealth-sources-collection.js'
@@ -18,8 +18,11 @@ const CHART_WIDTH = 620
 const CHART_HEIGHT = 120
 const MAX_POINTS = 12
 
+type Hover = { index: number; left: number; top: number }
+
 export function NetWorthSummary() {
   const { formatDate } = useDateFormat()
+  const [hover, setHover] = useState<Hover | null>(null)
 
   const { data: allSources } = useLiveQuery((q) => q.from({ s: wealthSourcesCollection }))
   const { data: snapshots } = useLiveQuery((q) => q.from({ b: balanceSnapshotsCollection }))
@@ -52,6 +55,28 @@ export function NetWorthSummary() {
       return { x, y, reading: p }
     })
   }, [points])
+
+  // Snap to the nearest reading anywhere in the chart — the dots themselves are
+  // a 4px target, which is not something to ask anyone to hit.
+  const handleMove = (event: React.MouseEvent<SVGSVGElement>) => {
+    if (!path) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    const cursorX = ((event.clientX - rect.left) / rect.width) * CHART_WIDTH
+
+    let nearest = 0
+    for (let i = 1; i < path.length; i++) {
+      if (Math.abs(path[i].x - cursorX) < Math.abs(path[nearest].x - cursorX)) nearest = i
+    }
+
+    const point = path[nearest]
+    setHover({
+      index: nearest,
+      left: (point.x / CHART_WIDTH) * rect.width,
+      top: ((point.y + 6) / (CHART_HEIGHT + 12)) * rect.height,
+    })
+  }
+
+  const hovered = hover && path ? path[hover.index] : null
 
   if (!headline) {
     return (
@@ -103,14 +128,26 @@ export function NetWorthSummary() {
         </div>
 
         {path && (
-          <div className="mt-4">
+          <div className="relative mt-4">
             <svg
               viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT + 12}`}
               className="w-full"
               style={{ overflow: 'visible' }}
               role="img"
-              aria-label={`Net worth across the last ${points.length} complete readings`}
+              aria-label={`Net worth across the last ${points.length} complete readings. Full history is on the net worth page.`}
+              onMouseMove={handleMove}
+              onMouseLeave={() => setHover(null)}
             >
+              {hovered && (
+                <line
+                  x1={hovered.x}
+                  x2={hovered.x}
+                  y1={0}
+                  y2={CHART_HEIGHT + 12}
+                  stroke="#d1d5db"
+                  strokeWidth={1}
+                />
+              )}
               <polyline
                 points={path.map((p) => `${p.x},${p.y + 6}`).join(' ')}
                 fill="none"
@@ -119,20 +156,77 @@ export function NetWorthSummary() {
                 strokeLinejoin="round"
                 strokeLinecap="round"
               />
-              {path.map((p, i) => (
-                <circle
-                  key={p.reading.snapshot.id}
-                  cx={p.x}
-                  cy={p.y + 6}
-                  r={i === path.length - 1 ? 4.5 : 3}
-                  fill="#3b82f6"
-                >
-                  <title>
-                    {formatDate(p.reading.snapshot.date)} — {formatCents(p.reading.total)}
-                  </title>
-                </circle>
-              ))}
+              {path.map((p, i) => {
+                const active = hover?.index === i
+                return (
+                  <circle
+                    key={p.reading.snapshot.id}
+                    cx={p.x}
+                    cy={p.y + 6}
+                    r={active ? 5.5 : i === path.length - 1 ? 4.5 : 3}
+                    fill="#3b82f6"
+                    stroke={active ? '#ffffff' : undefined}
+                    strokeWidth={active ? 2 : undefined}
+                  />
+                )
+              })}
             </svg>
+
+            {hover && hovered && (
+              <div
+                // Centring lives in the inline transform below — Tailwind v4's
+                // translate utilities set the separate `translate` property,
+                // which would compose with it and shift twice.
+                className="pointer-events-none absolute z-10 w-max min-w-[168px] rounded-lg border border-gray-200 bg-white p-2.5 shadow-lg"
+                style={{
+                  // Keep the card inside the card, however near an edge the point sits
+                  left: `clamp(96px, ${hover.left}px, calc(100% - 96px))`,
+                  top: Math.max(0, hover.top - 12),
+                  transform: 'translate(-50%, -100%)',
+                }}
+              >
+                <div className="text-xs text-gray-500">
+                  {formatDate(hovered.reading.snapshot.date)}
+                </div>
+                <div className="mt-0.5 flex items-baseline gap-2">
+                  <span className="text-sm font-medium text-gray-900">
+                    {formatCents(hovered.reading.total)}
+                  </span>
+                  {hovered.reading.delta !== null && (
+                    <span
+                      className={`text-xs ${
+                        hovered.reading.delta >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {hovered.reading.delta >= 0 ? '+' : '−'}
+                      {formatCents(Math.abs(hovered.reading.delta))}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1.5 flex flex-col gap-0.5 border-t border-gray-100 pt-1.5">
+                  {sources.map((source) => {
+                    const cents = hovered.reading.amounts.get(source.id)
+                    if (cents == null) return null
+                    return (
+                      <div
+                        key={source.id}
+                        className="flex items-center justify-between gap-4 text-xs"
+                      >
+                        <span className="flex items-center gap-1.5 text-gray-600">
+                          <span
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{ backgroundColor: source.color }}
+                          />
+                          {source.name}
+                        </span>
+                        <span className="text-gray-900">{formatCents(cents)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="mt-1 flex justify-between text-xs text-gray-400">
               <span>{formatDate(points[0].snapshot.date)}</span>
               <span>{formatDate(points[points.length - 1].snapshot.date)}</span>
