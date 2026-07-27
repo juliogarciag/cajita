@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { eq } from '@tanstack/db'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Link, useParams, useSearch } from '@tanstack/react-router'
 import { ArrowLeft, Plus, Download } from 'lucide-react'
 import { toast } from 'sonner'
@@ -15,18 +16,20 @@ import { upsertExpenseItemNote, deleteExpenseItemNote, getTeamMembers } from '#/
 import { updateExpenseCategory } from '#/server/expense-categories.js'
 import { categoryColors } from '#/lib/category-colors.js'
 import { ExpenseItemRow } from './ExpenseItemRow.js'
+import { ROW_HEIGHT } from './TableRow.js'
 
 export function ExpenseCategoryDetail() {
   const { categoryId } = useParams({ strict: false }) as { categoryId: string }
   const { highlightItem } = useSearch({ strict: false }) as { highlightItem?: string }
   const { formatDate } = useDateFormat()
 
+  const parentRef = useRef<HTMLDivElement>(null)
   const [newItemId, setNewItemId] = useState<string | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null)
   const [noteOpenId, setNoteOpenId] = useState<string | null>(null)
-  const scrolledItemRef = useRef(false)
-  const tableBodyRef = useRef<HTMLDivElement>(null)
+  const scrollToEnd = useRef(false)
+  const initialScroll = useRef(true)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [showColorPicker, setShowColorPicker] = useState(false)
@@ -39,6 +42,7 @@ export function ExpenseCategoryDetail() {
     q
       .from({ i: expenseItemsCollection })
       .where(({ i }) => eq(i.expense_category_id, categoryId as typeof i.expense_category_id))
+      .orderBy(({ i }) => i.date, 'asc')
       .orderBy(({ i }) => i.sort_position, 'asc'),
   )
 
@@ -55,6 +59,83 @@ export function ExpenseCategoryDetail() {
     () => Object.fromEntries(itemNotes.map((n) => [n.expense_item_id, n])),
     [itemNotes],
   )
+
+  // Merge rows and month dividers into a single flat list for the virtualizer
+  type TableItem =
+    | { type: 'row'; data: ExpenseItem }
+    | { type: 'month-divider'; label: string; isYearBoundary: boolean; height: number }
+
+  const tableItems = useMemo((): TableItem[] => {
+    if (items.length === 0) return []
+    const result: TableItem[] = []
+    let prevMonth = ''
+    let prevYear = ''
+
+    for (let i = 0; i < items.length; i++) {
+      const row = items[i]
+      const curMonth = row.date.slice(0, 7)
+      const curYear = row.date.slice(0, 4)
+
+      if (i > 0 && curMonth !== prevMonth) {
+        const isYearBoundary = curYear !== prevYear
+        const [y, m] = curMonth.split('-')
+        const label = new Date(Number(y), Number(m) - 1, 1).toLocaleString('default', {
+          month: 'long',
+          year: 'numeric',
+        })
+        result.push({
+          type: 'month-divider',
+          label,
+          isYearBoundary,
+          height: isYearBoundary ? 32 : 28,
+        })
+      }
+      result.push({ type: 'row', data: row })
+      prevMonth = curMonth
+      prevYear = curYear
+    }
+    return result
+  }, [items])
+
+  const virtualizer = useVirtualizer({
+    count: tableItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => {
+      const item = tableItems[index]
+      if (item.type === 'month-divider') return item.height
+      return ROW_HEIGHT
+    },
+    overscan: 20,
+  })
+
+  // Scroll to highlighted row (search palette navigation) or bottom on initial load
+  useEffect(() => {
+    if (items.length === 0) return
+    if (initialScroll.current) {
+      initialScroll.current = false
+      if (highlightItem) {
+        const idx = tableItems.findIndex(
+          (item) => item.type === 'row' && item.data.id === highlightItem,
+        )
+        if (idx >= 0) {
+          setTimeout(() => {
+            virtualizer.scrollToIndex(idx, { align: 'center' })
+            setHighlightedItemId(highlightItem)
+            setTimeout(() => setHighlightedItemId(null), 2000)
+          }, 200)
+          return
+        }
+      }
+      setTimeout(() => {
+        parentRef.current?.scrollTo({ top: parentRef.current.scrollHeight })
+      }, 200)
+    } else if (scrollToEnd.current) {
+      scrollToEnd.current = false
+      setTimeout(() => {
+        parentRef.current?.scrollTo({ top: parentRef.current.scrollHeight })
+      }, 200)
+    }
+  }, [items, tableItems, highlightItem, virtualizer])
 
   const handleDownloadCsv = () => {
     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
@@ -76,23 +157,6 @@ export function ExpenseCategoryDetail() {
     a.click()
     URL.revokeObjectURL(url)
   }
-
-  // Search palette navigation: ?highlightItem=<expense_item_id> scrolls to and
-  // flashes the row.
-  useEffect(() => {
-    if (!highlightItem || items.length === 0 || scrolledItemRef.current) return
-    const item = items.find((i) => i.id === highlightItem)
-    if (!item) return
-    scrolledItemRef.current = true
-    setTimeout(() => {
-      const el = document.getElementById(item.id)
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        setHighlightedItemId(item.id)
-        setTimeout(() => setHighlightedItemId(null), 2000)
-      }
-    }, 100)
-  }, [highlightItem, items])
 
   if (!category) {
     return (
@@ -123,11 +187,7 @@ export function ExpenseCategoryDetail() {
         },
       })
       setNewItemId(result.item.id)
-      setTimeout(() => {
-        if (tableBodyRef.current) {
-          tableBodyRef.current.scrollTop = tableBodyRef.current.scrollHeight
-        }
-      }, 100)
+      scrollToEnd.current = true
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to add expense')
     } finally {
@@ -292,37 +352,85 @@ export function ExpenseCategoryDetail() {
           <div className="w-[80px] shrink-0" />
         </div>
 
-        <div
-          ref={tableBodyRef}
-          className="overflow-auto"
-          style={{ maxHeight: 'calc(100vh - 340px)' }}
-        >
-          {items.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-gray-400">
-              No expenses yet. Add your first one.
-            </div>
-          ) : (
-            items.map((item: ExpenseItem) => (
-              <ExpenseItemRow
-                key={item.id}
-                id={item.id}
-                item={item}
-                highlight={highlightedItemId === item.id}
-                autoEditDescription={item.id === newItemId}
-                note={noteMap[item.id] ?? null}
-                noteOpen={noteOpenId === item.id}
-                teamMembers={teamMembers}
-                onNoteOpenChange={(open) => setNoteOpenId(open ? item.id : null)}
-                onNoteSave={(content) =>
-                  upsertExpenseItemNote({ data: { expense_item_id: item.id, content } })
+        {items.length === 0 ? (
+          <div className="px-4 py-8 text-center text-sm text-gray-400">
+            No expenses yet. Add your first one.
+          </div>
+        ) : (
+          <div
+            ref={parentRef}
+            className="overflow-auto"
+            style={{
+              height: Math.min(virtualizer.getTotalSize(), window.innerHeight - 340),
+            }}
+          >
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const item = tableItems[virtualRow.index]
+
+                if (item.type === 'month-divider') {
+                  return (
+                    <div
+                      key={`divider-${virtualRow.index}`}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: `${item.height}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                      className={
+                        item.isYearBoundary
+                          ? 'flex items-center border-y-2 border-slate-400 bg-slate-200 px-3 text-xs font-bold text-slate-800 uppercase tracking-wide'
+                          : 'flex items-center border-y border-slate-200 bg-slate-100 px-3 text-xs font-semibold text-slate-600'
+                      }
+                    >
+                      {item.label}
+                    </div>
+                  )
                 }
-                onNoteDelete={() => deleteExpenseItemNote({ data: { expense_item_id: item.id } })}
-                onUpdate={handleUpdate}
-                onDelete={handleDelete}
-              />
-            ))
-          )}
-        </div>
+
+                const row = item.data
+                return (
+                  <ExpenseItemRow
+                    key={row.id}
+                    id={row.id}
+                    item={row}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: virtualRow.size,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                    highlight={highlightedItemId === row.id}
+                    autoEditDescription={row.id === newItemId}
+                    note={noteMap[row.id] ?? null}
+                    noteOpen={noteOpenId === row.id}
+                    teamMembers={teamMembers}
+                    onNoteOpenChange={(open) => setNoteOpenId(open ? row.id : null)}
+                    onNoteSave={(content) =>
+                      upsertExpenseItemNote({ data: { expense_item_id: row.id, content } })
+                    }
+                    onNoteDelete={() =>
+                      deleteExpenseItemNote({ data: { expense_item_id: row.id } })
+                    }
+                    onUpdate={handleUpdate}
+                    onDelete={handleDelete}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

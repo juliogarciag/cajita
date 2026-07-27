@@ -1,7 +1,7 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
-  testDir: "./tests/e2e",
+  testDir: './tests/e2e',
   // Each spec file gets its own isolated team via the test fixture,
   // so parallel execution is now safe — no shared data interference.
   // fullyParallel is false because serial describe blocks (budgets, checkpoints)
@@ -11,17 +11,17 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 1,
   // Spec files run in parallel — each has its own isolated team.
   workers: 3,
-  reporter: "html",
+  reporter: 'html',
 
   use: {
-    baseURL: "http://localhost:3001",
-    trace: "on-first-retry",
+    baseURL: 'http://localhost:3002',
+    trace: 'on-first-retry',
   },
 
   projects: [
     {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
       // Auth is handled per-test via the isolated fixture (tests/e2e/fixtures.ts).
       // No global setup or shared storageState needed.
       testIgnore: /global-setup\.ts/,
@@ -29,10 +29,12 @@ export default defineConfig({
   ],
 
   webServer: {
-    // Starts the app on port 3001 using the test database (db-test, electric-test).
-    // Completely isolated from dev data on port 3000.
-    command: "npm run dev:test",
-    url: "http://localhost:3001",
+    // Starts the app on port 3002 using the test database (db-test, electric-test).
+    // Completely isolated from dev data on port 3000. The port must NOT be
+    // 3001 — that's the regular dev server, and reuseExistingServer would
+    // silently run the tests against dev data.
+    command: 'npm run dev:test',
+    url: 'http://localhost:3002',
     reuseExistingServer: !process.env.CI,
   },
-});
+})

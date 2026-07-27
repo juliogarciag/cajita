@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, type CSSProperties } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { ExpenseItem } from '#/lib/expense-items-collection.js'
 import type { ExpenseItemNote } from '#/lib/expense-item-notes-collection.js'
@@ -12,6 +12,7 @@ import { NotePopover, NoteIconButton } from './NotePopover.js'
 interface ExpenseItemRowProps {
   id?: string
   item: ExpenseItem
+  style?: CSSProperties
   highlight?: boolean
   autoEditDescription?: boolean
   note: ExpenseItemNote | null
@@ -32,6 +33,7 @@ interface ExpenseItemRowProps {
 export function ExpenseItemRow({
   id,
   item,
+  style,
   highlight = false,
   autoEditDescription = false,
   note,
@@ -64,7 +66,7 @@ export function ExpenseItemRow({
   )
 
   return (
-    <TableRow id={id} highlight={highlight}>
+    <TableRow id={id} highlight={highlight} style={style} data-row-id={item.id}>
       <div className="w-[22px] shrink-0 flex items-center pl-[10px]">
         <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
       </div>
