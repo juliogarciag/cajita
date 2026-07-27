@@ -14,7 +14,7 @@ import { useDateFormat } from '#/lib/date-format.js'
 import { createExpenseItem, updateExpenseItem, deleteExpenseItem } from '#/server/expense-items.js'
 import { upsertExpenseItemNote, deleteExpenseItemNote, getTeamMembers } from '#/server/notes.js'
 import { updateExpenseCategory } from '#/server/expense-categories.js'
-import { categoryColors } from '#/lib/category-colors.js'
+import { ColorPicker } from './ColorPicker.js'
 import { ExpenseItemRow } from './ExpenseItemRow.js'
 import { ROW_HEIGHT } from './TableRow.js'
 
@@ -202,7 +202,7 @@ export function ExpenseCategoryDetail() {
       <div className="flex flex-col items-center gap-4 py-12">
         <p className="text-gray-500">Category not found.</p>
         <Link to="/finances/expense-categories" className="text-sm text-blue-600 hover:underline">
-          Back to expense categories
+          Back to categories
         </Link>
       </div>
     )
@@ -275,7 +275,8 @@ export function ExpenseCategoryDetail() {
   }
 
   const handleColorChange = async (color: string) => {
-    setShowColorPicker(false)
+    // Stay open — the picker also manages saved colors, so closing on every
+    // pick would fight the user. The color dot toggles it shut.
     if (color === category.color) return
     try {
       await updateExpenseCategory({ data: { id: category.id, color } })
@@ -352,20 +353,9 @@ export function ExpenseCategoryDetail() {
       </div>
 
       {showColorPicker && (
-        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-3">
+        <div className="flex flex-col gap-1.5 rounded-lg border border-gray-200 bg-white p-3">
           <span className="text-xs text-gray-500">Color</span>
-          <div className="flex gap-1.5">
-            {categoryColors.map((c) => (
-              <button
-                key={c.value}
-                type="button"
-                title={c.name}
-                onClick={() => handleColorChange(c.value)}
-                className={`h-6 w-6 rounded-full border-2 transition-transform ${category.color === c.value ? 'scale-110 border-gray-900' : 'border-transparent hover:scale-105'}`}
-                style={{ backgroundColor: c.value }}
-              />
-            ))}
-          </div>
+          <ColorPicker value={category.color} onChange={handleColorChange} />
         </div>
       )}
 

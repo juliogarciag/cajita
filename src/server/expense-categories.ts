@@ -2,13 +2,14 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { db } from '#/db/index.js'
 import { authMiddleware } from './middleware.js'
+import { HEX_COLOR } from './color-bookmarks.js'
 
 export const createExpenseCategory = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(
     z.object({
       name: z.string().min(1).max(255),
-      color: z.string(),
+      color: z.string().regex(HEX_COLOR),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -41,7 +42,7 @@ export const updateExpenseCategory = createServerFn({ method: 'POST' })
     z.object({
       id: z.string().uuid(),
       name: z.string().min(1).max(255).optional(),
-      color: z.string().optional(),
+      color: z.string().regex(HEX_COLOR).optional(),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -76,7 +77,19 @@ export const deleteExpenseCategory = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
 
-    // CASCADE deletes expense_items and their notes
+    // Deleting cascades to items and their notes, so only allow it when the
+    // category is empty — otherwise a stray click destroys years of expenses.
+    const existingItem = await db
+      .selectFrom('expense_items')
+      .select('id')
+      .where('expense_category_id', '=', data.id)
+      .where('team_id', '=', teamId)
+      .executeTakeFirst()
+
+    if (existingItem) {
+      throw new Error('Cannot delete a category that still has expenses.')
+    }
+
     await db
       .deleteFrom('expense_categories')
       .where('id', '=', data.id)

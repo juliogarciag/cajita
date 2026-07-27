@@ -63,6 +63,14 @@ export interface ExpenseItemNotesTable {
   updated_at: Generated<Date>
 }
 
+export interface ColorBookmarksTable {
+  id: Generated<string>
+  team_id: string
+  color: string
+  sort_order: Generated<number>
+  created_at: Generated<Date>
+}
+
 export interface UserPreferencesTable {
   id: Generated<string>
   user_id: string
@@ -79,5 +87,6 @@ export interface Database {
   expense_categories: ExpenseCategoriesTable
   expense_items: ExpenseItemsTable
   expense_item_notes: ExpenseItemNotesTable
+  color_bookmarks: ColorBookmarksTable
   user_preferences: UserPreferencesTable
 }

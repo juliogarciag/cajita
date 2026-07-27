@@ -4,11 +4,12 @@ import { expect, type Page, type Locator } from '@playwright/test'
  * Create an expense category via the list page UI and wait for its card.
  * Assumes the page is already on /finances/expense-categories.
  */
-export async function createCategory(page: Page, name: string, colorName = 'Blue') {
+export async function createCategory(page: Page, name: string, color = '#3b82f6') {
   await page.getByRole('button', { name: 'Add Category' }).click()
   await expect(page.getByText('New Category')).toBeVisible()
   await page.getByPlaceholder('Category name').fill(name)
-  await page.getByRole('button', { name: colorName, exact: true }).click()
+  // Colors are saved bookmarks, addressed by their hex value
+  await page.getByRole('button', { name: `Use color ${color}` }).click()
   await page.getByRole('button', { name: 'Create' }).click()
   await expect(page.getByText(name, { exact: true })).toBeVisible({
     timeout: 10000,

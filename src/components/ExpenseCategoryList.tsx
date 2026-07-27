@@ -10,7 +10,8 @@ import {
 import { expenseItemsCollection } from '#/lib/expense-items-collection.js'
 import { formatCents, formatSoles } from '#/lib/format.js'
 import { createExpenseCategory, deleteExpenseCategory } from '#/server/expense-categories.js'
-import { categoryColors, DEFAULT_CATEGORY_COLOR } from '#/lib/category-colors.js'
+import { DEFAULT_CATEGORY_COLOR } from '#/lib/category-colors.js'
+import { ColorPicker } from './ColorPicker.js'
 import { ConfirmButton } from './ConfirmButton.js'
 
 type CategoryTotals = { usd: number; pendingSoles: number; count: number }
@@ -71,7 +72,7 @@ export function ExpenseCategoryList() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Expense Categories</h1>
+        <h1 className="text-2xl font-bold">Categories</h1>
         <button
           onClick={() => setShowAddForm(true)}
           className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
@@ -114,20 +115,9 @@ export function ExpenseCategoryList() {
                 Cancel
               </button>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1.5">
               <label className="text-xs text-gray-500">Color</label>
-              <div className="flex gap-1.5">
-                {categoryColors.map((c) => (
-                  <button
-                    key={c.value}
-                    type="button"
-                    title={c.name}
-                    onClick={() => setAddColor(c.value)}
-                    className={`h-6 w-6 rounded-full border-2 transition-transform ${addColor === c.value ? 'scale-110 border-gray-900' : 'border-transparent hover:scale-105'}`}
-                    style={{ backgroundColor: c.value }}
-                  />
-                ))}
-              </div>
+              <ColorPicker value={addColor} onChange={setAddColor} />
             </div>
           </div>
         </div>
@@ -135,7 +125,7 @@ export function ExpenseCategoryList() {
 
       {categories.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white px-6 py-12 text-center">
-          <p className="text-gray-500">No expense categories yet. Create your first one.</p>
+          <p className="text-gray-500">No categories yet. Create your first one.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -165,13 +155,23 @@ export function ExpenseCategoryList() {
                     />
                     <span className="font-medium text-gray-900">{category.name}</span>
                   </div>
-                  <ConfirmButton
-                    onConfirm={() => handleDelete(category.id)}
-                    className="relative z-10 rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
-                    confirmClassName="relative z-10 rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                  >
-                    ×
-                  </ConfirmButton>
+                  {totals.count > 0 ? (
+                    <span
+                      title="Delete the expenses in this category first"
+                      aria-label="Cannot delete a category with expenses"
+                      className="relative z-10 cursor-not-allowed px-2 py-0.5 text-xs text-gray-200"
+                    >
+                      ×
+                    </span>
+                  ) : (
+                    <ConfirmButton
+                      onConfirm={() => handleDelete(category.id)}
+                      className="relative z-10 rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                      confirmClassName="relative z-10 rounded px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                    >
+                      ×
+                    </ConfirmButton>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-gray-500">

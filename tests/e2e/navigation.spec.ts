@@ -39,15 +39,15 @@ test.describe('Navigation & Settings', () => {
   test('finances sub-nav links navigate correctly', async ({ page }) => {
     await page.goto('/finances/expense-categories')
 
-    await expect(page.getByRole('heading', { name: 'Expense Categories' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible()
 
     await page.getByRole('link', { name: 'Settings' }).click()
     await expect(page).toHaveURL(/\/finances\/settings/)
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Expense Categories' }).click()
+    await page.getByRole('link', { name: 'Categories' }).click()
     await expect(page).toHaveURL(/\/finances\/expense-categories/)
-    await expect(page.getByRole('heading', { name: 'Expense Categories' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible()
   })
 
   test('shows logged-in user name', async ({ page }) => {

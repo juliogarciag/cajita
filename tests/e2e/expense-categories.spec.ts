@@ -9,6 +9,7 @@ const UNIQUE = Date.now()
 const CATEGORY_NAME = `TestCategory-${UNIQUE}`
 const RENAMED_NAME = `Renamed-${UNIQUE}`
 const ITEM_DESC = `TestExpense-${UNIQUE}`
+const PENDING_DESC = `Pending-${UNIQUE}`
 
 test.describe('Expense Categories', () => {
   let context: BrowserContext
@@ -24,11 +25,11 @@ test.describe('Expense Categories', () => {
 
   test.beforeEach(async () => {
     await page.goto('/finances/expense-categories')
-    await expect(page.getByRole('heading', { name: 'Expense Categories' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible()
   })
 
   test('can create a new category', async () => {
-    await createCategory(page, CATEGORY_NAME, 'Blue')
+    await createCategory(page, CATEGORY_NAME)
   })
 
   test('can add an expense with soles and USD amounts', async () => {
@@ -56,7 +57,7 @@ test.describe('Expense Categories', () => {
   test('soles-only expenses count as pending', async () => {
     await openCategory(page, CATEGORY_NAME)
 
-    await addExpense(page, `Pending-${UNIQUE}`, { soles: '800' })
+    await addExpense(page, PENDING_DESC, { soles: '800' })
 
     // The pending bucket picks up the soles-only item; the USD total doesn't move
     const summary = page.getByText(/Pending \(Soles\)/)
@@ -165,15 +166,60 @@ test.describe('Expense Categories', () => {
     })
   })
 
-  test('can delete the category', async () => {
+  test('a category with expenses cannot be deleted', async () => {
+    // The pending expense is still there, so the card offers no delete button
+    const card = page.locator('[data-category-card]', {
+      has: page.getByText(RENAMED_NAME, { exact: true }),
+    })
+    await expect(card).toBeVisible({ timeout: 10000 })
+    await expect(card.getByLabel('Cannot delete a category with expenses')).toBeVisible()
+    await expect(card.getByRole('button', { name: '×' })).toHaveCount(0)
+  })
+
+  test('can delete the category once it is empty', async () => {
+    // Remove the last expense
+    await openCategory(page, RENAMED_NAME)
+    const row = page.locator('div[id]', {
+      has: page.getByText(PENDING_DESC, { exact: true }),
+    })
+    await expect(row).toBeVisible({ timeout: 10000 })
+    await row.getByRole('button').last().click({ force: true })
+    await page.getByRole('button', { name: 'Sure?' }).click({ force: true })
+    await expect(page.getByText(PENDING_DESC, { exact: true })).not.toBeVisible({
+      timeout: 10000,
+    })
+
+    await page.goto('/finances/expense-categories')
     const card = page.locator('[data-category-card]', {
       has: page.getByText(RENAMED_NAME, { exact: true }),
     })
     const deleteBtn = card.getByRole('button', { name: '×' })
-    await expect(deleteBtn).toBeVisible({ timeout: 5000 })
+    await expect(deleteBtn).toBeVisible({ timeout: 10000 })
     await deleteBtn.click({ force: true })
     await page.getByRole('button', { name: 'Sure?' }).click({ force: true })
 
     await expect(page.getByText(RENAMED_NAME, { exact: true })).not.toBeVisible({ timeout: 10000 })
+  })
+
+  test('a color can be saved and removed from the palette', async () => {
+    await page.getByRole('button', { name: 'Add Category' }).click()
+    await expect(page.getByText('New Category')).toBeVisible()
+
+    const customColor = '#123abc'
+    await page.getByLabel('Hex color').fill(customColor)
+    await page.getByLabel('Hex color').press('Enter')
+
+    // Not in the palette yet — save it
+    await expect(page.getByRole('button', { name: `Use color ${customColor}` })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Save' }).click()
+
+    const swatch = page.getByRole('button', { name: `Use color ${customColor}` })
+    await expect(swatch).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible()
+
+    // Remove it again — the × only appears while hovering the swatch
+    await swatch.hover()
+    await page.getByRole('button', { name: `Remove color ${customColor}` }).click()
+    await expect(swatch).toHaveCount(0, { timeout: 10000 })
   })
 })

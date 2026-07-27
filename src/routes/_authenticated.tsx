@@ -104,7 +104,7 @@ function AuthenticatedLayout() {
               className={subNavLinkClass}
               activeOptions={{ exact: false }}
             >
-              Expense Categories
+              Categories
             </Link>
             <Link to="/finances/settings" className={subNavLinkClass}>
               Settings

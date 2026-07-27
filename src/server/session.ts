@@ -1,4 +1,5 @@
 import { db } from '#/db/index.js'
+import { DEFAULT_PALETTE } from '#/lib/category-colors.js'
 
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
@@ -79,6 +80,17 @@ export async function createIsolatedTeam(userId: string, teamName: string): Prom
     .executeTakeFirstOrThrow()
 
   await db.insertInto('team_memberships').values({ team_id: team.id, user_id: userId }).execute()
+
+  await db
+    .insertInto('color_bookmarks')
+    .values(
+      DEFAULT_PALETTE.map((color, index) => ({
+        team_id: team.id,
+        color,
+        sort_order: index * 10,
+      })),
+    )
+    .execute()
 
   return team.id
 }
