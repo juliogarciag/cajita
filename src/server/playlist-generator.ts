@@ -1,69 +1,85 @@
 import { createServerFn } from '@tanstack/react-start'
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { z } from 'zod'
 import { getAnthropicClient } from './claude.js'
 import { authMiddleware } from './middleware.js'
 
-const songsSchema = z.object({
-  songs: z.array(
-    z.object({
-      artist: z.string(),
-      title: z.string(),
-    }),
-  ),
+const MODEL = 'claude-opus-5'
+
+const songSchema = z.object({
+  artist: z.string(),
+  title: z.string(),
 })
 
-const playlistMetaSchema = z.object({
+// Name and description come back with the songs rather than from a second call,
+// so the name can reflect what actually got picked.
+const playlistSchema = z.object({
   name: z.string(),
   description: z.string(),
+  songs: z.array(songSchema),
 })
 
-type Song = z.infer<typeof songsSchema>['songs'][number]
+const replacementSchema = z.object({
+  song: songSchema,
+})
 
-async function callClaude(systemPrompt: string, userPrompt: string): Promise<string> {
+type Song = z.infer<typeof songSchema>
+
+/**
+ * Room for the whole answer. A song entry runs ~20 tokens; 40 leaves slack for
+ * long titles, and the flat 400 covers the name, description, and JSON wrapper.
+ * The old flat 2048 silently truncated at the 75- and 100-song options.
+ */
+function budgetFor(songCount: number): number {
+  return 400 + songCount * 40
+}
+
+async function generate<T>(
+  systemPrompt: string,
+  userPrompt: string,
+  schema: z.ZodType<T>,
+  maxTokens: number,
+): Promise<T> {
   const client = getAnthropicClient()
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-5-20250929',
-    max_tokens: 2048,
-    temperature: 0.7,
+  const response = await client.messages.parse({
+    model: MODEL,
+    max_tokens: maxTokens,
+    // Picking well-known songs is recall, not reasoning — thinking would spend
+    // output tokens without improving the list. Allowed below `xhigh` effort.
+    thinking: { type: 'disabled' },
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
+    output_config: { format: zodOutputFormat(schema) },
   })
 
-  const block = response.content[0]
-  if (block.type !== 'text') {
-    throw new Error('Unexpected response type from Claude')
+  if (!response.parsed_output) {
+    throw new Error(`Claude returned no parseable output (stop reason: ${response.stop_reason})`)
   }
-  return block.text
+  return response.parsed_output
 }
 
-function parseJsonResponse<T>(text: string, schema: z.ZodType<T>): T {
-  // Extract JSON from response (Claude sometimes wraps in markdown code blocks)
-  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, text]
-  const jsonStr = (jsonMatch[1] ?? text).trim()
-  return schema.parse(JSON.parse(jsonStr))
-}
+export async function generatePlaylist(
+  prompt: string,
+  count: number,
+): Promise<{ name: string; description: string; songs: Song[] }> {
+  const systemPrompt = `You are a music recommendation expert. You generate song recommendations based on user queries, plus a name and description for the resulting playlist.
 
-export async function generateSongs(prompt: string, count: number): Promise<Song[]> {
-  const systemPrompt = `You are a music recommendation expert. You generate song recommendations based on user queries.
-
-Guidelines:
+Guidelines for songs:
 - For mood queries (sad, happy, chill, etc.), pick popular songs that evoke that mood
 - For genre queries, pick iconic songs from that genre
 - For artist queries, list their popular songs and similar artists
 - For decade queries, pick hits from that era
 - Mix well-known classics with some popular recent songs when appropriate
-- Each song must be a real, existing song
+- Each song must be a real, existing song, with the artist and title spelled as they appear on streaming services
 
-Return your response as a JSON object with a "songs" array. Each song has "artist" and "title" fields.
-
-Example:
-{"songs": [{"artist": "Adele", "title": "Someone Like You"}, {"artist": "Johnny Cash", "title": "Hurt"}]}`
+Guidelines for the playlist name and description:
+- Name: short and catchy, max 100 characters
+- Description: brief, max 200 characters`
 
   const userPrompt = `Generate exactly ${count} specific, well-known songs that match this request: "${prompt}"`
 
-  const text = await callClaude(systemPrompt, userPrompt)
-  const result = parseJsonResponse(text, songsSchema)
-  return result.songs.slice(0, count)
+  const result = await generate(systemPrompt, userPrompt, playlistSchema, budgetFor(count))
+  return { ...result, songs: result.songs.slice(0, count) }
 }
 
 export async function generateReplacementSong(
@@ -73,12 +89,7 @@ export async function generateReplacementSong(
 ): Promise<Song> {
   const currentList = currentSongs.map((s) => `${s.artist} - ${s.title}`).join('\n')
 
-  const systemPrompt = `You are a music recommendation expert. You generate song recommendations based on user queries.
-
-Return your response as a JSON object with a "songs" array containing exactly 1 song. Each song has "artist" and "title" fields.
-
-Example:
-{"songs": [{"artist": "Adele", "title": "Someone Like You"}]}`
+  const systemPrompt = `You are a music recommendation expert. You suggest a single replacement song based on a user query and a list of songs to avoid.`
 
   const userPrompt = `The user wants songs matching: "${prompt}"
 
@@ -93,28 +104,8 @@ Generate exactly 1 DIFFERENT song that:
 - Avoids the same artist as the rejected song
 - Is NOT already in the list above`
 
-  const text = await callClaude(systemPrompt, userPrompt)
-  const result = parseJsonResponse(text, songsSchema)
-  if (result.songs.length === 0) {
-    throw new Error('Claude returned no replacement songs')
-  }
-  return result.songs[0]
-}
-
-export async function generatePlaylistMetadata(
-  prompt: string,
-): Promise<{ name: string; description: string }> {
-  const systemPrompt = `Generate a creative playlist name and description.
-
-Return a JSON object with "name" (max 100 chars, short and catchy) and "description" (max 200 chars, brief).
-
-Example:
-{"name": "Late Night Vibes", "description": "Smooth tracks for winding down after midnight"}`
-
-  const userPrompt = `Generate a playlist name and description for a playlist based on this query: "${prompt}"`
-
-  const text = await callClaude(systemPrompt, userPrompt)
-  return parseJsonResponse(text, playlistMetaSchema)
+  const result = await generate(systemPrompt, userPrompt, replacementSchema, 200)
+  return result.song
 }
 
 // --- Server Functions ---
@@ -127,15 +118,14 @@ export const generatePlaylistSongs = createServerFn({ method: 'POST' })
     if (!prompt.trim()) {
       throw new Error('Prompt is required')
     }
-    const songs = await generateSongs(prompt, count)
-    const meta = await generatePlaylistMetadata(prompt)
-    return { songs, suggestedName: meta.name, suggestedDescription: meta.description }
+    const { songs, name, description } = await generatePlaylist(prompt, count)
+    return { songs, suggestedName: name, suggestedDescription: description }
   })
 
 const reloadSongValidator = z.object({
   prompt: z.string(),
-  currentSongs: z.array(z.object({ artist: z.string(), title: z.string() })),
-  rejectedSong: z.object({ artist: z.string(), title: z.string() }),
+  currentSongs: z.array(songSchema),
+  rejectedSong: songSchema,
 })
 
 export const reloadSong = createServerFn({ method: 'POST' })
