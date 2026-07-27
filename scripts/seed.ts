@@ -2,12 +2,22 @@ import 'dotenv/config'
 import { db } from '#/db/index.js'
 
 // Seeds the Default team with 3 expense categories — Health, Puppy, Goodies —
-// each with ~3k items spread across the last 7 years. Re-runnable: existing
-// items in these categories are wiped and regenerated.
+// each with ~3k items spread across the last 7 years, and a note on every
+// item. Re-runnable: existing items in these categories are wiped and
+// regenerated (notes cascade).
+//
+// Currency model: USD is the settled amount. An item with a soles amount but
+// no USD amount is "pending" — money not exchanged yet — so those are rare and
+// capped per year.
 
 const YEARS_BACK = 7
 const ITEMS_PER_CATEGORY_MIN = 2800
 const ITEMS_PER_CATEGORY_MAX = 3100
+const PENDING_PER_YEAR_MIN = 1
+const PENDING_PER_YEAR_MAX = 5
+// Share of settled items that also record what was paid in soles before
+// exchanging. The rest were paid in USD directly (subscriptions, online).
+const SOLES_ALONGSIDE_USD_PROBABILITY = 0.75
 
 type CategorySpec = {
   name: string
@@ -16,9 +26,31 @@ type CategorySpec = {
   // Amount ranges in whole units (soles / usd)
   solesRange: [number, number]
   usdRange: [number, number]
-  // Probability an item is priced in soles (else usd); ~10% get both
-  solesProbability: number
+  notes: string[]
 }
+
+// Notes that fit any category
+const GENERIC_NOTES = [
+  'Paid with the blue card.',
+  'Reimbursed later.',
+  'Split with Angie.',
+  'Cheaper than last time.',
+  'Bought on sale.',
+  'Kept the receipt.',
+  'Ordered online, delivered same week.',
+  'Same as the usual monthly one.',
+  'Slightly over budget this month.',
+  'Worth it.',
+]
+
+// Notes for soles-only (pending) items — money not exchanged yet
+const PENDING_NOTES = [
+  'Paid in soles — not exchanged yet.',
+  'Used cash we already had at home.',
+  'Pending: need to work out the exchange rate for this one.',
+  'Paid from the soles account, still to reconcile.',
+  'Covered with leftover soles from the trip.',
+]
 
 const CATEGORIES: CategorySpec[] = [
   {
@@ -53,7 +85,16 @@ const CATEGORIES: CategorySpec[] = [
     ],
     solesRange: [15, 900],
     usdRange: [10, 350],
-    solesProbability: 0.75,
+    notes: [
+      'Insurance covered part of it.',
+      'Follow-up scheduled in a month.',
+      'Ask for the generic next time.',
+      'Results came back fine.',
+      'Clinic in San Isidro.',
+      'Needed a referral for this one.',
+      'Annual checkup, nothing unusual.',
+      'Prescription lasts three months.',
+    ],
   },
   {
     name: 'Puppy',
@@ -87,7 +128,16 @@ const CATEGORIES: CategorySpec[] = [
     ],
     solesRange: [10, 600],
     usdRange: [8, 200],
-    solesProbability: 0.85,
+    notes: [
+      'She loved it.',
+      'Lasts about six weeks.',
+      'Same brand as always.',
+      'Vet said to repeat in a month.',
+      'Bigger bag works out cheaper.',
+      'Destroyed it in two days.',
+      'Next appointment in six months.',
+      'Bought two, one for the trip.',
+    ],
   },
   {
     name: 'Goodies',
@@ -121,7 +171,16 @@ const CATEGORIES: CategorySpec[] = [
     ],
     solesRange: [5, 120],
     usdRange: [3, 40],
-    solesProbability: 0.9,
+    notes: [
+      'Weekend treat.',
+      'The place near the park.',
+      'Shared, but barely.',
+      'Better than the last one we tried.',
+      'Too sweet, not again.',
+      'Celebrating the end of the week.',
+      'Bought on the way home.',
+      'Would go back for this.',
+    ],
   },
 ]
 
@@ -129,6 +188,10 @@ const CATEGORIES: CategorySpec[] = [
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+function randomItem<T>(list: T[]): T {
+  return list[randomInt(0, list.length - 1)]
 }
 
 // Random amount in cents, biased toward the lower end of the range (most
@@ -151,6 +214,16 @@ function randomDateWithinYears(yearsBack: number): string {
   return toISODate(new Date(ts))
 }
 
+// Note content is Tiptap HTML.
+function buildNoteHtml(spec: CategorySpec, isPending: boolean): string {
+  const first = isPending ? randomItem(PENDING_NOTES) : randomItem(spec.notes)
+  // Roughly a third of notes get a second line from the generic pool.
+  if (Math.random() < 0.33) {
+    return `<p>${first}</p><p>${randomItem(GENERIC_NOTES)}</p>`
+  }
+  return `<p>${first}</p>`
+}
+
 // --- Seed ------------------------------------------------------------------
 
 async function seed() {
@@ -161,6 +234,14 @@ async function seed() {
     .executeTakeFirstOrThrow()
 
   console.log(`Seeding into Default team ${team.id}`)
+
+  // Attribute notes to a member of the team, when there is one
+  const member = await db
+    .selectFrom('team_memberships')
+    .select('user_id')
+    .where('team_id', '=', team.id)
+    .executeTakeFirst()
+  const authorId = member?.user_id ?? null
 
   for (const spec of CATEGORIES) {
     // Upsert category by (team, name)
@@ -190,40 +271,78 @@ async function seed() {
 
     const count = randomInt(ITEMS_PER_CATEGORY_MIN, ITEMS_PER_CATEGORY_MAX)
 
-    const rows = Array.from({ length: count }, () => {
-      const description = spec.descriptions[randomInt(0, spec.descriptions.length - 1)]
-      const date = randomDateWithinYears(YEARS_BACK)
-
-      const inSoles = Math.random() < spec.solesProbability
-      const both = Math.random() < 0.1
-
-      const amount_soles_cents =
-        inSoles || both ? randomAmountCents(spec.solesRange[0], spec.solesRange[1]) : null
-      const amount_usd_cents =
-        !inSoles || both ? randomAmountCents(spec.usdRange[0], spec.usdRange[1]) : null
-
-      return { description, date, amount_soles_cents, amount_usd_cents }
-    })
+    const rows = Array.from({ length: count }, () => ({
+      description: randomItem(spec.descriptions),
+      date: randomDateWithinYears(YEARS_BACK),
+    }))
 
     // The UI orders by sort_position — assign it in date order
     rows.sort((a, b) => a.date.localeCompare(b.date))
 
-    const values = rows.map((row, i) => ({
-      team_id: team.id,
-      expense_category_id: category.id,
-      ...row,
-      sort_position: (i + 1) * 1000,
-    }))
+    // Pick the handful of pending (soles-only) items per year
+    const indicesByYear = new Map<string, number[]>()
+    rows.forEach((row, i) => {
+      const year = row.date.slice(0, 4)
+      const list = indicesByYear.get(year) ?? []
+      list.push(i)
+      indicesByYear.set(year, list)
+    })
+
+    const pendingIndices = new Set<number>()
+    for (const indices of indicesByYear.values()) {
+      const target = Math.min(randomInt(PENDING_PER_YEAR_MIN, PENDING_PER_YEAR_MAX), indices.length)
+      const chosen = new Set<number>()
+      while (chosen.size < target) chosen.add(randomItem(indices))
+      for (const i of chosen) pendingIndices.add(i)
+    }
+
+    const values = rows.map((row, i) => {
+      const isPending = pendingIndices.has(i)
+      const soles =
+        isPending || Math.random() < SOLES_ALONGSIDE_USD_PROBABILITY
+          ? randomAmountCents(spec.solesRange[0], spec.solesRange[1])
+          : null
+
+      return {
+        team_id: team.id,
+        expense_category_id: category.id,
+        description: row.description,
+        date: row.date,
+        amount_soles_cents: soles,
+        // Pending items are exactly the ones still missing a USD amount
+        amount_usd_cents: isPending ? null : randomAmountCents(spec.usdRange[0], spec.usdRange[1]),
+        sort_position: (i + 1) * 1000,
+      }
+    })
 
     const CHUNK = 500
+    const itemIds: string[] = []
     for (let i = 0; i < values.length; i += CHUNK) {
-      await db
+      const inserted = await db
         .insertInto('expense_items')
         .values(values.slice(i, i + CHUNK))
+        .returning('id')
+        .execute()
+      itemIds.push(...inserted.map((r) => r.id))
+    }
+
+    // One note per item
+    const noteValues = itemIds.map((itemId, i) => ({
+      expense_item_id: itemId,
+      team_id: team.id,
+      content: buildNoteHtml(spec, pendingIndices.has(i)),
+      created_by_user_id: authorId,
+      updated_by_user_id: authorId,
+    }))
+
+    for (let i = 0; i < noteValues.length; i += CHUNK) {
+      await db
+        .insertInto('expense_item_notes')
+        .values(noteValues.slice(i, i + CHUNK))
         .execute()
     }
 
-    console.log(`  ${spec.name}: ${count} items`)
+    console.log(`  ${spec.name}: ${count} items (${pendingIndices.size} pending), ${count} notes`)
   }
 
   await db.destroy()
