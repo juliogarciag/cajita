@@ -231,12 +231,15 @@ export function NetWorthTable() {
           className="overflow-x-auto rounded-lg border border-gray-200 bg-white"
           data-editable-table
         >
-          <table className="w-full text-sm">
+          {/* Fixed layout: an input's intrinsic width is far wider than the
+              formatted amount it replaces, so auto layout made every column
+              jump the moment a cell opened for editing. */}
+          <table className="w-full min-w-[560px] table-fixed text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
-                <th className="w-[120px] px-3 py-2 text-left font-medium">Date</th>
+                <th className="w-[130px] px-3 py-2 text-left font-medium">Date</th>
                 {sources.map((source) => (
-                  <th key={source.id} className="min-w-[110px] px-3 py-2 text-right font-medium">
+                  <th key={source.id} className="truncate px-3 py-2 text-right font-medium">
                     <span className="inline-flex items-center gap-1.5">
                       <span
                         className="h-2 w-2 shrink-0 rounded-full"
@@ -246,8 +249,8 @@ export function NetWorthTable() {
                     </span>
                   </th>
                 ))}
-                <th className="min-w-[120px] px-3 py-2 text-right font-medium">Total</th>
-                <th className="w-[40px]" />
+                <th className="w-[140px] px-3 py-2 text-right font-medium">Total</th>
+                <th className="w-[72px]" />
               </tr>
             </thead>
             <tbody>

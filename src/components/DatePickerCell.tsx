@@ -91,7 +91,7 @@ export function DatePickerCell({ value, onSave, onCancel, onTab, onEnter }: Date
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         placeholder={dateFnsFormat}
-        className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-gray-500 focus:outline-none"
+        className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
       />
       {picker.isOpen &&
         picker.positioned &&

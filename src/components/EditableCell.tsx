@@ -167,7 +167,7 @@ export function EditableCell({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={save}
         onKeyDown={handleKeyDown}
-        className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-gray-500 focus:outline-none"
+        className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
       />
     </div>
   )

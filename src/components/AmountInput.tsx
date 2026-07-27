@@ -83,7 +83,7 @@ export function AmountInput({
       onBlur={save}
       onKeyDown={handleKeyDown}
       inputMode="decimal"
-      className={`w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-gray-500 focus:outline-none ${className}`}
+      className={`w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none ${className}`}
     />
   )
 }
