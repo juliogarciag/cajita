@@ -109,10 +109,32 @@ test.describe('Expense Categories', () => {
     })
     await expect(page.getByText(ITEM_DESC, { exact: true })).not.toBeVisible()
 
-    // Switch back via the year buttons — URL updates and the item reappears
-    await page.getByRole('button', { name: String(currentYear), exact: true }).click()
+    // Switch back via the year dropdown — URL updates and the item reappears
+    await page.getByLabel('Year', { exact: true }).selectOption(String(currentYear))
     await expect(page).toHaveURL(new RegExp(`[?&]year=${currentYear}`), { timeout: 10000 })
     await expect(page.getByText(ITEM_DESC, { exact: true })).toBeVisible({ timeout: 10000 })
+  })
+
+  test('year arrows step through years and stop at the ends', async () => {
+    await openCategory(page, CATEGORY_NAME)
+
+    const currentYear = new Date().getFullYear()
+    const yearSelect = page.getByLabel('Year', { exact: true })
+
+    // Only the current year has data, so both arrows are dead ends
+    await expect(yearSelect).toHaveValue(String(currentYear))
+    await expect(page.getByRole('button', { name: 'Previous year' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Next year' })).toBeDisabled()
+
+    // Visiting another year via the URL adds it to the range, so stepping works
+    const url = page.url().split('?')[0]
+    await page.goto(`${url}?year=${currentYear - 1}`)
+    await expect(yearSelect).toHaveValue(String(currentYear - 1))
+
+    await page.getByRole('button', { name: 'Next year' }).click()
+    await expect(page).toHaveURL(new RegExp(`[?&]year=${currentYear}`), { timeout: 10000 })
+    await expect(yearSelect).toHaveValue(String(currentYear))
+    await expect(page.getByRole('button', { name: 'Next year' })).toBeDisabled()
   })
 
   test('can rename the category from the detail page', async () => {
