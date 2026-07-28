@@ -42,7 +42,7 @@ export function PinnedCategories() {
 
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium text-gray-700">Pinned categories · {year}</h2>
+      <h2 className="text-sm font-medium text-gray-700">Categories - {year}</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {pinned.map((category) => {
           const t = totals.get(category.id) ?? { usd: 0, pendingSoles: 0, count: 0 }
