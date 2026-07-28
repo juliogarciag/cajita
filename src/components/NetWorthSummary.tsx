@@ -29,15 +29,22 @@ export type ChartRangeKey = (typeof CHART_RANGES)[number]['key']
 
 type Hover = { index: number; left: number; top: number }
 
+/** Axis ticks want to be readable in a narrow gutter, not exact: "$53.7k". */
+function compactUsd(cents: number): string {
+  const dollars = cents / 100
+  if (Math.abs(dollars) >= 1000) return `$${(dollars / 1000).toFixed(1)}k`
+  return `$${Math.round(dollars)}`
+}
+
 export function NetWorthSummary() {
   const { formatDate } = useDateFormat()
   const navigate = useNavigate()
   const { range } = useSearch({ strict: false }) as { range?: ChartRangeKey }
   const [hover, setHover] = useState<Hover | null>(null)
 
-  // Everything by default — a decade of monthly readings is ~120 points, which
-  // one polyline draws happily, so there's no reason to hide history on arrival.
-  const selectedRange = CHART_RANGES.find((r) => r.key === range) ?? CHART_RANGES[2]
+  // Five years by default. "All" reaches back to 2017, where the shape of the
+  // last few years is squeezed into the right-hand quarter of the chart.
+  const selectedRange = CHART_RANGES.find((r) => r.key === range) ?? CHART_RANGES[1]
 
   const { data: allSources } = useLiveQuery((q) => q.from({ s: wealthSourcesCollection }))
   const { data: snapshots } = useLiveQuery((q) => q.from({ b: balanceSnapshotsCollection }))
@@ -63,22 +70,31 @@ export function NetWorthSummary() {
   }, [readings, selectedRange])
 
   const handleSelectRange = (key: ChartRangeKey) => {
-    void navigate({ to: '/dashboard', search: key === 'all' ? {} : { range: key } })
+    void navigate({ to: '/dashboard', search: key === '5y' ? {} : { range: key } })
   }
 
-  const path = useMemo(() => {
+  const bounds = useMemo(() => {
     if (points.length < 2) return null
     const totals = points.map((p) => p.total)
-    const min = Math.min(...totals)
-    const max = Math.max(...totals)
-    const span = max - min || 1
+    return { min: Math.min(...totals), max: Math.max(...totals) }
+  }, [points])
+
+  const path = useMemo(() => {
+    if (!bounds || points.length < 2) return null
+    const span = bounds.max - bounds.min || 1
     const step = CHART_WIDTH / (points.length - 1)
     return points.map((p, i) => {
       const x = Math.round(i * step)
-      const y = Math.round(CHART_HEIGHT - ((p.total - min) / span) * CHART_HEIGHT)
+      const y = Math.round(CHART_HEIGHT - ((p.total - bounds.min) / span) * CHART_HEIGHT)
       return { x, y, reading: p }
     })
-  }, [points])
+  }, [points, bounds])
+
+  // Change across the visible window rather than since the previous reading —
+  // the number sits beside the range buttons, so it should answer the question
+  // those buttons ask. "All" has no window to measure from, so it shows nothing.
+  const baseline = selectedRange.years !== null && points.length >= 2 ? points[0] : null
+  const periodDelta = baseline ? points[points.length - 1].total - baseline.total : null
 
   // Snap to the nearest reading anywhere in the chart — the dots themselves are
   // a 4px target, which is not something to ask anyone to hit.
@@ -117,7 +133,6 @@ export function NetWorthSummary() {
     )
   }
 
-  const previous = readings.filter((r) => r.complete)[1] ?? null
   const completeCount = readings.filter((r) => r.complete).length
 
   return (
@@ -130,12 +145,15 @@ export function NetWorthSummary() {
               <span className="text-3xl font-semibold text-gray-900">
                 {formatCents(headline.total)}
               </span>
-              {headline.delta !== null && (
-                <span
-                  className={`text-sm ${headline.delta >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {headline.delta >= 0 ? '+' : '−'}
-                  {formatCents(Math.abs(headline.delta))}
+              {periodDelta !== null && (
+                <span className="flex items-baseline gap-1.5">
+                  <span
+                    className={`text-sm ${periodDelta >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  >
+                    {periodDelta >= 0 ? '+' : '−'}
+                    {formatCents(Math.abs(periodDelta))}
+                  </span>
+                  <span className="text-xs text-gray-400">over {selectedRange.label}</span>
                 </span>
               )}
             </div>
@@ -184,109 +202,137 @@ export function NetWorthSummary() {
           </p>
         )}
 
-        {path && (
-          <div className="relative mt-4">
-            <svg
-              viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT + 12}`}
-              className="w-full"
-              style={{ overflow: 'visible' }}
-              role="img"
-              aria-label={`Net worth across ${points.length} complete readings. Full history is on the net worth page.`}
-              onMouseMove={handleMove}
-              onMouseLeave={() => setHover(null)}
-            >
-              {hovered && (
-                <line
-                  x1={hovered.x}
-                  x2={hovered.x}
-                  y1={0}
-                  y2={CHART_HEIGHT + 12}
-                  stroke="#d1d5db"
-                  strokeWidth={1}
-                />
-              )}
-              <polyline
-                points={path.map((p) => `${p.x},${p.y + 6}`).join(' ')}
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-              {path.map((p, i) => {
-                const active = hover?.index === i
-                return (
-                  <circle
-                    key={p.reading.snapshot.id}
-                    cx={p.x}
-                    cy={p.y + 6}
-                    r={active ? 5.5 : i === path.length - 1 ? 4.5 : 3}
-                    fill="#3b82f6"
-                    stroke={active ? '#ffffff' : undefined}
-                    strokeWidth={active ? 2 : undefined}
-                  />
-                )
-              })}
-            </svg>
+        {path && bounds && (
+          <div className="mt-4 flex gap-3">
+            {/* Value axis. Text lives outside the SVG because the SVG scales to
+                the container width, which would scale any text inside it too. */}
+            <div className="flex w-12 shrink-0 flex-col justify-between py-[5px] text-right text-[11px] text-gray-400 tabular-nums">
+              <span>{compactUsd(bounds.max)}</span>
+              <span>{compactUsd((bounds.max + bounds.min) / 2)}</span>
+              <span>{compactUsd(bounds.min)}</span>
+            </div>
 
-            {hover && hovered && (
-              <div
-                // Centring lives in the inline transform below — Tailwind v4's
-                // translate utilities set the separate `translate` property,
-                // which would compose with it and shift twice.
-                className="pointer-events-none absolute z-10 w-max min-w-[168px] rounded-lg border border-gray-200 bg-white p-2.5 shadow-lg"
-                style={{
-                  // Keep the card inside the card, however near an edge the point sits
-                  left: `clamp(96px, ${hover.left}px, calc(100% - 96px))`,
-                  top: Math.max(0, hover.top - 12),
-                  transform: 'translate(-50%, -100%)',
-                }}
+            <div className="relative min-w-0 flex-1">
+              <svg
+                viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT + 12}`}
+                className="w-full"
+                style={{ overflow: 'visible' }}
+                role="img"
+                aria-label={`Net worth across ${points.length} complete readings, ${formatDate(points[0].snapshot.date)} to ${formatDate(points[points.length - 1].snapshot.date)}.`}
+                onMouseMove={handleMove}
+                onMouseLeave={() => setHover(null)}
               >
-                <div className="text-xs text-gray-500">
-                  {formatDate(hovered.reading.snapshot.date)}
-                </div>
-                <div className="mt-0.5 flex items-baseline gap-2">
-                  <span className="text-sm font-medium text-gray-900">
-                    {formatCents(hovered.reading.total)}
-                  </span>
-                  {hovered.reading.delta !== null && (
-                    <span
-                      className={`text-xs ${
-                        hovered.reading.delta >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}
-                    >
-                      {hovered.reading.delta >= 0 ? '+' : '−'}
-                      {formatCents(Math.abs(hovered.reading.delta))}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-1.5 flex flex-col gap-0.5 border-t border-gray-100 pt-1.5">
-                  {sources.map((source) => {
-                    const cents = hovered.reading.amounts.get(source.id)
-                    if (cents == null) return null
-                    return (
-                      <div
-                        key={source.id}
-                        className="flex items-center justify-between gap-4 text-xs"
-                      >
-                        <span className="flex items-center gap-1.5 text-gray-600">
-                          <span
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ backgroundColor: source.color }}
-                          />
-                          {source.name}
-                        </span>
-                        <span className="text-gray-900">{formatCents(cents)}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+                {[6, CHART_HEIGHT / 2 + 6, CHART_HEIGHT + 6].map((y) => (
+                  <line
+                    key={y}
+                    x1={0}
+                    x2={CHART_WIDTH}
+                    y1={y}
+                    y2={y}
+                    stroke="#f3f4f6"
+                    strokeWidth={1}
+                  />
+                ))}
+                {hovered && (
+                  <line
+                    x1={hovered.x}
+                    x2={hovered.x}
+                    y1={0}
+                    y2={CHART_HEIGHT + 12}
+                    stroke="#d1d5db"
+                    strokeWidth={1}
+                  />
+                )}
+                <polyline
+                  points={path.map((p) => `${p.x},${p.y + 6}`).join(' ')}
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+                {path.map((p, i) => {
+                  const active = hover?.index === i
+                  return (
+                    <circle
+                      key={p.reading.snapshot.id}
+                      cx={p.x}
+                      cy={p.y + 6}
+                      r={active ? 5.5 : i === path.length - 1 ? 4.5 : 3}
+                      fill="#3b82f6"
+                      stroke={active ? '#ffffff' : undefined}
+                      strokeWidth={active ? 2 : undefined}
+                    />
+                  )
+                })}
+              </svg>
 
-            <div className="mt-1 flex justify-between text-xs text-gray-400">
-              <span>{formatDate(points[0].snapshot.date)}</span>
-              <span>{formatDate(points[points.length - 1].snapshot.date)}</span>
+              {hover && hovered && (
+                <div
+                  // Centring lives in the inline transform below — Tailwind v4's
+                  // translate utilities set the separate `translate` property,
+                  // which would compose with it and shift twice.
+                  className="pointer-events-none absolute z-10 w-max min-w-[168px] rounded-lg border border-gray-200 bg-white p-2.5 shadow-lg"
+                  style={{
+                    // Keep the card inside the card, however near an edge the point sits
+                    left: `clamp(96px, ${hover.left}px, calc(100% - 96px))`,
+                    top: Math.max(0, hover.top - 12),
+                    transform: 'translate(-50%, -100%)',
+                  }}
+                >
+                  <div className="text-xs text-gray-500">
+                    {formatDate(hovered.reading.snapshot.date)}
+                  </div>
+                  <div className="mt-0.5 flex items-baseline gap-2">
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatCents(hovered.reading.total)}
+                    </span>
+                    {hovered.reading.delta !== null && (
+                      <span
+                        className={`text-xs ${
+                          hovered.reading.delta >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}
+                      >
+                        {hovered.reading.delta >= 0 ? '+' : '−'}
+                        {formatCents(Math.abs(hovered.reading.delta))}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1.5 flex flex-col gap-0.5 border-t border-gray-100 pt-1.5">
+                    {sources.map((source) => {
+                      const cents = hovered.reading.amounts.get(source.id)
+                      if (cents == null) return null
+                      return (
+                        <div
+                          key={source.id}
+                          className="flex items-center justify-between gap-4 text-xs"
+                        >
+                          <span className="flex items-center gap-1.5 text-gray-600">
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ backgroundColor: source.color }}
+                            />
+                            {source.name}
+                          </span>
+                          <span className="text-gray-900">{formatCents(cents)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Date axis. A midpoint tick gives the horizontal span a scale;
+                  with 60 monthly readings the two ends alone don't. */}
+              <div className="mt-1 flex justify-between text-xs text-gray-400 tabular-nums">
+                <span>{formatDate(points[0].snapshot.date)}</span>
+                {points.length > 2 && (
+                  <span>
+                    {formatDate(points[Math.floor((points.length - 1) / 2)].snapshot.date)}
+                  </span>
+                )}
+                <span>{formatDate(points[points.length - 1].snapshot.date)}</span>
+              </div>
             </div>
           </div>
         )}
@@ -296,7 +342,8 @@ export function NetWorthSummary() {
         {sources.map((source) => {
           const current = headline.amounts.get(source.id)
           if (current == null) return null
-          const before = previous?.amounts.get(source.id)
+          // Same window as the headline, so the two numbers can't disagree.
+          const before = baseline?.amounts.get(source.id)
           const change = before == null ? null : current - before
           const share = headline.total === 0 ? 0 : (current / headline.total) * 100
 
