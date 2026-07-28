@@ -30,4 +30,32 @@ test.describe('Pinned categories', () => {
     await page.goto('/dashboard')
     await expect(page.getByText(/Categories - \d{4}/)).toHaveCount(0)
   })
+
+  test('pinned cards can be reordered by dragging, and the order sticks', async ({ page }) => {
+    const stamp = Date.now()
+    // Prefixed so the starting order is alphabetical and therefore predictable
+    const first = `AAA-${stamp}`
+    const second = `ZZZ-${stamp}`
+
+    await page.goto('/finances/expense-categories')
+    await createCategory(page, first)
+    await createCategory(page, second)
+    await page.getByRole('button', { name: `Pin ${first} to dashboard` }).click()
+    await page.getByRole('button', { name: `Pin ${second} to dashboard` }).click()
+
+    await page.goto('/dashboard')
+    const cards = page.locator('[data-pinned-category]')
+    await expect(cards).toHaveCount(2, { timeout: 10000 })
+    await expect(cards.first()).toContainText(first)
+
+    // Drag the second card onto the first
+    await cards.nth(1).dragTo(cards.nth(0))
+    await expect(cards.first()).toContainText(second, { timeout: 10000 })
+
+    // Stored, not just reordered in memory
+    await page.reload()
+    await expect(page.locator('[data-pinned-category]').first()).toContainText(second, {
+      timeout: 10000,
+    })
+  })
 })

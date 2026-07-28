@@ -13,6 +13,8 @@ const expenseCategorySchema = z.object({
    * collection until Electric caught up. Read it as `pinned ?? false`.
    */
   pinned: z.boolean().optional(),
+  /** Optional for the same reason as `pinned` — see migration 007. */
+  sort_order: z.number().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 })

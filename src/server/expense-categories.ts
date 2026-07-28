@@ -4,6 +4,31 @@ import { db } from '#/db/index.js'
 import { authMiddleware } from './middleware.js'
 import { HEX_COLOR } from './color-bookmarks.js'
 
+/**
+ * Persist the hand-arranged order of the pinned dashboard cards. Takes the
+ * whole list rather than a moved-item delta: positions are only meaningful
+ * relative to each other, and one statement per card keeps the write simple.
+ */
+export const reorderExpenseCategories = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ ids: z.array(z.string().uuid()).max(100) }))
+  .handler(async ({ data, context }) => {
+    const teamId = context.user.teamId
+
+    await db.transaction().execute(async (tx) => {
+      for (const [index, id] of data.ids.entries()) {
+        await tx
+          .updateTable('expense_categories')
+          .set({ sort_order: index, updated_at: new Date() })
+          .where('id', '=', id)
+          .where('team_id', '=', teamId)
+          .execute()
+      }
+    })
+
+    return { ok: true }
+  })
+
 export const createExpenseCategory = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(

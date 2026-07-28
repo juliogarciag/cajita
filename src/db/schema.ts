@@ -40,6 +40,8 @@ export interface ExpenseCategoriesTable {
   color: string
   /** Shown as a card on the dashboard. */
   pinned: Generated<boolean>
+  /** Hand-arranged order of the pinned dashboard cards. */
+  sort_order: Generated<number>
   created_at: Generated<Date>
   updated_at: Generated<Date>
 }

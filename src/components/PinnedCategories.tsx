@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { Link } from '@tanstack/react-router'
 import { expenseCategoriesCollection } from '#/lib/expense-categories-collection.js'
 import { expenseItemsCollection } from '#/lib/expense-items-collection.js'
 import { formatCents, formatSoles } from '#/lib/format.js'
+import { reorderExpenseCategories } from '#/server/expense-categories.js'
 
 /**
  * Dashboard cards for categories the user pinned. Totals are for the current
@@ -15,10 +16,39 @@ export function PinnedCategories() {
   const { data: categories } = useLiveQuery((q) => q.from({ c: expenseCategoriesCollection }))
   const { data: items } = useLiveQuery((q) => q.from({ i: expenseItemsCollection }))
 
-  const pinned = useMemo(
-    () => categories.filter((c) => c.pinned).sort((a, b) => a.name.localeCompare(b.name)),
+  // Hand-arranged order, falling back to alphabetical while every card still
+  // has the default sort_order of 0.
+  const synced = useMemo(
+    () =>
+      categories
+        .filter((c) => c.pinned)
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name)),
     [categories],
   )
+
+  // A local copy so a drop reorders instantly instead of waiting for the round
+  // trip; it re-syncs whenever the collection itself changes.
+  const [pinned, setPinned] = useState(synced)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  useEffect(() => setPinned(synced), [synced])
+
+  // The dragged id comes off the dataTransfer rather than from state: the drop
+  // handler is a closure from the render that was current when the drag began,
+  // so reading state here would depend on a re-render having happened first.
+  const handleDrop = (draggedId: string, targetId: string) => {
+    setDraggingId(null)
+    if (!draggedId || draggedId === targetId) return
+
+    const next = [...pinned]
+    const from = next.findIndex((c) => c.id === draggedId)
+    const to = next.findIndex((c) => c.id === targetId)
+    if (from === -1 || to === -1) return
+
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    setPinned(next)
+    void reorderExpenseCategories({ data: { ids: next.map((c) => c.id) } })
+  }
 
   const totals = useMemo(() => {
     const byCategory = new Map<string, { usd: number; pendingSoles: number; count: number }>()
@@ -58,7 +88,27 @@ export function PinnedCategories() {
               params={{ categoryId: category.id }}
               search={{ year }}
               data-pinned-category={category.id}
-              className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
+              draggable
+              onDragStart={(e) => {
+                setDraggingId(category.id)
+                // Firefox won't start a drag without data on the transfer
+                e.dataTransfer.setData('text/plain', category.id)
+                e.dataTransfer.effectAllowed = 'move'
+              }}
+              onDragOver={(e) => {
+                // Only preventDefault marks this a valid drop target
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+              }}
+              onDrop={(e) => {
+                // Otherwise the browser treats the dragged text as a navigation
+                e.preventDefault()
+                handleDrop(e.dataTransfer.getData('text/plain'), category.id)
+              }}
+              onDragEnd={() => setDraggingId(null)}
+              className={`rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md ${
+                draggingId === category.id ? 'opacity-40' : ''
+              } ${draggingId && draggingId !== category.id ? 'border-dashed' : ''}`}
             >
               <div className="mb-2 flex items-center gap-2">
                 <div className="h-3 w-3 rounded-full" style={{ backgroundColor: category.color }} />
