@@ -19,7 +19,8 @@
     "lint": "eslint",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:e2e": "npx playwright test"
+    "test:e2e": "npx playwright test",
+    "import-ledger": "tsx scripts/import-ledger.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
