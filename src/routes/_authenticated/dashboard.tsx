@@ -6,6 +6,10 @@ const NetWorthSummary = lazy(() =>
   import('#/components/NetWorthSummary.js').then((m) => ({ default: m.NetWorthSummary })),
 )
 
+const PinnedCategories = lazy(() =>
+  import('#/components/PinnedCategories.js').then((m) => ({ default: m.PinnedCategories })),
+)
+
 const searchSchema = z.object({
   // How far back the net worth chart reaches. Absent = all of it.
   range: z.enum(['1y', '5y', 'all']).optional(),
@@ -31,6 +35,7 @@ function DashboardPage() {
       {mounted && (
         <Suspense>
           <NetWorthSummary />
+          <PinnedCategories />
         </Suspense>
       )}
     </div>

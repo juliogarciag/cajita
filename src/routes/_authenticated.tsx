@@ -134,15 +134,15 @@ function AuthenticatedLayout() {
       {isFinancesRoute && (
         <div className="border-b border-gray-200 bg-white">
           <div className="mx-auto flex max-w-5xl items-center gap-1 px-4 py-1.5">
+            <Link to="/finances/net-worth" className={subNavLinkClass}>
+              Balances
+            </Link>
             <Link
               to="/finances/expense-categories"
               className={subNavLinkClass}
               activeOptions={{ exact: false }}
             >
               Categories
-            </Link>
-            <Link to="/finances/net-worth" className={subNavLinkClass}>
-              Balances
             </Link>
           </div>
         </div>

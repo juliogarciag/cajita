@@ -43,6 +43,7 @@ export const updateExpenseCategory = createServerFn({ method: 'POST' })
       id: z.string().uuid(),
       name: z.string().min(1).max(255).optional(),
       color: z.string().regex(HEX_COLOR).optional(),
+      pinned: z.boolean().optional(),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -51,6 +52,7 @@ export const updateExpenseCategory = createServerFn({ method: 'POST' })
     const toSet: Record<string, unknown> = { updated_at: new Date() }
     if (data.name !== undefined) toSet.name = data.name
     if (data.color !== undefined) toSet.color = data.color
+    if (data.pinned !== undefined) toSet.pinned = data.pinned
 
     try {
       const category = await db

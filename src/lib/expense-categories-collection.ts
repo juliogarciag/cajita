@@ -7,6 +7,12 @@ const expenseCategorySchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string(),
+  /**
+   * Optional, not merely defaulted: a shape Electric cached before migration
+   * 006 serves rows without the key, and requiring it would break the whole
+   * collection until Electric caught up. Read it as `pinned ?? false`.
+   */
+  pinned: z.boolean().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 })

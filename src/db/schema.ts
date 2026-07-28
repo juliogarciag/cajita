@@ -38,6 +38,8 @@ export interface ExpenseCategoriesTable {
   team_id: string
   name: string
   color: string
+  /** Shown as a card on the dashboard. */
+  pinned: Generated<boolean>
   created_at: Generated<Date>
   updated_at: Generated<Date>
 }

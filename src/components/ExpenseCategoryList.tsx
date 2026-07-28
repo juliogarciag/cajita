@@ -1,8 +1,9 @@
 import { useMemo, useState, useCallback } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { Plus } from 'lucide-react'
+import { Pin, Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { setCategoryPinned } from '#/lib/pin-category.js'
 import {
   expenseCategoriesCollection,
   type ExpenseCategory,
@@ -192,30 +193,49 @@ export function ExpenseCategoryList() {
                     />
                     <span className="font-medium text-gray-900">{category.name}</span>
                   </div>
-                  {allTimeCount > 0 ? (
-                    <span
-                      title={`Delete the ${allTimeCount} expenses in this category first`}
-                      aria-label="Cannot delete a category with expenses"
-                      className="relative z-10 cursor-not-allowed px-2 py-0.5 text-xs text-gray-200"
-                    >
-                      ×
-                    </span>
-                  ) : (
-                    <ConfirmButton
-                      onConfirm={() => handleDelete(category.id)}
-                      title="Delete category?"
-                      description={
-                        <>
-                          <span className="font-medium text-gray-900">{category.name}</span> will be
-                          removed. It has no expenses, so nothing else is lost.
-                        </>
+                  {/* z-10 to sit above the card's absolute link overlay */}
+                  <div className="relative z-10 flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => void setCategoryPinned(category.id, !category.pinned)}
+                      aria-pressed={category.pinned ?? false}
+                      title={category.pinned ? 'Unpin from dashboard' : 'Pin to dashboard'}
+                      aria-label={
+                        category.pinned
+                          ? `Unpin ${category.name} from dashboard`
+                          : `Pin ${category.name} to dashboard`
                       }
-                      confirmLabel="Delete category"
-                      className="relative z-10 rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                      className={`rounded p-1 hover:bg-gray-100 ${
+                        category.pinned ? 'text-gray-900' : 'text-gray-300 hover:text-gray-600'
+                      }`}
                     >
-                      ×
-                    </ConfirmButton>
-                  )}
+                      <Pin size={13} fill={category.pinned ? 'currentColor' : 'none'} />
+                    </button>
+                    {allTimeCount > 0 ? (
+                      <span
+                        title={`Delete the ${allTimeCount} expenses in this category first`}
+                        aria-label="Cannot delete a category with expenses"
+                        className="cursor-not-allowed px-2 py-0.5 text-xs text-gray-200"
+                      >
+                        ×
+                      </span>
+                    ) : (
+                      <ConfirmButton
+                        onConfirm={() => handleDelete(category.id)}
+                        title="Delete category?"
+                        description={
+                          <>
+                            <span className="font-medium text-gray-900">{category.name}</span> will
+                            be removed. It has no expenses, so nothing else is lost.
+                          </>
+                        }
+                        confirmLabel="Delete category"
+                        className="rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                      >
+                        ×
+                      </ConfirmButton>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-gray-500">

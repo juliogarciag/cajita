@@ -3,7 +3,7 @@ import { useLiveQuery } from '@tanstack/react-db'
 import { eq } from '@tanstack/db'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import { ArrowLeft, Plus, Download } from 'lucide-react'
+import { ArrowLeft, Pin, Plus, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { expenseItemsCollection, type ExpenseItem } from '#/lib/expense-items-collection.js'
 import { expenseCategoriesCollection } from '#/lib/expense-categories-collection.js'
@@ -14,6 +14,7 @@ import { useDateFormat } from '#/lib/date-format.js'
 import { createExpenseItem, updateExpenseItem, deleteExpenseItem } from '#/server/expense-items.js'
 import { upsertExpenseItemNote, deleteExpenseItemNote, getTeamMembers } from '#/server/notes.js'
 import { updateExpenseCategory } from '#/server/expense-categories.js'
+import { setCategoryPinned } from '#/lib/pin-category.js'
 import { ColorPicker } from './ColorPicker.js'
 import { ExpenseItemRow } from './ExpenseItemRow.js'
 import { YearSwitcher } from './YearSwitcher.js'
@@ -329,6 +330,21 @@ export function ExpenseCategoryDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void setCategoryPinned(category.id, !category.pinned)}
+            aria-pressed={category.pinned ?? false}
+            aria-label={category.pinned ? 'Unpin from dashboard' : 'Pin to dashboard'}
+            title={category.pinned ? 'Unpin from dashboard' : 'Pin to dashboard'}
+            className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium ${
+              category.pinned
+                ? 'border-gray-900 bg-gray-900 text-white hover:bg-gray-800'
+                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Pin size={16} fill={category.pinned ? 'currentColor' : 'none'} />
+            {category.pinned ? 'Pinned' : 'Pin'}
+          </button>
           <button
             onClick={handleDownloadCsv}
             disabled={items.length === 0}
