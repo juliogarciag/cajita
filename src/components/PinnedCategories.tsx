@@ -43,7 +43,12 @@ export function PinnedCategories() {
   return (
     <div className="flex flex-col gap-2">
       <h2 className="text-sm font-medium text-gray-700">Categories - {year}</h2>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* One column per pinned category, so they sit on a single row however
+          many there are. Stacked below sm, where four across is unreadable. */}
+      <div
+        className="grid grid-cols-1 gap-3 sm:[grid-template-columns:repeat(var(--pinned),minmax(0,1fr))]"
+        style={{ '--pinned': pinned.length } as React.CSSProperties}
+      >
         {pinned.map((category) => {
           const t = totals.get(category.id) ?? { usd: 0, pendingSoles: 0, count: 0 }
           return (
