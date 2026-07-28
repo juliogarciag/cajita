@@ -10,14 +10,14 @@ test.describe('Pinned categories', () => {
 
     // Nothing is pinned to start, so the dashboard section is absent entirely
     await page.goto('/dashboard')
-    await expect(page.getByText(/Categories - \d{4}/)).toHaveCount(0)
+    await expect(page.getByText(/Expenses - \d{4}/)).toHaveCount(0)
 
     await page.goto('/finances/expense-categories')
     await page.getByRole('button', { name: `Pin ${name} to dashboard` }).click()
     await expect(page.getByText('Pinned to dashboard')).toBeVisible({ timeout: 10000 })
 
     await page.goto('/dashboard')
-    await expect(page.getByText(/Categories - \d{4}/)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/Expenses - \d{4}/)).toBeVisible({ timeout: 10000 })
     await expect(page.getByRole('link', { name: new RegExp(name) })).toBeVisible()
 
     // The same toggle is on the category's own page, and agrees with the list
@@ -28,7 +28,7 @@ test.describe('Pinned categories', () => {
     await expect(page.getByText('Removed from dashboard')).toBeVisible({ timeout: 10000 })
 
     await page.goto('/dashboard')
-    await expect(page.getByText(/Categories - \d{4}/)).toHaveCount(0)
+    await expect(page.getByText(/Expenses - \d{4}/)).toHaveCount(0)
   })
 
   test('pinned cards can be reordered by dragging, and the order sticks', async ({ page }) => {

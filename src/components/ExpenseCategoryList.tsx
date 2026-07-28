@@ -101,7 +101,7 @@ export function ExpenseCategoryList() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Categories</h1>
+        <h1 className="text-2xl font-bold">Expense categories</h1>
         <div className="flex items-center gap-3">
           <YearSwitcher
             years={availableYears}

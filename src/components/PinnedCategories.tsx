@@ -72,7 +72,7 @@ export function PinnedCategories() {
 
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium text-gray-700">Categories - {year}</h2>
+      <h2 className="text-sm font-medium text-gray-700">Expenses - {year}</h2>
       {/* One column per pinned category, so they sit on a single row however
           many there are. Stacked below sm, where four across is unreadable. */}
       <div

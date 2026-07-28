@@ -25,7 +25,7 @@ test.describe('Expense Categories', () => {
 
   test.beforeEach(async () => {
     await page.goto('/finances/expense-categories')
-    await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Expense categories' })).toBeVisible()
   })
 
   test('can create a new category', async () => {

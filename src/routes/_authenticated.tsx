@@ -62,7 +62,7 @@ function AuthenticatedLayout() {
                 className={navLinkClass}
                 activeOptions={{ exact: false }}
               >
-                Categories
+                Expenses
               </Link>
               <Link to="/toys" className={navLinkClass}>
                 Toys

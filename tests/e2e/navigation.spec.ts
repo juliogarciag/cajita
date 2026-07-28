@@ -25,9 +25,9 @@ test.describe('Navigation & Settings', () => {
     // There's no Finances grouping any more — its pages are top-level
     await expect(page.locator('nav').getByRole('link', { name: 'Finances' })).toHaveCount(0)
 
-    await page.getByRole('link', { name: 'Categories' }).click()
+    await page.getByRole('link', { name: 'Expenses' }).click()
     await expect(page).toHaveURL(/\/finances\/expense-categories/)
-    await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Expense categories' })).toBeVisible()
 
     await page.getByRole('link', { name: 'Balances' }).click()
     await expect(page).toHaveURL(/\/finances\/net-worth/)
@@ -49,8 +49,8 @@ test.describe('Navigation & Settings', () => {
     await page.goto('/dashboard')
     expect(await navLinks().allInnerTexts()).toEqual(onCategories)
 
-    // Balances before Categories before Toys, after the logo
-    expect(onCategories).toEqual(['Cajita', 'Balances', 'Categories', 'Toys'])
+    // Balances before Expenses before Toys, after the logo
+    expect(onCategories).toEqual(['Cajita', 'Balances', 'Expenses', 'Toys'])
   })
 
   test('settings lives in the user menu, not the nav', async ({ page }) => {
