@@ -104,7 +104,7 @@ export function NotePopover({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const memberMap = new Map(teamMembers.map((m) => [m.id, m.name ?? m.id]))
+  const memberMap = new Map(teamMembers.map((m) => [m.id, m.display_name ?? m.name ?? m.id]))
 
   const editor = useEditor(
     {

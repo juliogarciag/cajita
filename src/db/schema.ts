@@ -17,7 +17,10 @@ export interface TeamMembershipsTable {
 export interface UsersTable {
   id: Generated<string>
   email: string
+  /** From Google, refreshed on every login. */
   name: string | null
+  /** Local override; null means fall back to `name`. */
+  display_name: string | null
   picture: string | null
   created_at: Generated<Date>
 }

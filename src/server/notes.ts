@@ -13,7 +13,7 @@ export const getTeamMembers = createServerFn({ method: 'GET' })
     const rows = await db
       .selectFrom('team_memberships')
       .innerJoin('users', 'users.id', 'team_memberships.user_id')
-      .select(['users.id', 'users.name'])
+      .select(['users.id', 'users.name', 'users.display_name'])
       .where('team_memberships.team_id', '=', teamId)
       .execute()
     return rows

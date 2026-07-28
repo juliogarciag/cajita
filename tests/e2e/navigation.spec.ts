@@ -78,6 +78,29 @@ test.describe('Navigation & Settings', () => {
     await expect(page).toHaveURL(/\/$/, { timeout: 10000 })
   })
 
+  test('display name overrides the google name and can be cleared', async ({ page }) => {
+    await page.goto('/settings')
+    const input = page.getByLabel('Display name')
+    await expect(input).toBeVisible()
+
+    // The placeholder is the Google name, which is what we should fall back to
+    const googleName = await input.getAttribute('placeholder')
+    const header = page.locator('nav').getByRole('button', { name: /./ }).last()
+
+    await input.fill('Overridden Name')
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(header).toHaveText(/Overridden Name/, { timeout: 10000 })
+
+    // The override survives a reload — it's stored, not just in memory
+    await page.reload()
+    await expect(header).toHaveText(/Overridden Name/, { timeout: 10000 })
+
+    // Emptying the field means "stop overriding", not "my name is blank"
+    await page.getByLabel('Display name').fill('')
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(header).toHaveText(new RegExp(googleName!), { timeout: 10000 })
+  })
+
   test('shows logged-in user name', async ({ page }) => {
     await page.goto('/dashboard')
     // Isolated test users are named "Test User <id>"

@@ -6,6 +6,8 @@ import { electricShapeUrl } from '#/lib/electric-url'
 const teamMemberSchema = z.object({
   id: z.string(),
   name: z.string().nullable(),
+  /** Local override of the Google name; see migration 005. */
+  display_name: z.string().nullable(),
 })
 
 export type TeamMember = z.infer<typeof teamMemberSchema>

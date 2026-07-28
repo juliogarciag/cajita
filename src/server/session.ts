@@ -19,7 +19,14 @@ export async function validateSession(token: string) {
   const row = await db
     .selectFrom('sessions')
     .innerJoin('users', 'users.id', 'sessions.user_id')
-    .select(['users.id', 'users.email', 'users.name', 'users.picture', 'sessions.expires_at'])
+    .select([
+      'users.id',
+      'users.email',
+      'users.name',
+      'users.display_name',
+      'users.picture',
+      'sessions.expires_at',
+    ])
     .where('sessions.token', '=', token)
     .executeTakeFirst()
 
@@ -43,7 +50,11 @@ export async function validateSession(token: string) {
   return {
     id: row.id,
     email: row.email,
-    name: row.name,
+    // Everything downstream reads `name` and gets the override for free.
+    name: row.display_name ?? row.name,
+    /** Google's, kept separate so Settings can show what's being overridden. */
+    googleName: row.name,
+    displayName: row.display_name,
     picture: row.picture,
     teamId: membership.team_id,
   }
