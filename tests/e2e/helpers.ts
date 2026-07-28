@@ -93,13 +93,29 @@ async function fillAmountCell(page: Page, row: Locator, cellIndex: number, value
 }
 
 /**
+ * Open the header user menu.
+ *
+ * The trigger only works once React has hydrated and attached Radix's handler;
+ * a click landing before that is silently a no-op, so retry the click until
+ * the menu is actually on screen rather than clicking once and hoping.
+ */
+export async function openUserMenu(page: Page) {
+  const trigger = page.getByRole('button', { name: /Test User \w+/ })
+  await expect(trigger).toBeVisible({ timeout: 10000 })
+  await expect(async () => {
+    await trigger.click()
+    await expect(page.getByRole('menu')).toBeVisible({ timeout: 1000 })
+  }).toPass({ timeout: 15000 })
+}
+
+/**
  * Confirm a destructive action in the alert dialog. Scoped to the dialog
  * because trigger and confirm labels deliberately overlap ("Delete expense?"
  * opens it, "Delete expense" commits).
  */
 export async function confirmDialog(page: Page, label: string) {
-  const dialog = page.getByRole("alertdialog");
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: label }).click();
-  await expect(dialog).toHaveCount(0, { timeout: 10000 });
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: label }).click()
+  await expect(dialog).toHaveCount(0, { timeout: 10000 })
 }

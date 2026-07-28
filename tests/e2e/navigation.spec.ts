@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures'
-import { createCategory, openCategory, addExpense } from './helpers'
+import { createCategory, openCategory, addExpense, openUserMenu } from './helpers'
 
 test.describe('Navigation & Settings', () => {
   test('unauthenticated user is redirected to login', async ({ browser }) => {
@@ -41,13 +41,41 @@ test.describe('Navigation & Settings', () => {
 
     await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Settings' }).click()
-    await expect(page).toHaveURL(/\/finances\/settings/)
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    await page.getByRole('link', { name: 'Balances' }).click()
+    await expect(page).toHaveURL(/\/finances\/net-worth/)
+    await expect(page.getByRole('heading', { name: 'Balances' })).toBeVisible()
 
     await page.getByRole('link', { name: 'Categories' }).click()
     await expect(page).toHaveURL(/\/finances\/expense-categories/)
     await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible()
+  })
+
+  test('settings lives in the user menu, not the finances sub-nav', async ({ page }) => {
+    await page.goto('/finances/expense-categories')
+
+    const subNav = page.locator('nav + div')
+    await expect(subNav.getByRole('link', { name: 'Settings' })).toHaveCount(0)
+
+    await openUserMenu(page)
+    await page.getByRole('menuitem', { name: 'Settings' }).click()
+
+    await expect(page).toHaveURL(/\/settings/)
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    // Settings is no longer a finances page, so the sub-nav goes away with it
+    await expect(page.getByRole('link', { name: 'Categories' })).toHaveCount(0)
+  })
+
+  test('the user menu can log out', async ({ page }) => {
+    await page.goto('/dashboard')
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
+
+    await openUserMenu(page)
+    await page.getByRole('menuitem', { name: 'Logout' }).click()
+
+    await expect(page).toHaveURL(/\/$/, { timeout: 10000 })
+    // Genuinely signed out, not just redirected
+    await page.goto('/dashboard')
+    await expect(page).toHaveURL(/\/$/, { timeout: 10000 })
   })
 
   test('shows logged-in user name', async ({ page }) => {
@@ -65,7 +93,7 @@ test.describe('Navigation & Settings', () => {
     await openCategory(page, categoryName)
     await addExpense(page, `DateFmtItem-${Date.now()}`)
 
-    await page.goto('/finances/settings')
+    await page.goto('/settings')
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
 
     // Two format buttons visible
@@ -83,7 +111,7 @@ test.describe('Navigation & Settings', () => {
     })
 
     // Switch back to DD/MM/YYYY
-    await page.goto('/finances/settings')
+    await page.goto('/settings')
     await page.getByRole('button', { name: /DD\/MM\/YYYY/ }).click()
 
     await page.goto('/finances/expense-categories')

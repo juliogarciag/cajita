@@ -5,7 +5,7 @@ const FinancesSettings = lazy(() =>
   import('#/components/FinancesSettings.js').then((m) => ({ default: m.FinancesSettings })),
 )
 
-export const Route = createFileRoute('/_authenticated/finances/settings')({
+export const Route = createFileRoute('/_authenticated/settings')({
   component: SettingsPage,
 })
 

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedToolsIndexRouteImport } from './routes/_authenticated/tools/index'
 import { Route as ApiElectricTableRouteImport } from './routes/api/electric/$table'
@@ -19,7 +20,6 @@ import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthDevLoginRouteImport } from './routes/api/auth/dev-login'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 import { Route as AuthenticatedToolsCreatePlaylistRouteImport } from './routes/_authenticated/tools/create-playlist'
-import { Route as AuthenticatedFinancesSettingsRouteImport } from './routes/_authenticated/finances/settings'
 import { Route as AuthenticatedFinancesNetWorthRouteImport } from './routes/_authenticated/finances/net-worth'
 import { Route as AuthenticatedFinancesExpenseCategoriesIndexRouteImport } from './routes/_authenticated/finances/expense-categories/index'
 import { Route as AuthenticatedFinancesExpenseCategoriesCategoryIdRouteImport } from './routes/_authenticated/finances/expense-categories/$categoryId'
@@ -32,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
@@ -74,12 +79,6 @@ const AuthenticatedToolsCreatePlaylistRoute =
     path: '/tools/create-playlist',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedFinancesSettingsRoute =
-  AuthenticatedFinancesSettingsRouteImport.update({
-    id: '/finances/settings',
-    path: '/finances/settings',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
 const AuthenticatedFinancesNetWorthRoute =
   AuthenticatedFinancesNetWorthRouteImport.update({
     id: '/finances/net-worth',
@@ -102,8 +101,8 @@ const AuthenticatedFinancesExpenseCategoriesCategoryIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
-  '/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/dev-login': typeof ApiAuthDevLoginRoute
@@ -117,8 +116,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
-  '/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/dev-login': typeof ApiAuthDevLoginRoute
@@ -134,8 +133,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
-  '/_authenticated/finances/settings': typeof AuthenticatedFinancesSettingsRoute
   '/_authenticated/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/dev-login': typeof ApiAuthDevLoginRoute
@@ -151,8 +150,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/settings'
     | '/finances/net-worth'
-    | '/finances/settings'
     | '/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/dev-login'
@@ -166,8 +165,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/settings'
     | '/finances/net-worth'
-    | '/finances/settings'
     | '/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/dev-login'
@@ -182,8 +181,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/_authenticated/dashboard'
+    | '/_authenticated/settings'
     | '/_authenticated/finances/net-worth'
-    | '/_authenticated/finances/settings'
     | '/_authenticated/tools/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/dev-login'
@@ -220,6 +219,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
@@ -277,13 +283,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedToolsCreatePlaylistRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/finances/settings': {
-      id: '/_authenticated/finances/settings'
-      path: '/finances/settings'
-      fullPath: '/finances/settings'
-      preLoaderRoute: typeof AuthenticatedFinancesSettingsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/finances/net-worth': {
       id: '/_authenticated/finances/net-worth'
       path: '/finances/net-worth'
@@ -310,8 +309,8 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedFinancesNetWorthRoute: typeof AuthenticatedFinancesNetWorthRoute
-  AuthenticatedFinancesSettingsRoute: typeof AuthenticatedFinancesSettingsRoute
   AuthenticatedToolsCreatePlaylistRoute: typeof AuthenticatedToolsCreatePlaylistRoute
   AuthenticatedToolsIndexRoute: typeof AuthenticatedToolsIndexRoute
   AuthenticatedFinancesExpenseCategoriesCategoryIdRoute: typeof AuthenticatedFinancesExpenseCategoriesCategoryIdRoute
@@ -320,8 +319,8 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedFinancesNetWorthRoute: AuthenticatedFinancesNetWorthRoute,
-  AuthenticatedFinancesSettingsRoute: AuthenticatedFinancesSettingsRoute,
   AuthenticatedToolsCreatePlaylistRoute: AuthenticatedToolsCreatePlaylistRoute,
   AuthenticatedToolsIndexRoute: AuthenticatedToolsIndexRoute,
   AuthenticatedFinancesExpenseCategoriesCategoryIdRoute:
