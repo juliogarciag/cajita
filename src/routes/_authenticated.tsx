@@ -58,9 +58,6 @@ function AuthenticatedLayout() {
               Cajita
             </Link>
             <div className="flex items-center gap-4">
-              <Link to="/dashboard" className={navLinkClass}>
-                Dashboard
-              </Link>
               <Link
                 to="/finances/expense-categories"
                 className={isFinancesRoute ? `${navLinkClass} !text-gray-900` : navLinkClass}

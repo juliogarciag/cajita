@@ -19,13 +19,12 @@ test.describe('Navigation & Settings', () => {
     await page.goto('/dashboard')
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
 
+    // The logo is the only way back to the dashboard — there's no nav item
+    await expect(page.locator('nav').getByRole('link', { name: 'Dashboard' })).toHaveCount(0)
+
     // Finances link → /finances/expense-categories
     await page.getByRole('link', { name: 'Finances' }).click()
     await expect(page).toHaveURL(/\/finances\/expense-categories/)
-
-    // Dashboard link
-    await page.getByRole('link', { name: 'Dashboard' }).click()
-    await expect(page).toHaveURL(/\/dashboard/)
 
     // Tools link
     await page.getByRole('link', { name: 'Tools' }).click()
