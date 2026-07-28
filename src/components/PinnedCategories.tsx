@@ -73,9 +73,9 @@ export function PinnedCategories() {
               {t.pendingSoles > 0 && (
                 <div
                   className="mt-1 text-xs text-amber-600"
-                  title="Soles on items with no USD amount yet — pending exchange"
+                  title="Soles on items with no USD amount yet"
                 >
-                  {formatSoles(t.pendingSoles)} pending
+                  {formatSoles(t.pendingSoles)} pending exchange
                 </div>
               )}
             </Link>

@@ -387,7 +387,7 @@ export function ExpenseCategoryDetail() {
               className="text-gray-500"
               title="Soles spent on items that have no USD amount yet — money not exchanged so far"
             >
-              Pending (Soles):{' '}
+              Pending exchange:{' '}
               <span
                 className={`font-medium ${pendingSoles > 0 ? 'text-amber-600' : 'text-gray-900'}`}
               >

@@ -164,99 +164,113 @@ export function ExpenseCategoryList() {
           <p className="text-gray-500">No categories yet. Create your first one.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {categories.map((category: ExpenseCategory) => {
-            const totals = totalsByCategory.get(category.id) ?? {
-              usd: 0,
-              pendingSoles: 0,
-              count: 0,
-            }
-            const allTimeCount = allTimeCountByCategory.get(category.id) ?? 0
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-2 text-left font-medium">Category</th>
+                <th className="w-[110px] px-3 py-2 text-right font-medium">Expenses</th>
+                <th className="w-[170px] px-3 py-2 text-right font-medium">Pending exchange</th>
+                <th className="w-[140px] px-3 py-2 text-right font-medium">Total</th>
+                <th className="w-[80px]" />
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map((category: ExpenseCategory) => {
+                const totals = totalsByCategory.get(category.id) ?? {
+                  usd: 0,
+                  pendingSoles: 0,
+                  count: 0,
+                }
+                const allTimeCount = allTimeCountByCategory.get(category.id) ?? 0
 
-            return (
-              <div
-                key={category.id}
-                data-category-card={category.id}
-                className="relative rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
-              >
-                <Link
-                  to="/finances/expense-categories/$categoryId"
-                  params={{ categoryId: category.id }}
-                  search={{ year: selectedYear }}
-                  className="absolute inset-0 rounded-lg"
-                />
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: category.color }}
-                    />
-                    <span className="font-medium text-gray-900">{category.name}</span>
-                  </div>
-                  {/* z-10 to sit above the card's absolute link overlay */}
-                  <div className="relative z-10 flex items-center gap-0.5">
-                    <button
-                      type="button"
-                      onClick={() => void setCategoryPinned(category.id, !category.pinned)}
-                      aria-pressed={category.pinned ?? false}
-                      title={category.pinned ? 'Unpin from dashboard' : 'Pin to dashboard'}
-                      aria-label={
-                        category.pinned
-                          ? `Unpin ${category.name} from dashboard`
-                          : `Pin ${category.name} to dashboard`
-                      }
-                      className={`rounded p-1 hover:bg-gray-100 ${
-                        category.pinned ? 'text-gray-900' : 'text-gray-300 hover:text-gray-600'
-                      }`}
-                    >
-                      <Pin size={13} fill={category.pinned ? 'currentColor' : 'none'} />
-                    </button>
-                    {allTimeCount > 0 ? (
-                      <span
-                        title={`Delete the ${allTimeCount} expenses in this category first`}
-                        aria-label="Cannot delete a category with expenses"
-                        className="cursor-not-allowed px-2 py-0.5 text-xs text-gray-200"
+                return (
+                  <tr
+                    key={category.id}
+                    data-category-row={category.id}
+                    className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
+                  >
+                    <td className="px-3 py-2">
+                      <Link
+                        to="/finances/expense-categories/$categoryId"
+                        params={{ categoryId: category.id }}
+                        search={{ year: selectedYear }}
+                        className="flex items-center gap-2 font-medium text-gray-900 hover:underline"
                       >
-                        ×
-                      </span>
-                    ) : (
-                      <ConfirmButton
-                        onConfirm={() => handleDelete(category.id)}
-                        title="Delete category?"
-                        description={
-                          <>
-                            <span className="font-medium text-gray-900">{category.name}</span> will
-                            be removed. It has no expenses, so nothing else is lost.
-                          </>
-                        }
-                        confirmLabel="Delete category"
-                        className="rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
-                      >
-                        ×
-                      </ConfirmButton>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>
-                    {totals.count} {totals.count === 1 ? 'expense' : 'expenses'}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {totals.pendingSoles > 0 && (
-                      <span
-                        className="text-amber-600"
-                        title="Soles on items with no USD amount yet — pending exchange"
-                      >
-                        {formatSoles(totals.pendingSoles)} pending
-                      </span>
-                    )}
-                    <span>{formatCents(totals.usd)}</span>
-                  </span>
-                </div>
-              </div>
-            )
-          })}
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: category.color }}
+                        />
+                        {category.name}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-gray-500">
+                      {totals.count}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {totals.pendingSoles > 0 ? (
+                        <span
+                          className="text-amber-600"
+                          title="Soles on items with no USD amount yet — not exchanged"
+                        >
+                          {formatSoles(totals.pendingSoles)}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right font-medium tabular-nums text-gray-900">
+                      {formatCents(totals.usd)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-end gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => void setCategoryPinned(category.id, !category.pinned)}
+                          aria-pressed={category.pinned ?? false}
+                          title={category.pinned ? 'Unpin from dashboard' : 'Pin to dashboard'}
+                          aria-label={
+                            category.pinned
+                              ? `Unpin ${category.name} from dashboard`
+                              : `Pin ${category.name} to dashboard`
+                          }
+                          className={`rounded p-1 hover:bg-gray-100 ${
+                            category.pinned ? 'text-gray-900' : 'text-gray-300 hover:text-gray-600'
+                          }`}
+                        >
+                          <Pin size={14} fill={category.pinned ? 'currentColor' : 'none'} />
+                        </button>
+                        {allTimeCount > 0 ? (
+                          <span
+                            title={`Delete the ${allTimeCount} expenses in this category first`}
+                            aria-label="Cannot delete a category with expenses"
+                            className="cursor-not-allowed px-2 py-0.5 text-xs text-gray-200"
+                          >
+                            ×
+                          </span>
+                        ) : (
+                          <ConfirmButton
+                            onConfirm={() => handleDelete(category.id)}
+                            title="Delete category?"
+                            description={
+                              <>
+                                <span className="font-medium text-gray-900">{category.name}</span>{' '}
+                                will be removed. It has no expenses, so nothing else is lost.
+                              </>
+                            }
+                            confirmLabel="Delete category"
+                            className="rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                          >
+                            ×
+                          </ConfirmButton>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

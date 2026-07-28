@@ -50,7 +50,7 @@ test.describe('Expense Categories', () => {
     // so nothing is pending.
     await expect(page.getByText(/Total \(USD\)/)).toBeVisible()
     await expect(page.getByText('$350.00').first()).toBeVisible()
-    await expect(page.getByText(/Pending \(Soles\)/)).toBeVisible()
+    await expect(page.getByText(/Pending exchange/)).toBeVisible()
     await expect(page.getByText(/S\/\s?0\.00/)).toBeVisible()
   })
 
@@ -60,7 +60,7 @@ test.describe('Expense Categories', () => {
     await addExpense(page, PENDING_DESC, { soles: '800' })
 
     // The pending bucket picks up the soles-only item; the USD total doesn't move
-    const summary = page.getByText(/Pending \(Soles\)/)
+    const summary = page.getByText(/Pending exchange/)
     await expect(summary).toBeVisible()
     await expect(summary.getByText(/S\/\s?800\.00/)).toBeVisible({ timeout: 10000 })
     await expect(summary.getByText(/1 item/)).toBeVisible()
@@ -138,23 +138,24 @@ test.describe('Expense Categories', () => {
     await expect(page.getByRole('button', { name: 'Next year' })).toBeDisabled()
   })
 
-  test('category card totals are scoped to the selected year', async () => {
+  test('category row totals are scoped to the selected year', async () => {
     const currentYear = new Date().getFullYear()
-    const card = page.locator('[data-category-card]', {
+    const categoryRow = page.locator('[data-category-row]', {
       has: page.getByText(CATEGORY_NAME, { exact: true }),
     })
 
     // Default view is the current year, where both expenses live
-    await expect(card.getByText('2 expenses')).toBeVisible({ timeout: 10000 })
-    await expect(card.getByText('$350.00')).toBeVisible()
+    // Cells: name, expenses, pending exchange, total, actions
+    await expect(categoryRow.getByRole('cell').nth(1)).toHaveText('2', { timeout: 10000 })
+    await expect(categoryRow.getByRole('cell').nth(3)).toHaveText('$350.00')
 
     // A past year has none of them
     await page.goto(`/finances/expense-categories?year=${currentYear - 1}`)
-    await expect(card.getByText('0 expenses')).toBeVisible({ timeout: 10000 })
-    await expect(card.getByText('$0.00')).toBeVisible()
+    await expect(categoryRow.getByRole('cell').nth(1)).toHaveText('0', { timeout: 10000 })
+    await expect(categoryRow.getByRole('cell').nth(3)).toHaveText('$0.00')
 
     // ...but deletion still counts every year, so it stays blocked
-    await expect(card.getByLabel('Cannot delete a category with expenses')).toBeVisible()
+    await expect(categoryRow.getByLabel('Cannot delete a category with expenses')).toBeVisible()
 
     // Opening the category carries the year through
     await page.getByText(CATEGORY_NAME, { exact: true }).click({ force: true })
@@ -191,12 +192,12 @@ test.describe('Expense Categories', () => {
 
   test('a category with expenses cannot be deleted', async () => {
     // The pending expense is still there, so the card offers no delete button
-    const card = page.locator('[data-category-card]', {
+    const categoryRow = page.locator('[data-category-row]', {
       has: page.getByText(RENAMED_NAME, { exact: true }),
     })
-    await expect(card).toBeVisible({ timeout: 10000 })
-    await expect(card.getByLabel('Cannot delete a category with expenses')).toBeVisible()
-    await expect(card.getByRole('button', { name: 'Delete category?' })).toHaveCount(0)
+    await expect(categoryRow).toBeVisible({ timeout: 10000 })
+    await expect(categoryRow.getByLabel('Cannot delete a category with expenses')).toBeVisible()
+    await expect(categoryRow.getByRole('button', { name: 'Delete category?' })).toHaveCount(0)
   })
 
   test('can delete the category once it is empty', async () => {
@@ -213,10 +214,10 @@ test.describe('Expense Categories', () => {
     })
 
     await page.goto('/finances/expense-categories')
-    const card = page.locator('[data-category-card]', {
+    const categoryRow = page.locator('[data-category-row]', {
       has: page.getByText(RENAMED_NAME, { exact: true }),
     })
-    const deleteBtn = card.getByRole('button', { name: 'Delete category?' })
+    const deleteBtn = categoryRow.getByRole('button', { name: 'Delete category?' })
     await expect(deleteBtn).toBeVisible({ timeout: 10000 })
     await deleteBtn.click({ force: true })
     await confirmDialog(page, 'Delete category')
