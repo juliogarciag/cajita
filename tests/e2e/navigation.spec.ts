@@ -22,11 +22,17 @@ test.describe('Navigation & Settings', () => {
     // The logo is the only way back to the dashboard — there's no nav item
     await expect(page.locator('nav').getByRole('link', { name: 'Dashboard' })).toHaveCount(0)
 
-    // Finances link → /finances/expense-categories
-    await page.getByRole('link', { name: 'Finances' }).click()
-    await expect(page).toHaveURL(/\/finances\/expense-categories/)
+    // There's no Finances grouping any more — its pages are top-level
+    await expect(page.locator('nav').getByRole('link', { name: 'Finances' })).toHaveCount(0)
 
-    // Toys link
+    await page.getByRole('link', { name: 'Categories' }).click()
+    await expect(page).toHaveURL(/\/finances\/expense-categories/)
+    await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible()
+
+    await page.getByRole('link', { name: 'Balances' }).click()
+    await expect(page).toHaveURL(/\/finances\/net-worth/)
+    await expect(page.getByRole('heading', { name: 'Balances' })).toBeVisible()
+
     await page.getByRole('link', { name: 'Toys' }).click()
     await expect(page).toHaveURL(/\/toys/)
 
@@ -35,33 +41,28 @@ test.describe('Navigation & Settings', () => {
     await expect(page).toHaveURL(/\/dashboard/)
   })
 
-  test('finances sub-nav links navigate correctly', async ({ page }) => {
+  test('the nav is the same on every page — no second bar', async ({ page }) => {
+    const navLinks = () => page.locator('nav').getByRole('link')
     await page.goto('/finances/expense-categories')
+    const onCategories = await navLinks().allInnerTexts()
 
-    await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible()
+    await page.goto('/dashboard')
+    expect(await navLinks().allInnerTexts()).toEqual(onCategories)
 
-    await page.getByRole('link', { name: 'Balances' }).click()
-    await expect(page).toHaveURL(/\/finances\/net-worth/)
-    await expect(page.getByRole('heading', { name: 'Balances' })).toBeVisible()
-
-    await page.getByRole('link', { name: 'Categories' }).click()
-    await expect(page).toHaveURL(/\/finances\/expense-categories/)
-    await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible()
+    // Categories before Balances before Toys, after the logo
+    expect(onCategories).toEqual(['Cajita', 'Categories', 'Balances', 'Toys'])
   })
 
-  test('settings lives in the user menu, not the finances sub-nav', async ({ page }) => {
+  test('settings lives in the user menu, not the nav', async ({ page }) => {
     await page.goto('/finances/expense-categories')
 
-    const subNav = page.locator('nav + div')
-    await expect(subNav.getByRole('link', { name: 'Settings' })).toHaveCount(0)
+    await expect(page.locator('nav').getByRole('link', { name: 'Settings' })).toHaveCount(0)
 
     await openUserMenu(page)
     await page.getByRole('menuitem', { name: 'Settings' }).click()
 
     await expect(page).toHaveURL(/\/settings/)
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
-    // Settings is no longer a finances page, so the sub-nav goes away with it
-    await expect(page.getByRole('link', { name: 'Categories' })).toHaveCount(0)
   })
 
   test('the user menu can log out', async ({ page }) => {

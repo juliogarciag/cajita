@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { createFileRoute, Link, Outlet, redirect, useMatches } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { authMiddleware } from '#/server/middleware.js'
 import { DateFormatProvider } from '#/lib/date-format.js'
@@ -28,13 +28,8 @@ export const Route = createFileRoute('/_authenticated')({
 const navLinkClass =
   'text-sm font-medium text-gray-500 hover:text-gray-900 [&.active]:text-gray-900'
 
-const subNavLinkClass =
-  'text-sm font-medium px-3 py-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-50 [&.active]:text-gray-900 [&.active]:bg-gray-100'
-
 function AuthenticatedLayout() {
   const { user } = Route.useRouteContext()
-  const matches = useMatches()
-  const isFinancesRoute = matches.some((m) => m.fullPath.startsWith('/finances'))
   const [searchOpen, setSearchOpen] = useState(false)
 
   // Global Cmd+K / Ctrl+K toggle for the search palette.
@@ -58,12 +53,16 @@ function AuthenticatedLayout() {
               Cajita
             </Link>
             <div className="flex items-center gap-4">
+              {/* Paths still say /finances — only the navigation moved up a level */}
               <Link
                 to="/finances/expense-categories"
-                className={isFinancesRoute ? `${navLinkClass} !text-gray-900` : navLinkClass}
+                className={navLinkClass}
                 activeOptions={{ exact: false }}
               >
-                Finances
+                Categories
+              </Link>
+              <Link to="/finances/net-worth" className={navLinkClass}>
+                Balances
               </Link>
               <Link to="/toys" className={navLinkClass}>
                 Toys
@@ -131,22 +130,6 @@ function AuthenticatedLayout() {
         </div>
       </nav>
       {searchOpen && <SearchPalette open={searchOpen} onOpenChange={setSearchOpen} />}
-      {isFinancesRoute && (
-        <div className="border-b border-gray-200 bg-white">
-          <div className="mx-auto flex max-w-5xl items-center gap-1 px-4 py-1.5">
-            <Link to="/finances/net-worth" className={subNavLinkClass}>
-              Balances
-            </Link>
-            <Link
-              to="/finances/expense-categories"
-              className={subNavLinkClass}
-              activeOptions={{ exact: false }}
-            >
-              Categories
-            </Link>
-          </div>
-        </div>
-      )}
       <main className="mx-auto max-w-5xl px-4 py-6">
         <DateFormatProvider>
           <Outlet />
