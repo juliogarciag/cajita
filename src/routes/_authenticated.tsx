@@ -54,15 +54,15 @@ function AuthenticatedLayout() {
             </Link>
             <div className="flex items-center gap-4">
               {/* Paths still say /finances — only the navigation moved up a level */}
+              <Link to="/finances/net-worth" className={navLinkClass}>
+                Balances
+              </Link>
               <Link
                 to="/finances/expense-categories"
                 className={navLinkClass}
                 activeOptions={{ exact: false }}
               >
                 Categories
-              </Link>
-              <Link to="/finances/net-worth" className={navLinkClass}>
-                Balances
               </Link>
               <Link to="/toys" className={navLinkClass}>
                 Toys

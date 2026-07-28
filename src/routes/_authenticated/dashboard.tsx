@@ -34,8 +34,8 @@ function DashboardPage() {
 
       {mounted && (
         <Suspense>
-          <NetWorthSummary />
           <PinnedCategories />
+          <NetWorthSummary />
         </Suspense>
       )}
     </div>

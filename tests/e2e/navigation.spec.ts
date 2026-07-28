@@ -49,8 +49,8 @@ test.describe('Navigation & Settings', () => {
     await page.goto('/dashboard')
     expect(await navLinks().allInnerTexts()).toEqual(onCategories)
 
-    // Categories before Balances before Toys, after the logo
-    expect(onCategories).toEqual(['Cajita', 'Categories', 'Balances', 'Toys'])
+    // Balances before Categories before Toys, after the logo
+    expect(onCategories).toEqual(['Cajita', 'Balances', 'Categories', 'Toys'])
   })
 
   test('settings lives in the user menu, not the nav', async ({ page }) => {
