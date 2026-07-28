@@ -1,17 +1,17 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Music } from 'lucide-react'
 
-export const Route = createFileRoute('/_authenticated/tools/')({
-  component: ToolsPage,
+export const Route = createFileRoute('/_authenticated/toys/')({
+  component: ToysPage,
 })
 
-function ToolsPage() {
+function ToysPage() {
   return (
     <div>
-      <h1 className="text-2xl font-bold">Tools</h1>
+      <h1 className="text-2xl font-bold">Toys</h1>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Link
-          to="/tools/create-playlist"
+          to="/toys/create-playlist"
           className="group rounded-lg border border-gray-200 bg-white p-6 transition-colors hover:border-gray-300 hover:bg-gray-50"
         >
           <div className="flex items-center gap-3">

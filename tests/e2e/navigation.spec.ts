@@ -26,9 +26,9 @@ test.describe('Navigation & Settings', () => {
     await page.getByRole('link', { name: 'Finances' }).click()
     await expect(page).toHaveURL(/\/finances\/expense-categories/)
 
-    // Tools link
-    await page.getByRole('link', { name: 'Tools' }).click()
-    await expect(page).toHaveURL(/\/tools/)
+    // Toys link
+    await page.getByRole('link', { name: 'Toys' }).click()
+    await expect(page).toHaveURL(/\/toys/)
 
     // Cajita logo → dashboard
     await page.getByRole('link', { name: 'Cajita' }).click()

@@ -65,8 +65,8 @@ function AuthenticatedLayout() {
               >
                 Finances
               </Link>
-              <Link to="/tools" className={navLinkClass}>
-                Tools
+              <Link to="/toys" className={navLinkClass}>
+                Toys
               </Link>
             </div>
           </div>

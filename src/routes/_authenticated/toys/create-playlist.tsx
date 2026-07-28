@@ -14,7 +14,7 @@ import {
 } from '#/lib/apple-music-auth.js'
 import type { CatalogSong } from '#/server/apple-music-catalog.js'
 
-export const Route = createFileRoute('/_authenticated/tools/create-playlist')({
+export const Route = createFileRoute('/_authenticated/toys/create-playlist')({
   component: CreatePlaylistPage,
 })
 

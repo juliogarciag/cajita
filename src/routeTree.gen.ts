@@ -13,13 +13,13 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedToolsIndexRouteImport } from './routes/_authenticated/tools/index'
+import { Route as AuthenticatedToysIndexRouteImport } from './routes/_authenticated/toys/index'
 import { Route as ApiElectricTableRouteImport } from './routes/api/electric/$table'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthDevLoginRouteImport } from './routes/api/auth/dev-login'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
-import { Route as AuthenticatedToolsCreatePlaylistRouteImport } from './routes/_authenticated/tools/create-playlist'
+import { Route as AuthenticatedToysCreatePlaylistRouteImport } from './routes/_authenticated/toys/create-playlist'
 import { Route as AuthenticatedFinancesNetWorthRouteImport } from './routes/_authenticated/finances/net-worth'
 import { Route as AuthenticatedFinancesExpenseCategoriesIndexRouteImport } from './routes/_authenticated/finances/expense-categories/index'
 import { Route as AuthenticatedFinancesExpenseCategoriesCategoryIdRouteImport } from './routes/_authenticated/finances/expense-categories/$categoryId'
@@ -43,9 +43,9 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedToolsIndexRoute = AuthenticatedToolsIndexRouteImport.update({
-  id: '/tools/',
-  path: '/tools/',
+const AuthenticatedToysIndexRoute = AuthenticatedToysIndexRouteImport.update({
+  id: '/toys/',
+  path: '/toys/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const ApiElectricTableRoute = ApiElectricTableRouteImport.update({
@@ -73,10 +73,10 @@ const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
   path: '/api/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedToolsCreatePlaylistRoute =
-  AuthenticatedToolsCreatePlaylistRouteImport.update({
-    id: '/tools/create-playlist',
-    path: '/tools/create-playlist',
+const AuthenticatedToysCreatePlaylistRoute =
+  AuthenticatedToysCreatePlaylistRouteImport.update({
+    id: '/toys/create-playlist',
+    path: '/toys/create-playlist',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedFinancesNetWorthRoute =
@@ -103,13 +103,13 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
-  '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
+  '/toys/create-playlist': typeof AuthenticatedToysCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/dev-login': typeof ApiAuthDevLoginRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/electric/$table': typeof ApiElectricTableRoute
-  '/tools/': typeof AuthenticatedToolsIndexRoute
+  '/toys/': typeof AuthenticatedToysIndexRoute
   '/finances/expense-categories/$categoryId': typeof AuthenticatedFinancesExpenseCategoriesCategoryIdRoute
   '/finances/expense-categories/': typeof AuthenticatedFinancesExpenseCategoriesIndexRoute
 }
@@ -118,13 +118,13 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
-  '/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
+  '/toys/create-playlist': typeof AuthenticatedToysCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/dev-login': typeof ApiAuthDevLoginRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/electric/$table': typeof ApiElectricTableRoute
-  '/tools': typeof AuthenticatedToolsIndexRoute
+  '/toys': typeof AuthenticatedToysIndexRoute
   '/finances/expense-categories/$categoryId': typeof AuthenticatedFinancesExpenseCategoriesCategoryIdRoute
   '/finances/expense-categories': typeof AuthenticatedFinancesExpenseCategoriesIndexRoute
 }
@@ -135,13 +135,13 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
-  '/_authenticated/tools/create-playlist': typeof AuthenticatedToolsCreatePlaylistRoute
+  '/_authenticated/toys/create-playlist': typeof AuthenticatedToysCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/dev-login': typeof ApiAuthDevLoginRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/electric/$table': typeof ApiElectricTableRoute
-  '/_authenticated/tools/': typeof AuthenticatedToolsIndexRoute
+  '/_authenticated/toys/': typeof AuthenticatedToysIndexRoute
   '/_authenticated/finances/expense-categories/$categoryId': typeof AuthenticatedFinancesExpenseCategoriesCategoryIdRoute
   '/_authenticated/finances/expense-categories/': typeof AuthenticatedFinancesExpenseCategoriesIndexRoute
 }
@@ -152,13 +152,13 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/settings'
     | '/finances/net-worth'
-    | '/tools/create-playlist'
+    | '/toys/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/dev-login'
     | '/api/auth/google'
     | '/api/auth/logout'
     | '/api/electric/$table'
-    | '/tools/'
+    | '/toys/'
     | '/finances/expense-categories/$categoryId'
     | '/finances/expense-categories/'
   fileRoutesByTo: FileRoutesByTo
@@ -167,13 +167,13 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/settings'
     | '/finances/net-worth'
-    | '/tools/create-playlist'
+    | '/toys/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/dev-login'
     | '/api/auth/google'
     | '/api/auth/logout'
     | '/api/electric/$table'
-    | '/tools'
+    | '/toys'
     | '/finances/expense-categories/$categoryId'
     | '/finances/expense-categories'
   id:
@@ -183,13 +183,13 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/settings'
     | '/_authenticated/finances/net-worth'
-    | '/_authenticated/tools/create-playlist'
+    | '/_authenticated/toys/create-playlist'
     | '/api/auth/callback'
     | '/api/auth/dev-login'
     | '/api/auth/google'
     | '/api/auth/logout'
     | '/api/electric/$table'
-    | '/_authenticated/tools/'
+    | '/_authenticated/toys/'
     | '/_authenticated/finances/expense-categories/$categoryId'
     | '/_authenticated/finances/expense-categories/'
   fileRoutesById: FileRoutesById
@@ -234,11 +234,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/tools/': {
-      id: '/_authenticated/tools/'
-      path: '/tools'
-      fullPath: '/tools/'
-      preLoaderRoute: typeof AuthenticatedToolsIndexRouteImport
+    '/_authenticated/toys/': {
+      id: '/_authenticated/toys/'
+      path: '/toys'
+      fullPath: '/toys/'
+      preLoaderRoute: typeof AuthenticatedToysIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/api/electric/$table': {
@@ -276,11 +276,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/tools/create-playlist': {
-      id: '/_authenticated/tools/create-playlist'
-      path: '/tools/create-playlist'
-      fullPath: '/tools/create-playlist'
-      preLoaderRoute: typeof AuthenticatedToolsCreatePlaylistRouteImport
+    '/_authenticated/toys/create-playlist': {
+      id: '/_authenticated/toys/create-playlist'
+      path: '/toys/create-playlist'
+      fullPath: '/toys/create-playlist'
+      preLoaderRoute: typeof AuthenticatedToysCreatePlaylistRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/finances/net-worth': {
@@ -311,8 +311,8 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedFinancesNetWorthRoute: typeof AuthenticatedFinancesNetWorthRoute
-  AuthenticatedToolsCreatePlaylistRoute: typeof AuthenticatedToolsCreatePlaylistRoute
-  AuthenticatedToolsIndexRoute: typeof AuthenticatedToolsIndexRoute
+  AuthenticatedToysCreatePlaylistRoute: typeof AuthenticatedToysCreatePlaylistRoute
+  AuthenticatedToysIndexRoute: typeof AuthenticatedToysIndexRoute
   AuthenticatedFinancesExpenseCategoriesCategoryIdRoute: typeof AuthenticatedFinancesExpenseCategoriesCategoryIdRoute
   AuthenticatedFinancesExpenseCategoriesIndexRoute: typeof AuthenticatedFinancesExpenseCategoriesIndexRoute
 }
@@ -321,8 +321,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedFinancesNetWorthRoute: AuthenticatedFinancesNetWorthRoute,
-  AuthenticatedToolsCreatePlaylistRoute: AuthenticatedToolsCreatePlaylistRoute,
-  AuthenticatedToolsIndexRoute: AuthenticatedToolsIndexRoute,
+  AuthenticatedToysCreatePlaylistRoute: AuthenticatedToysCreatePlaylistRoute,
+  AuthenticatedToysIndexRoute: AuthenticatedToysIndexRoute,
   AuthenticatedFinancesExpenseCategoriesCategoryIdRoute:
     AuthenticatedFinancesExpenseCategoriesCategoryIdRoute,
   AuthenticatedFinancesExpenseCategoriesIndexRoute:
