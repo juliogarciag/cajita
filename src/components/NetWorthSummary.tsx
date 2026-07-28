@@ -42,9 +42,10 @@ export function NetWorthSummary() {
   const { range } = useSearch({ strict: false }) as { range?: ChartRangeKey }
   const [hover, setHover] = useState<Hover | null>(null)
 
-  // Five years by default. "All" reaches back to 2017, where the shape of the
-  // last few years is squeezed into the right-hand quarter of the chart.
-  const selectedRange = CHART_RANGES.find((r) => r.key === range) ?? CHART_RANGES[1]
+  // A year by default — the window the dashboard is usually asked about. The
+  // longer ranges compress recent months into the right-hand edge, where the
+  // detail worth seeing is.
+  const selectedRange = CHART_RANGES.find((r) => r.key === range) ?? CHART_RANGES[0]
 
   const { data: allSources } = useLiveQuery((q) => q.from({ s: wealthSourcesCollection }))
   const { data: snapshots } = useLiveQuery((q) => q.from({ b: balanceSnapshotsCollection }))
@@ -70,7 +71,7 @@ export function NetWorthSummary() {
   }, [readings, selectedRange])
 
   const handleSelectRange = (key: ChartRangeKey) => {
-    void navigate({ to: '/dashboard', search: key === '5y' ? {} : { range: key } })
+    void navigate({ to: '/dashboard', search: key === '1y' ? {} : { range: key } })
   }
 
   const bounds = useMemo(() => {
