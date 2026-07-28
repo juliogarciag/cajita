@@ -200,6 +200,11 @@ function parseDate(raw: string, order: 'MM/DD' | 'DD/MM'): string | null {
   return `${year}-${mm}-${dd}`
 }
 
+const money = (units: number) => units.toLocaleString('en-US', { minimumFractionDigits: 2 })
+
+/** The exports' running-total column is one account: the bank. */
+const BANK_SOURCE = 'Bank account'
+
 type Row = {
   description: string
   date: string
@@ -268,6 +273,8 @@ async function main() {
   const skipped = new Map<string, number>()
   const unknown = new Map<string, number>()
   let malformed = 0
+  // Every row's running bank balance, in file order — the source for readings.
+  const balanceRows: { date: string; total: number }[] = []
 
   for (const layout of LAYOUTS) {
     const text = await fs.readFile(path.join(dir, layout.file), 'utf8')
@@ -279,6 +286,12 @@ async function main() {
       const cents = parseAmountCents(r[2] ?? '', layout.decimal)
       const date = parseDate(r[1] ?? '', layout.dateOrder)
       const description = (r[0] ?? '').trim()
+
+      // The running-total column is the bank balance after this row. It's read
+      // before the expense filtering below, because a row that carries no
+      // usable expense (an income row, a blank "$ -") still moves the balance.
+      const total = parseAmountCents(r[3] ?? '', layout.decimal)
+      if (date !== null && total !== null) balanceRows.push({ date, total })
 
       if (cents === null || date === null || !description) {
         malformed++
@@ -429,7 +442,6 @@ async function main() {
     e.soles += r.solesCents ?? 0
     byCategory.set(r.category, e)
   }
-  const money = (cents: number) => cents.toLocaleString('en-US', { minimumFractionDigits: 2 })
   console.log('By category:')
   for (const [c, e] of [...byCategory.entries()].sort((a, b) => b[1].cents - a[1].cents)) {
     // Soles are recorded alongside USD on supplement rows; shown so a mangled
@@ -452,6 +464,22 @@ async function main() {
   for (const [y, e] of [...byYear.entries()].sort()) {
     console.log(
       `  ${y}  ${String(e.n).padStart(5)} items   $${(e.cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+    )
+  }
+
+  // --- Monthly bank readings
+  // At most one per month, taking the month's last row *in file order*: the
+  // running balance advances with the file, not with the date, and a handful of
+  // rows sit a day or two out of date order.
+  const byMonth = new Map<string, { date: string; total: number }>()
+  for (const b of balanceRows) byMonth.set(b.date.slice(0, 7), b)
+  const readings = [...byMonth.values()].sort((a, b) => a.date.localeCompare(b.date))
+
+  if (readings.length) {
+    const first = readings[0]
+    const last = readings[readings.length - 1]
+    console.log(
+      `\nBank readings: ${readings.length} monthly, ${first.date} ($${money(first.total / 100)}) .. ${last.date} ($${money(last.total / 100)})`,
     )
   }
 
@@ -486,25 +514,40 @@ async function main() {
     : await db.selectFrom('teams').selectAll().where('is_default', '=', true).executeTakeFirst()
   if (!team) throw new Error(`No such team: ${teamName ?? '(default)'}`)
 
-  const existing = await db
-    .selectFrom('expense_items')
-    .select(db.fn.count<number>('id').as('n'))
-    .where('team_id', '=', team.id)
-    .executeTakeFirst()
+  const countIn = async (table: 'expense_items' | 'balance_snapshots') =>
+    Number(
+      (
+        await db
+          .selectFrom(table)
+          .select(db.fn.count<number>('id').as('n'))
+          .where('team_id', '=', team.id)
+          .executeTakeFirst()
+      )?.n ?? 0,
+    )
+  const [existingItems, existingReadings] = await Promise.all([
+    countIn('expense_items'),
+    countIn('balance_snapshots'),
+  ])
 
-  if (Number(existing?.n ?? 0) > 0 && !reset) {
+  if ((existingItems > 0 || existingReadings > 0) && !reset) {
     throw new Error(
-      `Team "${team.name}" already has ${existing?.n} expense items. Pass --reset to replace them, or --team to target another team.`,
+      `Team "${team.name}" already has ${existingItems} expense items and ${existingReadings} readings. ` +
+        `Pass --reset to replace them, or --team to target another team.`,
     )
   }
 
+  // Expenses and readings go in together: they come from one set of files and
+  // describe one history, so a half-applied import isn't a useful state.
   await db.transaction().execute(async (tx) => {
     if (reset) {
-      // Notes and items are FK-bound to the team; clear children first.
+      // Children first — notes hang off items, entries off snapshots/sources.
       await tx.deleteFrom('expense_item_notes').where('team_id', '=', team.id).execute()
       await tx.deleteFrom('expense_items').where('team_id', '=', team.id).execute()
       await tx.deleteFrom('expense_categories').where('team_id', '=', team.id).execute()
-      console.log(`\nCleared existing expense data for team "${team.name}"`)
+      await tx.deleteFrom('balance_entries').where('team_id', '=', team.id).execute()
+      await tx.deleteFrom('balance_snapshots').where('team_id', '=', team.id).execute()
+      await tx.deleteFrom('wealth_sources').where('team_id', '=', team.id).execute()
+      console.log(`\nCleared existing expense and net worth data for team "${team.name}"`)
     }
 
     const ids = new Map<string, string>()
@@ -549,6 +592,37 @@ async function main() {
       inserted += values.length
     }
     console.log(`Inserted ${ids.size} categories and ${inserted} expense items into "${team.name}"`)
+
+    if (!readings.length) return
+
+    // Readings are left unlocked — freezing is a deliberate act in the app, and
+    // locking on import would make a bad import awkward to correct.
+    const bank = await tx
+      .insertInto('wealth_sources')
+      .values({ team_id: team.id, name: BANK_SOURCE, color: '#3b82f6', sort_order: 0 })
+      .returning('id')
+      .executeTakeFirstOrThrow()
+
+    const snapshots = await tx
+      .insertInto('balance_snapshots')
+      .values(readings.map((r) => ({ team_id: team.id, date: r.date })))
+      .returning(['id', 'date'])
+      .execute()
+
+    const snapshotByDate = new Map(snapshots.map((s) => [s.date, s.id]))
+    await tx
+      .insertInto('balance_entries')
+      .values(
+        readings.map((r) => ({
+          team_id: team.id,
+          balance_snapshot_id: snapshotByDate.get(r.date)!,
+          wealth_source_id: bank.id,
+          amount_usd_cents: r.total,
+        })),
+      )
+      .execute()
+
+    console.log(`Inserted "${BANK_SOURCE}" with ${readings.length} monthly readings`)
   })
 
   await db.destroy()
