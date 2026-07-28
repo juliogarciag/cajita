@@ -7,6 +7,7 @@
 import type { WealthSource } from '#/lib/wealth-sources-collection'
 import type { BalanceSnapshot } from '#/lib/balance-snapshots-collection'
 import type { BalanceEntry } from '#/lib/balance-entries-collection'
+import { toISODate } from '#/lib/format'
 
 export type Reading = {
   snapshot: BalanceSnapshot
@@ -121,7 +122,9 @@ export function latestComplete(readings: readonly Reading[]): Reading | null {
 
 export function daysSince(date: string, today: Date): number {
   const then = Date.parse(`${date}T00:00:00Z`)
-  const now = Date.parse(`${today.toISOString().slice(0, 10)}T00:00:00Z`)
+  // Local calendar date, not UTC — otherwise a reading taken today reads as
+  // "yesterday" all evening in a western timezone.
+  const now = Date.parse(`${toISODate(today)}T00:00:00Z`)
   return Math.max(0, Math.round((now - then) / 86_400_000))
 }
 

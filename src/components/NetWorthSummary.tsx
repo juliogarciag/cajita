@@ -11,7 +11,7 @@ import {
   daysSince,
   describeAge,
 } from '#/lib/net-worth.js'
-import { formatCents } from '#/lib/format.js'
+import { formatCents, toISODate } from '#/lib/format.js'
 import { useDateFormat } from '#/lib/date-format.js'
 
 const CHART_WIDTH = 620
@@ -66,7 +66,7 @@ export function NetWorthSummary() {
 
     const cutoff = new Date()
     cutoff.setFullYear(cutoff.getFullYear() - selectedRange.years)
-    const cutoffDate = cutoff.toISOString().slice(0, 10)
+    const cutoffDate = toISODate(cutoff)
     return complete.filter((r) => r.snapshot.date >= cutoffDate).reverse()
   }, [readings, selectedRange])
 

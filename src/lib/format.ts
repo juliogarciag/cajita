@@ -29,8 +29,18 @@ export function toDateFnsFormat(fmt: DateFormatOption): string {
   return fmt === 'DD/MM/YYYY' ? 'dd/MM/yyyy' : 'yyyy-MM-dd'
 }
 
+/**
+ * The calendar date in the *local* timezone, as YYYY-MM-DD.
+ *
+ * Not `toISOString()`: that converts to UTC first, so anywhere west of
+ * Greenwich the evening already belongs to tomorrow — in Lima (UTC-5) every
+ * new expense entered after 19:00 defaulted to the next day.
+ */
 export function toISODate(date: Date): string {
-  return date.toISOString().split('T')[0]
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 const solesFormatter = new Intl.NumberFormat('es-PE', {
