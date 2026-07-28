@@ -152,7 +152,7 @@ export function NetWorthTable() {
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Net worth</h1>
+          <h1 className="text-2xl font-bold">Balances</h1>
           {headline ? (
             <div className="mt-1 flex items-baseline gap-3">
               <span className="text-xl font-medium text-gray-900">

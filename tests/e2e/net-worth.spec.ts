@@ -48,7 +48,7 @@ test.describe('Net worth', () => {
 
   test.beforeEach(async () => {
     await page.goto('/finances/net-worth')
-    await expect(page.getByRole('heading', { name: 'Net worth' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Balances' })).toBeVisible()
   })
 
   test('a reading cannot be added before there are sources', async () => {

@@ -107,7 +107,7 @@ function AuthenticatedLayout() {
               Categories
             </Link>
             <Link to="/finances/net-worth" className={subNavLinkClass}>
-              Net worth
+              Balances
             </Link>
             <Link to="/finances/settings" className={subNavLinkClass}>
               Settings
