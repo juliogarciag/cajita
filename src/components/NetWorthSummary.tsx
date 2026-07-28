@@ -21,6 +21,7 @@ const CHART_HEIGHT = 120
 // year while sweeps stay monthly.
 export const CHART_RANGES = [
   { key: '1y', label: '1Y', years: 1 },
+  { key: '3y', label: '3Y', years: 3 },
   { key: '5y', label: '5Y', years: 5 },
   { key: 'all', label: 'All', years: null },
 ] as const
@@ -186,12 +187,6 @@ export function NetWorthSummary() {
                 ))}
               </div>
             )}
-            <Link
-              to="/finances/net-worth"
-              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-            >
-              Add reading
-            </Link>
           </div>
         </div>
 

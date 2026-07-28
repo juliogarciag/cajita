@@ -12,7 +12,7 @@ const PinnedCategories = lazy(() =>
 
 const searchSchema = z.object({
   // How far back the net worth chart reaches. Absent = all of it.
-  range: z.enum(['1y', '5y', 'all']).optional(),
+  range: z.enum(['1y', '3y', '5y', 'all']).optional(),
 })
 
 export const Route = createFileRoute('/_authenticated/dashboard')({
