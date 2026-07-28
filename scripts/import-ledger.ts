@@ -550,15 +550,34 @@ async function main() {
       console.log(`\nCleared existing expense and net worth data for team "${team.name}"`)
     }
 
+    // Categories and sources are unique per (team, name). A target that has
+    // been opened in the app may already have them — reuse those rather than
+    // colliding, and leave their colour alone, since one picked in the app
+    // beats the placeholder here.
+    const reused: string[] = []
     const ids = new Map<string, string>()
     for (const [name, { color }] of Object.entries(CATEGORIES)) {
       if (!byCategory.has(name)) continue // nothing landed here; don't create an empty category
+      const existing = await tx
+        .selectFrom('expense_categories')
+        .select('id')
+        .where('team_id', '=', team.id)
+        .where('name', '=', name)
+        .executeTakeFirst()
+      if (existing) {
+        ids.set(name, existing.id)
+        reused.push(name)
+        continue
+      }
       const row = await tx
         .insertInto('expense_categories')
         .values({ team_id: team.id, name, color })
         .returning('id')
         .executeTakeFirstOrThrow()
       ids.set(name, row.id)
+    }
+    if (reused.length) {
+      console.log(`\nReused existing categories (colours left as they are): ${reused.join(', ')}`)
     }
 
     // sort_position is the display order (the detail view sorts by it, not by
@@ -591,17 +610,29 @@ async function main() {
       }
       inserted += values.length
     }
-    console.log(`Inserted ${ids.size} categories and ${inserted} expense items into "${team.name}"`)
+    console.log(
+      `Created ${ids.size - reused.length} categories, reused ${reused.length}, and inserted ${inserted} expense items into "${team.name}"`,
+    )
 
     if (!readings.length) return
 
     // Readings are left unlocked — freezing is a deliberate act in the app, and
     // locking on import would make a bad import awkward to correct.
-    const bank = await tx
-      .insertInto('wealth_sources')
-      .values({ team_id: team.id, name: BANK_SOURCE, color: '#3b82f6', sort_order: 0 })
-      .returning('id')
-      .executeTakeFirstOrThrow()
+    const existingBank = await tx
+      .selectFrom('wealth_sources')
+      .select('id')
+      .where('team_id', '=', team.id)
+      .where('name', '=', BANK_SOURCE)
+      .executeTakeFirst()
+
+    const bank =
+      existingBank ??
+      (await tx
+        .insertInto('wealth_sources')
+        .values({ team_id: team.id, name: BANK_SOURCE, color: '#3b82f6', sort_order: 0 })
+        .returning('id')
+        .executeTakeFirstOrThrow())
+    if (existingBank) console.log(`Reused existing wealth source "${BANK_SOURCE}"`)
 
     const snapshots = await tx
       .insertInto('balance_snapshots')
