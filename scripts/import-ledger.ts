@@ -616,8 +616,6 @@ async function main() {
 
     if (!readings.length) return
 
-    // Readings are left unlocked — freezing is a deliberate act in the app, and
-    // locking on import would make a bad import awkward to correct.
     const existingBank = await tx
       .selectFrom('wealth_sources')
       .select('id')

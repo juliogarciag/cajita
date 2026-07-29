@@ -14,23 +14,14 @@ function rows(page: Page) {
   return page.locator('tr[data-reading-id]')
 }
 
-function lockedRows(page: Page) {
-  return page.locator('tr[data-reading-id][data-locked="true"]')
-}
-
-/** Fill the amount cell for `sourceIndex` (0-based) of a reading row inline. */
-async function setBalance(page: Page, rowIndex: number, sourceIndex: number, value: string) {
-  const row = rows(page).nth(rowIndex)
-  // Cell 0 is the date, cell 1 the reading's name, then one per source.
-  const cell = row.locator('[data-editable-cell]').nth(sourceIndex + 2)
-  await cell.click()
-  const input = cell.locator('input[type="text"]')
-  await expect(input).toBeVisible({ timeout: 5000 })
-  await input.fill(value)
-  // Enter saves and moves on to the next cell, so wait on this cell only —
-  // the row still holds an input, just a different one.
-  await input.press('Enter')
-  await expect(cell.locator('input')).toHaveCount(0, { timeout: 10000 })
+/** Correct one balance of an existing reading through the edit dialog. */
+async function setBalance(page: Page, rowIndex: number, source: string, value: string) {
+  await rows(page).nth(rowIndex).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await dialog.getByLabel(source).fill(value)
+  await dialog.getByRole('button', { name: 'Save changes' }).click()
+  await expect(dialog).toHaveCount(0, { timeout: 10000 })
 }
 
 /**
@@ -116,7 +107,7 @@ test.describe('Net worth', () => {
   })
 
   test('completing the sweep clears the flag and shows the change', async () => {
-    await setBalance(page, 0, 1, '512.30')
+    await setBalance(page, 0, BROKER, '512.30')
 
     const row = rows(page).first()
     await expect(row.getByText('1 of 2')).toHaveCount(0, { timeout: 10000 })
@@ -141,54 +132,25 @@ test.describe('Net worth', () => {
     })
   })
 
-  test('a frozen reading refuses edits and deletion', async () => {
-    const row = rows(page).first()
-    await row.getByRole('button', { name: 'Freeze this reading' }).click()
-
-    const frozen = lockedRows(page)
-    await expect(frozen).toHaveCount(1, { timeout: 10000 })
-
-    // No delete button while frozen — unfreezing is the deliberate first step
-    await expect(frozen.getByRole('button', { name: 'Delete this reading' })).toHaveCount(0)
-    await expect(frozen.getByRole('button', { name: 'Unfreeze this reading' })).toBeVisible()
-
-    // Cells no longer open for editing
-    await frozen.locator('[data-editable-cell]').nth(1).click()
-    await expect(frozen.locator('input')).toHaveCount(0)
-  })
-
-  test('a frozen reading can be unfrozen again', async () => {
-    const frozen = lockedRows(page).first()
-    await frozen.getByRole('button', { name: 'Unfreeze this reading' }).click()
-    await confirmDialog(page, 'Unfreeze')
-
-    await expect(lockedRows(page)).toHaveCount(0, { timeout: 10000 })
-    await expect(
-      rows(page).first().getByRole('button', { name: 'Delete this reading' }),
-    ).toBeVisible()
-  })
-
-  test('freeze previous locks everything but the newest reading', async () => {
-    await page.getByRole('button', { name: 'Freeze previous' }).click()
-
-    // Two readings exist, so exactly the older one freezes
-    await expect(lockedRows(page)).toHaveCount(1, { timeout: 10000 })
-    await expect(rows(page).first()).not.toHaveAttribute('data-locked', 'true')
-
-    // Nothing left to freeze, so the action disappears
-    await expect(page.getByRole('button', { name: 'Freeze previous' })).toHaveCount(0)
-
-    // Unfreeze so the deletion test below still has an unlocked row
-    await lockedRows(page).getByRole('button', { name: 'Unfreeze this reading' }).click()
-    await confirmDialog(page, 'Unfreeze')
-    await expect(lockedRows(page)).toHaveCount(0, { timeout: 10000 })
-  })
-
   test('a reading can be deleted', async () => {
     await expect(rows(page)).toHaveCount(2)
-    await rows(page).first().getByRole('button', { name: 'Delete this reading?' }).click()
+    await rows(page).first().getByRole('button', { name: 'Delete this reading' }).click()
     await confirmDialog(page, 'Delete reading')
     await expect(rows(page)).toHaveCount(1, { timeout: 10000 })
+  })
+
+  test('a reading can be renamed and re-dated from the dialog', async () => {
+    await rows(page).first().click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await dialog.getByLabel('Name').fill('Before the trip')
+    await dialog.getByLabel('Date').fill('2026-05-04')
+    await dialog.getByRole('button', { name: 'Save changes' }).click()
+    await expect(dialog).toHaveCount(0, { timeout: 10000 })
+
+    const row = rows(page).first()
+    await expect(row).toContainText('Before the trip', { timeout: 10000 })
+    await expect(row).toContainText('04/05/2026')
   })
 
   test('the dashboard reports the latest complete reading', async () => {

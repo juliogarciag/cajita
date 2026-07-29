@@ -5,32 +5,42 @@ import type { WealthSource } from '#/lib/wealth-sources-collection.js'
 import type { Reading } from '#/lib/net-worth.js'
 import { formatCents, parseDollarsTocents, toISODate } from '#/lib/format.js'
 import { defaultReadingLabel, sameMonth } from '#/lib/reading-label.js'
-import { createBalanceSnapshot } from '#/server/balance-snapshots.js'
+import {
+  createBalanceSnapshot,
+  updateBalanceSnapshot,
+  setBalanceEntry,
+} from '#/server/balance-snapshots.js'
 
-interface AddReadingDialogProps {
+interface ReadingDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   sources: WealthSource[]
-  /** Newest first — the first is what the amounts are prefilled from. */
+  /** Newest first — a new reading is prefilled from the first. */
   readings: Reading[]
-  onCreated: (snapshotId: string) => void
+  /** The reading being corrected; omitted to record a new one. */
+  reading?: Reading | null
+  onSaved?: (snapshotId: string) => void
 }
 
+const asDollars = (cents: number | undefined) => (cents == null ? '' : (cents / 100).toFixed(2))
+
 /**
- * Recording a reading is a form, not a row.
+ * A reading is a form, not a row.
  *
- * Inline editing suits correcting one cell, but entering a whole sweep means
- * every source at once — and that grows with the number of accounts. A dialog
- * holds the date, the name and every amount together, and the reading is
- * created complete rather than appearing empty and being filled in.
+ * Inline editing suited correcting one cell, but a reading means every source
+ * at once — and that grows with the number of accounts. A dialog holds the
+ * date, the name and every amount together, whether you're recording a new
+ * sweep or fixing an old one.
  */
-export function AddReadingDialog({
+export function ReadingDialog({
   open,
   onOpenChange,
   sources,
   readings,
-  onCreated,
-}: AddReadingDialogProps) {
+  reading = null,
+  onSaved,
+}: ReadingDialogProps) {
+  const editing = reading !== null
   const [date, setDate] = useState(() => toISODate(new Date()))
   const [label, setLabel] = useState('')
   const [amounts, setAmounts] = useState<Record<string, string>>({})
@@ -38,33 +48,29 @@ export function AddReadingDialog({
 
   const previous = readings[0] ?? null
 
-  // Reopening starts fresh: today's date, no name, and the previous reading's
-  // figures to correct rather than retype.
+  // Reopening starts from whatever is being edited, or from today plus the
+  // previous reading's figures to correct rather than retype.
   useEffect(() => {
     if (!open) return
-    setDate(toISODate(new Date()))
-    setLabel('')
+    const source = reading ?? previous
+    setDate(reading ? reading.snapshot.date : toISODate(new Date()))
+    setLabel(reading?.snapshot.label ?? '')
     setSaving(false)
-    setAmounts(
-      Object.fromEntries(
-        sources.map((s) => {
-          const cents = previous?.amounts.get(s.id)
-          return [s.id, cents == null ? '' : (cents / 100).toFixed(2)]
-        }),
-      ),
-    )
+    setAmounts(Object.fromEntries(sources.map((s) => [s.id, asDollars(source?.amounts.get(s.id))])))
     // `previous` is derived from readings; re-running on every render would
-    // stomp on typing, so this deliberately keys off `open` alone.
+    // stomp on typing, so this deliberately keys off `open` and the target.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [open, reading?.snapshot.id])
 
   const placeholder = useMemo(
     () =>
       defaultReadingLabel(
         date,
-        readings.filter((r) => sameMonth(r.snapshot.date, date)).map((r) => r.snapshot.label ?? ''),
+        readings
+          .filter((r) => r.snapshot.id !== reading?.snapshot.id && sameMonth(r.snapshot.date, date))
+          .map((r) => r.snapshot.label ?? ''),
       ),
-    [date, readings],
+    [date, readings, reading],
   )
 
   const parsed = sources.map((s) => ({
@@ -80,20 +86,40 @@ export function AddReadingDialog({
     if (saving || invalid.length > 0) return
     setSaving(true)
     try {
-      const result = await createBalanceSnapshot({
-        data: {
-          date,
-          label: label.trim() || undefined,
-          amounts: filled.map((p) => ({
-            wealth_source_id: p.source.id,
-            amount_usd_cents: p.cents as number,
-          })),
-        },
-      })
-      onCreated(result.snapshot.id)
+      if (reading) {
+        await updateBalanceSnapshot({
+          data: { id: reading.snapshot.id, date, label: label.trim() || placeholder },
+        })
+        // Only what actually moved is written — an untouched sweep of twenty
+        // accounts shouldn't be twenty writes.
+        for (const p of parsed) {
+          if (p.cents === reading.amounts.get(p.source.id)) continue
+          if (p.cents == null && !reading.amounts.has(p.source.id)) continue
+          await setBalanceEntry({
+            data: {
+              balance_snapshot_id: reading.snapshot.id,
+              wealth_source_id: p.source.id,
+              amount_usd_cents: p.cents,
+            },
+          })
+        }
+        onSaved?.(reading.snapshot.id)
+      } else {
+        const result = await createBalanceSnapshot({
+          data: {
+            date,
+            label: label.trim() || undefined,
+            amounts: filled.map((p) => ({
+              wealth_source_id: p.source.id,
+              amount_usd_cents: p.cents as number,
+            })),
+          },
+        })
+        onSaved?.(result.snapshot.id)
+      }
       onOpenChange(false)
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add reading')
+      toast.error(err instanceof Error ? err.message : 'Failed to save the reading')
       setSaving(false)
     }
   }
@@ -104,11 +130,15 @@ export function AddReadingDialog({
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/30" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white shadow-2xl ring-1 ring-black/5 outline-none">
           <div className="border-b border-gray-200 px-5 py-3">
-            <Dialog.Title className="text-sm font-medium text-gray-900">Add reading</Dialog.Title>
+            <Dialog.Title className="text-sm font-medium text-gray-900">
+              {editing ? 'Edit reading' : 'Add reading'}
+            </Dialog.Title>
             <Dialog.Description className="mt-0.5 text-xs text-gray-500">
-              {previous
-                ? 'Prefilled from the last reading — correct what changed.'
-                : 'Record what each account holds today.'}
+              {editing
+                ? 'Correct the date, the name or any balance.'
+                : previous
+                  ? 'Prefilled from the last reading — correct what changed.'
+                  : 'Record what each account holds today.'}
             </Dialog.Description>
           </div>
 
@@ -190,7 +220,7 @@ export function AddReadingDialog({
               disabled={saving || invalid.length > 0}
               className="rounded-lg bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {saving ? 'Adding…' : 'Add reading'}
+              {saving ? 'Saving…' : editing ? 'Save changes' : 'Add reading'}
             </button>
           </div>
         </Dialog.Content>

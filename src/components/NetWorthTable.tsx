@@ -1,36 +1,31 @@
 import { Fragment, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
-import { Plus, Download, Trash2, Settings2, Lock, LockOpen, Snowflake } from 'lucide-react'
+import { Plus, Download, Trash2, Settings2, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { wealthSourcesCollection } from '#/lib/wealth-sources-collection.js'
 import { balanceSnapshotsCollection } from '#/lib/balance-snapshots-collection.js'
 import { balanceEntriesCollection } from '#/lib/balance-entries-collection.js'
 import {
+  type Reading,
   buildReadings,
   visibleSources,
   latestComplete,
   daysSince,
   describeAge,
 } from '#/lib/net-worth.js'
-import { formatCents, parseDollarsTocents } from '#/lib/format.js'
+import { formatCents } from '#/lib/format.js'
 import { useDateFormat } from '#/lib/date-format.js'
-import {
-  updateBalanceSnapshot,
-  deleteBalanceSnapshot,
-  setBalanceEntry,
-  setBalanceSnapshotLocked,
-  freezePreviousReadings,
-} from '#/server/balance-snapshots.js'
-import { EditableCell } from './EditableCell.js'
-import { AddReadingDialog } from './AddReadingDialog.js'
+import { deleteBalanceSnapshot } from '#/server/balance-snapshots.js'
+import { ReadingDialog } from './ReadingDialog.js'
 import { ConfirmButton } from './ConfirmButton.js'
 import { WealthSourcesPanel } from './WealthSourcesPanel.js'
 
 export function NetWorthTable() {
   const { formatDate } = useDateFormat()
   const [showSources, setShowSources] = useState(false)
-  const [newSnapshotId, setNewSnapshotId] = useState<string | null>(null)
-  const [addOpen, setAddOpen] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  // The reading the dialog is pointed at; null means it records a new one.
+  const [editing, setEditing] = useState<Reading | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const { data: allSources } = useLiveQuery((q) => q.from({ s: wealthSourcesCollection }))
@@ -55,70 +50,11 @@ export function NetWorthTable() {
 
   const headline = latestComplete(readings)
 
-  // Readings older than the newest that are still editable — the bulk freeze
-  // only has something to do while at least one exists.
-  const unfrozenPrevious = readings.slice(1).filter((r) => !r.snapshot.locked).length
-
-  const handleSetAmount = async (snapshotId: string, sourceId: string, raw: string) => {
-    const trimmed = raw.trim()
-    const cents = trimmed === '' ? null : parseDollarsTocents(trimmed)
-    if (trimmed !== '' && cents === null) return
-    try {
-      await setBalanceEntry({
-        data: {
-          balance_snapshot_id: snapshotId,
-          wealth_source_id: sourceId,
-          amount_usd_cents: cents,
-        },
-      })
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save balance')
-    }
-  }
-
-  const handleSetDate = async (snapshotId: string, date: string) => {
-    if (!date) return
-    try {
-      await updateBalanceSnapshot({ data: { id: snapshotId, date } })
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update date')
-    }
-  }
-
-  const handleSetLabel = async (snapshotId: string, label: string) => {
-    try {
-      await updateBalanceSnapshot({ data: { id: snapshotId, label } })
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to rename reading')
-    }
-  }
-
   const handleDeleteReading = async (snapshotId: string) => {
     try {
       await deleteBalanceSnapshot({ data: { id: snapshotId } })
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete reading')
-    }
-  }
-
-  const handleSetLocked = async (snapshotId: string, locked: boolean) => {
-    try {
-      await setBalanceSnapshotLocked({ data: { id: snapshotId, locked } })
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to change the lock')
-    }
-  }
-
-  const handleFreezePrevious = async () => {
-    try {
-      const { frozen } = await freezePreviousReadings()
-      toast.success(
-        frozen === 0
-          ? 'Nothing to freeze — everything older is already frozen.'
-          : `Froze ${frozen} ${frozen === 1 ? 'reading' : 'readings'}.`,
-      )
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to freeze readings')
     }
   }
 
@@ -183,16 +119,6 @@ export function NetWorthTable() {
             <Settings2 size={16} />
             Sources
           </button>
-          {unfrozenPrevious > 0 && (
-            <button
-              onClick={handleFreezePrevious}
-              className="flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-              title="Freeze every reading except the newest"
-            >
-              <Snowflake size={16} />
-              Freeze previous
-            </button>
-          )}
           <button
             onClick={handleDownloadCsv}
             disabled={readings.length === 0}
@@ -203,7 +129,10 @@ export function NetWorthTable() {
             CSV
           </button>
           <button
-            onClick={() => setAddOpen(true)}
+            onClick={() => {
+              setEditing(null)
+              setDialogOpen(true)
+            }}
             disabled={sources.length === 0}
             title={sources.length === 0 ? 'Add a source first' : 'Record balances for today'}
             className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
@@ -271,18 +200,16 @@ export function NetWorthTable() {
                   </tr>
                 ) : (
                   readings.map((reading, readingIndex) => {
-                    const isNew = reading.snapshot.id === newSnapshotId
-                    // Readings are newest-first, so index 0 is the one being
-                    // filled in and index 1 supplies the drafts.
-                    const isNewest = readingIndex === 0
-                    const previousAmounts = readings[1]?.amounts ?? new Map<string, number>()
-                    const locked = reading.snapshot.locked
                     // Years of sweeps run together otherwise. Same divider the
                     // expense list puts between months.
                     const year = reading.snapshot.date.slice(0, 4)
                     const startsYear =
                       readingIndex > 0 &&
                       readings[readingIndex - 1].snapshot.date.slice(0, 4) !== year
+                    const open = () => {
+                      setEditing(reading)
+                      setDialogOpen(true)
+                    }
                     return (
                       <Fragment key={reading.snapshot.id}>
                         {startsYear && (
@@ -297,70 +224,44 @@ export function NetWorthTable() {
                         )}
                         <tr
                           data-reading-id={reading.snapshot.id}
-                          data-locked={locked ? 'true' : undefined}
-                          className={`border-b border-gray-100 ${
-                            locked ? 'bg-indigo-50/40' : 'hover:bg-gray-50'
-                          } ${isNew ? 'ring-2 ring-inset ring-gray-900/10' : ''}`}
+                          onClick={open}
+                          className="cursor-pointer border-b border-gray-100 hover:bg-gray-50"
                         >
-                          <td className="px-1 py-1">
-                            <div className="flex items-center gap-1">
-                              {locked && (
-                                <Lock size={11} className="shrink-0 text-indigo-400" aria-hidden />
-                              )}
-                              <EditableCell
-                                value={reading.snapshot.date}
-                                type="date"
-                                disabled={locked}
-                                onSave={(v) => handleSetDate(reading.snapshot.id, v)}
-                              />
-                            </div>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {formatDate(reading.snapshot.date)}
                           </td>
-                          <td className="px-1 py-1">
-                            <EditableCell
-                              value={reading.snapshot.label ?? ''}
-                              type="text"
-                              disabled={locked}
-                              onSave={(v) => handleSetLabel(reading.snapshot.id, v)}
-                            />
+                          <td className="truncate px-3 py-2">
+                            {reading.snapshot.label || (
+                              <span className="text-gray-400">Unnamed</span>
+                            )}
                           </td>
                           {sources.map((source) => {
                             const cents = reading.amounts.get(source.id)
-                            // An empty cell on the newest reading shows the previous
-                            // reading's figure as a draft to correct. It is *not*
-                            // saved: no entry exists until Tab or Enter commits it,
-                            // so completeness is unchanged and nothing is carried
-                            // forward behind your back. The muted styling is what
-                            // says "this is still last month's number".
-                            const draft =
-                              cents == null && isNewest && !locked
-                                ? previousAmounts.get(source.id)
-                                : undefined
-
                             return (
-                              <td key={source.id} className="px-1 py-1">
-                                <EditableCell
-                                  value={cents == null ? '' : formatCents(cents)}
-                                  carried={draft == null ? undefined : formatCents(draft)}
-                                  type="amount"
-                                  className="text-right"
-                                  disabled={locked}
-                                  onSave={(v) => handleSetAmount(reading.snapshot.id, source.id, v)}
-                                />
+                              <td
+                                key={source.id}
+                                className="px-3 py-2 text-right tabular-nums whitespace-nowrap"
+                              >
+                                {cents == null ? (
+                                  <span className="text-gray-300">—</span>
+                                ) : (
+                                  formatCents(cents)
+                                )}
                               </td>
                             )
                           })}
-                          <td className="px-3 py-1 text-right">
-                            <div className="font-medium text-gray-900">
+                          <td className="px-3 py-2 text-right whitespace-nowrap">
+                            <div className="font-medium tabular-nums text-gray-900">
                               {formatCents(reading.total)}
                             </div>
                             {reading.complete
                               ? reading.delta !== null && (
                                   <div
-                                    className={`text-xs ${
+                                    className={`text-xs tabular-nums ${
                                       reading.delta >= 0 ? 'text-green-600' : 'text-red-600'
                                     }`}
                                   >
-                                    {reading.delta >= 0 ? '+' : '−'}
+                                    {reading.delta >= 0 ? '+' : '\u2212'}
                                     {formatCents(Math.abs(reading.delta))}
                                   </div>
                                 )
@@ -375,62 +276,33 @@ export function NetWorthTable() {
                                   </div>
                                 )}
                           </td>
-                          <td className="px-1 py-1">
+                          <td className="px-1 py-1" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-0.5">
-                              {locked ? (
-                                // Unfreezing is the deliberate step — deletion only
-                                // becomes possible once it's done
-                                <ConfirmButton
-                                  onConfirm={() => handleSetLocked(reading.snapshot.id, false)}
-                                  tabIndex={-1}
-                                  title="Unfreeze this reading"
-                                  description={
-                                    <>
-                                      The reading from{' '}
-                                      <span className="font-medium text-gray-900">
-                                        {formatDate(reading.snapshot.date)}
-                                      </span>{' '}
-                                      becomes editable again, and can be deleted.
-                                    </>
-                                  }
-                                  confirmLabel="Unfreeze"
-                                  tone="neutral"
-                                  className="rounded p-1 text-indigo-400 hover:bg-indigo-100 hover:text-indigo-700"
-                                >
-                                  <LockOpen size={13} />
-                                </ConfirmButton>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => handleSetLocked(reading.snapshot.id, true)}
-                                    tabIndex={-1}
-                                    title="Freeze this reading"
-                                    aria-label="Freeze this reading"
-                                    className="rounded p-1 text-gray-300 hover:bg-gray-100 hover:text-indigo-600"
-                                  >
-                                    <Lock size={13} />
-                                  </button>
-                                  <ConfirmButton
-                                    onConfirm={() => handleDeleteReading(reading.snapshot.id)}
-                                    tabIndex={-1}
-                                    title="Delete this reading?"
-                                    description={
-                                      <>
-                                        The sweep from{' '}
-                                        <span className="font-medium text-gray-900">
-                                          {formatDate(reading.snapshot.date)}
-                                        </span>{' '}
-                                        and all {reading.filled} of its balances will be removed.
-                                        Freeze it instead to keep it safe.
-                                      </>
-                                    }
-                                    confirmLabel="Delete reading"
-                                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
-                                  >
-                                    <Trash2 size={13} />
-                                  </ConfirmButton>
-                                </>
-                              )}
+                              <button
+                                onClick={open}
+                                title="Edit this reading"
+                                aria-label="Edit this reading"
+                                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <ConfirmButton
+                                onConfirm={() => handleDeleteReading(reading.snapshot.id)}
+                                title="Delete this reading?"
+                                description={
+                                  <>
+                                    The sweep from{' '}
+                                    <span className="font-medium text-gray-900">
+                                      {formatDate(reading.snapshot.date)}
+                                    </span>{' '}
+                                    and all {reading.filled} of its balances will be removed.
+                                  </>
+                                }
+                                confirmLabel="Delete reading"
+                                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                              >
+                                <Trash2 size={13} />
+                              </ConfirmButton>
                             </div>
                           </td>
                         </tr>
@@ -444,22 +316,22 @@ export function NetWorthTable() {
         </div>
       )}
 
-      <AddReadingDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
+      <ReadingDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
         sources={sources}
         readings={readings}
-        onCreated={(id) => {
-          setNewSnapshotId(id)
-          // The new reading lands at the top, which may be scrolled away.
-          scrollRef.current?.scrollTo({ top: 0 })
+        reading={editing}
+        onSaved={() => {
+          // A new reading lands at the top, which may be scrolled away.
+          if (!editing) scrollRef.current?.scrollTo({ top: 0 })
         }}
       />
 
       {sources.length > 0 && readings.length > 0 && (
         <p className="text-xs text-gray-400">
-          Each row is one sweep through your accounts — tab across to fill it in. Blank cells are
-          left out of the total.
+          Each row is one sweep through your accounts — click it to correct anything. Blank cells
+          are left out of the total.
         </p>
       )}
     </div>

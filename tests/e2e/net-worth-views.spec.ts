@@ -26,19 +26,14 @@ function rows(page: Page) {
   return page.locator('tr[data-reading-id]')
 }
 
-/** Fill one amount cell of the newest reading inline and commit it. */
-async function fill(page: Page, sourceIndex: number, value: string) {
-  // Cell 0 is the date, cell 1 the reading's name, then one per source.
-  const cell = rows(page)
-    .first()
-    .locator('[data-editable-cell]')
-    .nth(sourceIndex + 2)
-  await cell.click()
-  const input = cell.locator('input[type="text"]')
-  await expect(input).toBeVisible({ timeout: 5000 })
-  await input.fill(value)
-  await input.press('Enter')
-  await expect(cell.locator('input')).toHaveCount(0, { timeout: 10000 })
+/** Correct one balance of the newest reading through the edit dialog. */
+async function fill(page: Page, source: string, value: string) {
+  await rows(page).first().click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await dialog.getByLabel(source).fill(value)
+  await dialog.getByRole('button', { name: 'Save changes' }).click()
+  await expect(dialog).toHaveCount(0, { timeout: 10000 })
 }
 
 test.describe('Net worth views', () => {
@@ -129,7 +124,7 @@ test.describe('Net worth views', () => {
     await expect(row).not.toContainText('of 3')
   })
 
-  test('an empty cell on the newest reading carries the previous figure', async () => {
+  test('a source left blank is flagged until the reading is edited', async () => {
     await page.getByRole('button', { name: 'Add reading' }).click()
     const dialog = page.getByRole('dialog')
     await dialog.getByLabel(HOUSE).fill('')
@@ -137,12 +132,11 @@ test.describe('Net worth views', () => {
     await expect(dialog).toHaveCount(0, { timeout: 10000 })
 
     const row = rows(page).first()
-    // Shown as a draft to correct, but not counted until committed
     await expect(row).toContainText('2 of 3', { timeout: 10000 })
-    await expect(row).toContainText('$400,000.00')
 
-    await fill(page, 1, '400000')
+    await fill(page, HOUSE, '400000')
     await expect(row).not.toContainText('of 3', { timeout: 10000 })
+    await expect(row).toContainText('$400,000.00')
   })
 
   test('a year divider separates readings from different years', async () => {
