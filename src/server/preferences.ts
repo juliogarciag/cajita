@@ -21,7 +21,7 @@ export const getPreferences = createServerFn({ method: 'GET' })
 
 export const updatePreferences = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       date_format: z.enum(['DD/MM/YYYY', 'YYYY-MM-DD']),
     }),

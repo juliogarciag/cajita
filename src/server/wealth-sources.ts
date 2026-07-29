@@ -9,7 +9,7 @@ const KIND = z.enum(WEALTH_KINDS.map((k) => k.key) as [string, ...string[]])
 
 export const createWealthSource = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       name: z.string().min(1).max(255),
       color: z.string().regex(HEX_COLOR),
@@ -50,7 +50,7 @@ export const createWealthSource = createServerFn({ method: 'POST' })
 
 export const updateWealthSource = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       id: z.string().uuid(),
       name: z.string().min(1).max(255).optional(),
@@ -89,7 +89,7 @@ export const updateWealthSource = createServerFn({ method: 'POST' })
 
 export const deleteWealthSource = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ id: z.string().uuid() }))
+  .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
 

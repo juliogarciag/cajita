@@ -177,7 +177,7 @@ async function searchSongsWithConcurrency(
 
 export const resolveSongs = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ songs: z.array(z.object({ artist: z.string(), title: z.string() })) }))
+  .validator(z.object({ songs: z.array(z.object({ artist: z.string(), title: z.string() })) }))
   .handler(async ({ data }) => {
     const developerToken = await generateDeveloperToken()
     const resolved = await searchSongsWithConcurrency(data.songs, developerToken)
@@ -186,7 +186,7 @@ export const resolveSongs = createServerFn({ method: 'POST' })
 
 export const resolveSingleSong = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ artist: z.string(), title: z.string() }))
+  .validator(z.object({ artist: z.string(), title: z.string() }))
   .handler(async ({ data }) => {
     const developerToken = await generateDeveloperToken()
     const result = await searchSong(data.artist, data.title, developerToken)

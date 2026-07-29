@@ -7,7 +7,7 @@ export const HEX_COLOR = /^#[0-9a-fA-F]{6}$/
 
 export const addColorBookmark = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ color: z.string().regex(HEX_COLOR) }))
+  .validator(z.object({ color: z.string().regex(HEX_COLOR) }))
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
     const color = data.color.toLowerCase()
@@ -34,7 +34,7 @@ export const addColorBookmark = createServerFn({ method: 'POST' })
 
 export const deleteColorBookmark = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ id: z.string().uuid() }))
+  .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
 

@@ -109,7 +109,7 @@ async function createAppleMusicPlaylist(params: CreatePlaylistParams): Promise<{
 
 export const savePlaylist = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       name: z.string(),
       description: z.string().optional(),

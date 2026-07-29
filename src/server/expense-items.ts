@@ -5,7 +5,7 @@ import { authMiddleware } from './middleware.js'
 
 export const createExpenseItem = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       expense_category_id: z.string().uuid(),
       description: z.string().max(255),
@@ -52,7 +52,7 @@ export const createExpenseItem = createServerFn({ method: 'POST' })
 
 export const updateExpenseItem = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       id: z.string().uuid(),
       description: z.string().max(255).optional(),
@@ -86,7 +86,7 @@ export const updateExpenseItem = createServerFn({ method: 'POST' })
 
 export const deleteExpenseItem = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ id: z.string().uuid() }))
+  .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
 

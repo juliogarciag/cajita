@@ -112,7 +112,7 @@ Generate exactly 1 DIFFERENT song that:
 
 export const generatePlaylistSongs = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ prompt: z.string(), count: z.number().min(1).max(100).optional() }))
+  .validator(z.object({ prompt: z.string(), count: z.number().min(1).max(100).optional() }))
   .handler(async ({ data }) => {
     const { prompt, count = 25 } = data
     if (!prompt.trim()) {
@@ -130,7 +130,7 @@ const reloadSongValidator = z.object({
 
 export const reloadSong = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(reloadSongValidator)
+  .validator(reloadSongValidator)
   .handler(async ({ data }) => {
     const song = await generateReplacementSong(data.prompt, data.currentSongs, data.rejectedSong)
     return { song }

@@ -23,7 +23,7 @@ export const getTeamMembers = createServerFn({ method: 'GET' })
 
 export const upsertExpenseItemNote = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       expense_item_id: z.string().uuid(),
       content: z.string().max(10000),
@@ -63,7 +63,7 @@ export const upsertExpenseItemNote = createServerFn({ method: 'POST' })
 
 export const deleteExpenseItemNote = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ expense_item_id: z.string().uuid() }))
+  .validator(z.object({ expense_item_id: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
 

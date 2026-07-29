@@ -10,7 +10,7 @@ import { authMiddleware } from './middleware.js'
  */
 export const updateDisplayName = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ display_name: z.string().max(120) }))
+  .validator(z.object({ display_name: z.string().max(120) }))
   .handler(async ({ data, context }) => {
     const trimmed = data.display_name.trim()
     // Empty means "stop overriding" rather than "my name is blank".

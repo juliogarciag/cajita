@@ -11,7 +11,7 @@ import { HEX_COLOR } from './color-bookmarks.js'
  */
 export const reorderExpenseCategories = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ ids: z.array(z.string().uuid()).max(100) }))
+  .validator(z.object({ ids: z.array(z.string().uuid()).max(100) }))
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
 
@@ -31,7 +31,7 @@ export const reorderExpenseCategories = createServerFn({ method: 'POST' })
 
 export const createExpenseCategory = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       name: z.string().min(1).max(255),
       color: z.string().regex(HEX_COLOR),
@@ -63,7 +63,7 @@ export const createExpenseCategory = createServerFn({ method: 'POST' })
 
 export const updateExpenseCategory = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       id: z.string().uuid(),
       name: z.string().min(1).max(255).optional(),
@@ -100,7 +100,7 @@ export const updateExpenseCategory = createServerFn({ method: 'POST' })
 
 export const deleteExpenseCategory = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ id: z.string().uuid() }))
+  .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
 

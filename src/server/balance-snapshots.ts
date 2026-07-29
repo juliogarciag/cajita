@@ -7,7 +7,7 @@ import { defaultReadingLabel, sameMonth } from '#/lib/reading-label.js'
 
 export const createBalanceSnapshot = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       date: z.string(),
       label: z.string().max(120).optional(),
@@ -90,7 +90,7 @@ async function requireSnapshot(id: string, teamId: string) {
 
 export const updateBalanceSnapshot = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       id: z.string().uuid(),
       date: z.string().optional(),
@@ -118,7 +118,7 @@ export const updateBalanceSnapshot = createServerFn({ method: 'POST' })
 
 export const deleteBalanceSnapshot = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ id: z.string().uuid() }))
+  .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
     await requireSnapshot(data.id, teamId)
@@ -137,7 +137,7 @@ export const deleteBalanceSnapshot = createServerFn({ method: 'POST' })
 // which is what makes a cell "not filled in" as opposed to zero.
 export const setBalanceEntry = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       balance_snapshot_id: z.string().uuid(),
       wealth_source_id: z.string().uuid(),
