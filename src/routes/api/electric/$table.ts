@@ -104,6 +104,15 @@ export const Route = createFileRoute('/api/electric/$table')({
           headers.delete('content-encoding')
           headers.delete('content-length')
 
+          // Electric answers with `public, s-maxage=3600` because a raw shape
+          // URL describes its own contents. Ours doesn't: the team filter is
+          // added here, invisibly, so two teams share one URL and the response
+          // is only correct for the caller. Any shared cache in front of this
+          // would hand one household's balances to another.
+          headers.set('cache-control', 'private, no-store')
+          // Same reasoning — Electric's `*` is meant for a public shape API.
+          headers.delete('access-control-allow-origin')
+
           return new Response(response.body, {
             status: response.status,
             statusText: response.statusText,
