@@ -20,7 +20,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:e2e": "npx playwright test",
-    "import-ledger": "tsx scripts/import-ledger.ts"
+    "import-ledger": "tsx scripts/import-ledger.ts",
+    "import-mortgage": "tsx scripts/import-mortgage.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
