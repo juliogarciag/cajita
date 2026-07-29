@@ -24,8 +24,13 @@ const TEAM_SCOPED_TABLES = [
   'balance_entries',
 ]
 
-// Electric protocol query params to forward
-const ELECTRIC_PARAMS = ['offset', 'handle', 'live', 'cursor', 'where', 'columns', 'replica']
+// Electric protocol query params to forward. `where` is deliberately absent:
+// the team scope below is the only thing keeping one team's rows away from
+// another's, and a client-supplied `where` gets to sit next to it in the same
+// SQL expression. `1=1) OR (1=1` closes its own paren, and because AND binds
+// tighter than OR the scope collapses to a no-op. No collection sends either
+// `where` or `columns`, so forwarding them was surface with no upside.
+const ELECTRIC_PARAMS = ['offset', 'handle', 'live', 'cursor', 'replica']
 
 export const Route = createFileRoute('/api/electric/$table')({
   server: {
@@ -61,14 +66,11 @@ export const Route = createFileRoute('/api/electric/$table')({
           }
         }
 
-        // Scope team-scoped tables by the user's team
+        // Scope team-scoped tables by the user's team. This is the whole of the
+        // tenant boundary, so it owns `where` outright — nothing is merged into
+        // it. Both values interpolated here are uuids read back out of Postgres.
         if (TEAM_SCOPED_TABLES.includes(table) && user.teamId) {
-          const existingWhere = electricUrl.searchParams.get('where')
-          const teamClause = `"team_id" = '${user.teamId}'`
-          electricUrl.searchParams.set(
-            'where',
-            existingWhere ? `(${existingWhere}) AND ${teamClause}` : teamClause,
-          )
+          electricUrl.searchParams.set('where', `"team_id" = '${user.teamId}'`)
         }
 
         // team_members: expose users who share a team — pre-fetch user IDs to avoid subquery
@@ -85,11 +87,9 @@ export const Route = createFileRoute('/api/electric/$table')({
           }
 
           electricUrl.searchParams.set('table', 'users')
-          const existingWhere = electricUrl.searchParams.get('where')
-          const teamClause = `"id" IN (${userIds.map((id) => `'${id}'`).join(', ')})`
           electricUrl.searchParams.set(
             'where',
-            existingWhere ? `(${existingWhere}) AND ${teamClause}` : teamClause,
+            `"id" IN (${userIds.map((id) => `'${id}'`).join(', ')})`,
           )
         }
 
