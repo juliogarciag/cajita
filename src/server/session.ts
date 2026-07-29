@@ -1,15 +1,33 @@
+import { createHash } from 'node:crypto'
 import { db } from '#/db/index.js'
 import { DEFAULT_PALETTE } from '#/lib/category-colors.js'
 
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
+/**
+ * What's stored is the hash, never the token itself — the raw value is a bearer
+ * credential, so a column holding it *is* the credential and anything that can
+ * read the database (a dump, the Railway console, an over-broad query) can log
+ * in as that user. No salt or slow KDF: the token is 122 bits of CSPRNG output,
+ * so it isn't guessable and bcrypt's reason for existing — grinding low-entropy
+ * passwords — doesn't apply.
+ */
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
+
 export async function createSession(userId: string): Promise<string> {
   const token = crypto.randomUUID()
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS)
 
+  // Logging in is the one moment we know something is happening, and expired
+  // rows are otherwise only cleared when their own token is presented again —
+  // which, for a session someone simply abandoned, never happens.
+  await db.deleteFrom('sessions').where('expires_at', '<', new Date()).execute()
+
   await db
     .insertInto('sessions')
-    .values({ user_id: userId, token, expires_at: expiresAt })
+    .values({ user_id: userId, token: hashToken(token), expires_at: expiresAt })
     .execute()
 
   return token
@@ -27,13 +45,13 @@ export async function validateSession(token: string) {
       'users.picture',
       'sessions.expires_at',
     ])
-    .where('sessions.token', '=', token)
+    .where('sessions.token', '=', hashToken(token))
     .executeTakeFirst()
 
   if (!row) return null
 
   if (new Date(row.expires_at) < new Date()) {
-    await db.deleteFrom('sessions').where('token', '=', token).execute()
+    await db.deleteFrom('sessions').where('token', '=', hashToken(token)).execute()
     return null
   }
 
@@ -61,7 +79,7 @@ export async function validateSession(token: string) {
 }
 
 export async function destroySession(token: string): Promise<void> {
-  await db.deleteFrom('sessions').where('token', '=', token).execute()
+  await db.deleteFrom('sessions').where('token', '=', hashToken(token)).execute()
 }
 
 export async function ensureTeamMembership(userId: string): Promise<void> {
