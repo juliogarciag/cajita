@@ -4,7 +4,8 @@
 // is captured in the same sitting, a reading's total is a real number — there
 // is no carrying forward of stale per-source values.
 
-import type { WealthSource } from '#/lib/wealth-sources-collection'
+import { sourceKind, type WealthSource } from '#/lib/wealth-sources-collection'
+import { WEALTH_KINDS } from '#/lib/wealth-kinds'
 import type { BalanceSnapshot } from '#/lib/balance-snapshots-collection'
 import type { BalanceEntry } from '#/lib/balance-entries-collection'
 import { toISODate } from '#/lib/format'
@@ -118,6 +119,66 @@ export function buildReadings(
 /** The newest reading whose cells are all filled — what the headline reports. */
 export function latestComplete(readings: readonly Reading[]): Reading | null {
   return readings.find((r) => r.complete) ?? null
+}
+
+/**
+ * A reading's total restricted to one metric's kinds.
+ *
+ * Completeness deliberately stays a property of the whole reading rather than
+ * of the metric: a reading missing its mortgage is a reading you haven't
+ * finished, and letting the Liquid view quietly accept it would mean the same
+ * date counted as reliable in one view and not another.
+ */
+export function metricTotal(
+  reading: Reading,
+  sources: readonly WealthSource[],
+  kinds: readonly string[],
+): number {
+  let total = 0
+  for (const source of sources) {
+    if (!kinds.includes(sourceKind(source))) continue
+    total += reading.amounts.get(source.id) ?? 0
+  }
+  return total
+}
+
+export type SourceGroup = {
+  kind: string
+  label: string
+  subtotal: number
+  sources: { source: WealthSource; amount: number; share: number | null }[]
+}
+
+/**
+ * Sources grouped by kind, in the order the kinds are declared, with subtotals.
+ *
+ * `share` is a source's fraction of its own group, not of net worth — dividing
+ * by a total that a liability has pulled downward produces figures like 215%
+ * and −144%. A group holding any negative amount reports no shares at all,
+ * because a percentage of a mixed-sign total means nothing; there the subtotal
+ * is the number that carries the meaning.
+ */
+export function groupSources(reading: Reading, sources: readonly WealthSource[]): SourceGroup[] {
+  return WEALTH_KINDS.map(({ key, label }) => {
+    const inKind = sources.filter((s) => sourceKind(s) === key)
+    const rows = inKind
+      .map((source) => ({ source, amount: reading.amounts.get(source.id) }))
+      .filter((r): r is { source: WealthSource; amount: number } => r.amount != null)
+
+    const subtotal = rows.reduce((sum, r) => sum + r.amount, 0)
+    const anyNegative = rows.some((r) => r.amount < 0)
+
+    return {
+      kind: key,
+      label,
+      subtotal,
+      sources: rows.map((r) => ({
+        source: r.source,
+        amount: r.amount,
+        share: anyNegative || subtotal === 0 ? null : (r.amount / subtotal) * 100,
+      })),
+    }
+  }).filter((g) => g.sources.length > 0)
 }
 
 export function daysSince(date: string, today: Date): number {

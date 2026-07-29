@@ -10,7 +10,12 @@ import {
   latestComplete,
   daysSince,
   describeAge,
+  metricTotal,
+  groupSources,
+  type Reading,
 } from '#/lib/net-worth.js'
+import { METRICS, DEFAULT_METRIC, metricKinds, type MetricKey } from '#/lib/wealth-kinds.js'
+import { sourceKind } from '#/lib/wealth-sources-collection.js'
 import { formatCents, toISODate } from '#/lib/format.js'
 import { useDateFormat } from '#/lib/date-format.js'
 
@@ -40,7 +45,10 @@ function compactUsd(cents: number): string {
 export function NetWorthSummary() {
   const { formatDate } = useDateFormat()
   const navigate = useNavigate()
-  const { range } = useSearch({ strict: false }) as { range?: ChartRangeKey }
+  const { range, metric } = useSearch({ strict: false }) as {
+    range?: ChartRangeKey
+    metric?: MetricKey
+  }
   const [hover, setHover] = useState<Hover | null>(null)
 
   // A year by default — the window the dashboard is usually asked about. The
@@ -58,7 +66,24 @@ export function NetWorthSummary() {
   )
   const sources = useMemo(() => visibleSources(allSources, entries), [allSources, entries])
 
+  const selectedMetric = METRICS.find((m) => m.key === metric) ?? METRICS[0]
+  // Every figure on this card — headline, delta, chart, axis — is the selected
+  // metric's slice of a reading, never the reading's raw total.
+  const valueOf = useMemo(() => {
+    const kinds = metricKinds(selectedMetric.key)
+    return (r: Reading) => metricTotal(r, sources, kinds)
+  }, [selectedMetric, sources])
+
   const headline = latestComplete(readings)
+
+  // The newest reading full stop, complete or not. When it isn't complete the
+  // headline silently falls back to an older one, which is worth saying rather
+  // than leaving a stale date to be noticed.
+  const newest = readings[0] ?? null
+  const staleBecauseIncomplete =
+    newest && headline && !newest.complete && newest.snapshot.id !== headline.snapshot.id
+      ? newest
+      : null
 
   // Only complete readings are plotted — a half-filled sweep would read as a crash
   const points = useMemo(() => {
@@ -71,15 +96,25 @@ export function NetWorthSummary() {
     return complete.filter((r) => r.snapshot.date >= cutoffDate).reverse()
   }, [readings, selectedRange])
 
-  const handleSelectRange = (key: ChartRangeKey) => {
-    void navigate({ to: '/dashboard', search: key === '1y' ? {} : { range: key } })
+  // Both controls live in the URL, so a view is linkable — and each has to
+  // preserve the other rather than resetting it.
+  const goTo = (next: { range?: ChartRangeKey; metric?: MetricKey }) => {
+    const r = next.range ?? selectedRange.key
+    const m = next.metric ?? selectedMetric.key
+    void navigate({
+      to: '/dashboard',
+      search: {
+        ...(r === '1y' ? {} : { range: r }),
+        ...(m === DEFAULT_METRIC ? {} : { metric: m }),
+      },
+    })
   }
 
   const bounds = useMemo(() => {
     if (points.length < 2) return null
-    const totals = points.map((p) => p.total)
+    const totals = points.map(valueOf)
     return { min: Math.min(...totals), max: Math.max(...totals) }
-  }, [points])
+  }, [points, valueOf])
 
   const path = useMemo(() => {
     if (!bounds || points.length < 2) return null
@@ -87,16 +122,16 @@ export function NetWorthSummary() {
     const step = CHART_WIDTH / (points.length - 1)
     return points.map((p, i) => {
       const x = Math.round(i * step)
-      const y = Math.round(CHART_HEIGHT - ((p.total - bounds.min) / span) * CHART_HEIGHT)
+      const y = Math.round(CHART_HEIGHT - ((valueOf(p) - bounds.min) / span) * CHART_HEIGHT)
       return { x, y, reading: p }
     })
-  }, [points, bounds])
+  }, [points, bounds, valueOf])
 
   // Change across the visible window rather than since the previous reading —
   // the number sits beside the range buttons, so it should answer the question
   // those buttons ask. "All" has no window to measure from, so it shows nothing.
   const baseline = selectedRange.years !== null && points.length >= 2 ? points[0] : null
-  const periodDelta = baseline ? points[points.length - 1].total - baseline.total : null
+  const periodDelta = baseline ? valueOf(points[points.length - 1]) - valueOf(baseline) : null
 
   // Snap to the nearest reading anywhere in the chart — the dots themselves are
   // a 4px target, which is not something to ask anyone to hit.
@@ -120,6 +155,18 @@ export function NetWorthSummary() {
 
   const hovered = hover && path ? path[hover.index] : null
 
+  const metricSources = useMemo(() => {
+    const kinds = metricKinds(selectedMetric.key)
+    return sources.filter((s) => kinds.includes(sourceKind(s)))
+  }, [sources, selectedMetric])
+
+  // Against the previous plotted point rather than the reading's own delta,
+  // which is computed on the raw total and would disagree with the metric.
+  const hoveredDelta =
+    hover && hover.index > 0 && points[hover.index] && points[hover.index - 1]
+      ? valueOf(points[hover.index]) - valueOf(points[hover.index - 1])
+      : null
+
   if (!headline) {
     return (
       <div className="rounded-lg border border-gray-200 bg-white p-6">
@@ -142,10 +189,10 @@ export function NetWorthSummary() {
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-sm text-gray-500">Net worth</div>
+            <div className="text-sm text-gray-500">{selectedMetric.label}</div>
             <div className="mt-0.5 flex items-baseline gap-3">
               <span className="text-3xl font-semibold text-gray-900">
-                {formatCents(headline.total)}
+                {formatCents(valueOf(headline))}
               </span>
               {periodDelta !== null && (
                 <span className="flex items-baseline gap-1.5">
@@ -163,30 +210,63 @@ export function NetWorthSummary() {
               {formatDate(headline.snapshot.date)} ·{' '}
               {describeAge(daysSince(headline.snapshot.date, new Date()))}
             </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {completeCount >= 2 && (
-              <div
-                role="group"
-                aria-label="Chart range"
-                className="flex overflow-hidden rounded-lg border border-gray-200 text-xs"
-              >
-                {CHART_RANGES.map((option) => (
-                  <button
-                    key={option.key}
-                    onClick={() => handleSelectRange(option.key)}
-                    aria-pressed={option.key === selectedRange.key}
-                    className={`px-2.5 py-1 font-medium transition-colors ${
-                      option.key === selectedRange.key
-                        ? 'bg-gray-900 text-white'
-                        : 'text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+            {staleBecauseIncomplete && (
+              <div className="mt-1.5 text-xs text-amber-600">
+                <Link to="/finances/net-worth" className="hover:underline">
+                  {formatDate(staleBecauseIncomplete.snapshot.date)} is only{' '}
+                  {staleBecauseIncomplete.filled} of {staleBecauseIncomplete.expected} — finish it
+                  to bring it in
+                </Link>
               </div>
             )}
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            {/* Views, not filters: liquid and equity partition net worth, so
+                these three answer different questions about the same reading. */}
+            <div
+              role="group"
+              aria-label="Metric"
+              className="flex overflow-hidden rounded-lg border border-gray-200 text-xs"
+            >
+              {METRICS.map((option) => (
+                <button
+                  key={option.key}
+                  onClick={() => goTo({ metric: option.key })}
+                  aria-pressed={option.key === selectedMetric.key}
+                  className={`px-2.5 py-1 font-medium transition-colors ${
+                    option.key === selectedMetric.key
+                      ? 'bg-gray-900 text-white'
+                      : 'text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              {completeCount >= 2 && (
+                <div
+                  role="group"
+                  aria-label="Chart range"
+                  className="flex overflow-hidden rounded-lg border border-gray-200 text-xs"
+                >
+                  {CHART_RANGES.map((option) => (
+                    <button
+                      key={option.key}
+                      onClick={() => goTo({ range: option.key })}
+                      aria-pressed={option.key === selectedRange.key}
+                      className={`px-2.5 py-1 font-medium transition-colors ${
+                        option.key === selectedRange.key
+                          ? 'bg-gray-900 text-white'
+                          : 'text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -281,21 +361,23 @@ export function NetWorthSummary() {
                   </div>
                   <div className="mt-0.5 flex items-baseline gap-2">
                     <span className="text-sm font-medium text-gray-900">
-                      {formatCents(hovered.reading.total)}
+                      {formatCents(valueOf(hovered.reading))}
                     </span>
-                    {hovered.reading.delta !== null && (
+                    {hoveredDelta !== null && (
                       <span
                         className={`text-xs ${
-                          hovered.reading.delta >= 0 ? 'text-green-600' : 'text-red-600'
+                          hoveredDelta >= 0 ? 'text-green-600' : 'text-red-600'
                         }`}
                       >
-                        {hovered.reading.delta >= 0 ? '+' : '−'}
-                        {formatCents(Math.abs(hovered.reading.delta))}
+                        {hoveredDelta >= 0 ? '+' : '−'}
+                        {formatCents(Math.abs(hoveredDelta))}
                       </span>
                     )}
                   </div>
                   <div className="mt-1.5 flex flex-col gap-0.5 border-t border-gray-100 pt-1.5">
-                    {sources.map((source) => {
+                    {/* Only the sources this metric counts — the Liquid view
+                        shouldn't list a house it isn't adding up. */}
+                    {metricSources.map((source) => {
                       const cents = hovered.reading.amounts.get(source.id)
                       if (cents == null) return null
                       return (
@@ -334,46 +416,66 @@ export function NetWorthSummary() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-        {sources.map((source) => {
-          const current = headline.amounts.get(source.id)
-          if (current == null) return null
-          // Same window as the headline, so the two numbers can't disagree.
-          const before = baseline?.amounts.get(source.id)
-          const change = before == null ? null : current - before
-          const share = headline.total === 0 ? 0 : (current / headline.total) * 100
-
-          return (
-            <div
-              key={source.id}
-              className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5 last:border-b-0"
-            >
-              <span className="flex items-center gap-2 text-sm text-gray-900">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: source.color }} />
-                {source.name}
+      {/* Grouped by kind with subtotals, and restricted to the selected metric
+          so the list adds up to the headline above it. Shares are a fraction of
+          the group, so a mortgage in Debt can't distort the composition of Cash. */}
+      <div className="flex flex-col gap-3">
+        {groupSources(headline, metricSources).map((group) => (
+          <div
+            key={group.kind}
+            className="overflow-hidden rounded-lg border border-gray-200 bg-white"
+          >
+            <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                {group.label}
               </span>
-              <span className="flex items-baseline gap-4">
-                <span className="w-12 text-right text-xs text-gray-400">{share.toFixed(1)}%</span>
-                <span
-                  className={`w-20 text-right text-xs ${
-                    change == null
-                      ? 'text-gray-300'
-                      : change >= 0
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                  }`}
-                >
-                  {change == null
-                    ? '—'
-                    : `${change >= 0 ? '+' : '−'}${formatCents(Math.abs(change))}`}
-                </span>
-                <span className="w-24 text-right text-sm text-gray-900">
-                  {formatCents(current)}
-                </span>
+              <span className="text-sm font-medium tabular-nums text-gray-900">
+                {formatCents(group.subtotal)}
               </span>
             </div>
-          )
-        })}
+            {group.sources.map(({ source, amount, share }) => {
+              // Same window as the headline, so the two can't disagree.
+              const before = baseline?.amounts.get(source.id)
+              const change = before == null ? null : amount - before
+
+              return (
+                <div
+                  key={source.id}
+                  className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5 last:border-b-0"
+                >
+                  <span className="flex items-center gap-2 text-sm text-gray-900">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: source.color }}
+                    />
+                    {source.name}
+                  </span>
+                  <span className="flex items-baseline gap-4">
+                    <span className="w-12 text-right text-xs tabular-nums text-gray-400">
+                      {share === null ? '—' : `${share.toFixed(1)}%`}
+                    </span>
+                    <span
+                      className={`w-20 text-right text-xs tabular-nums ${
+                        change == null
+                          ? 'text-gray-300'
+                          : change >= 0
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                      }`}
+                    >
+                      {change == null
+                        ? '—'
+                        : `${change >= 0 ? '+' : '−'}${formatCents(Math.abs(change))}`}
+                    </span>
+                    <span className="w-24 text-right text-sm tabular-nums text-gray-900">
+                      {formatCents(amount)}
+                    </span>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        ))}
       </div>
     </div>
   )

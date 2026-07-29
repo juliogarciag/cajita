@@ -7,6 +7,13 @@ type CellType = 'text' | 'date' | 'amount'
 
 interface EditableCellProps {
   value: string
+  /**
+   * A suggestion to start from when the cell is empty — the previous reading's
+   * figure. Kept separate from `value` on purpose: `value` means "what is
+   * stored", and accepting a suggestion has to register as a change so it
+   * actually saves. Shown muted until committed.
+   */
+  carried?: string
   type: CellType
   onSave: (value: string) => void
   onTab?: (shift: boolean) => void
@@ -18,6 +25,7 @@ interface EditableCellProps {
 
 export function EditableCell({
   value,
+  carried,
   type,
   onSave,
   onTab,
@@ -27,7 +35,7 @@ export function EditableCell({
   disabled = false,
 }: EditableCellProps) {
   const [editing, setEditing] = useState(autoEdit)
-  const [draft, setDraft] = useState(value)
+  const [draft, setDraft] = useState(value || carried || '')
   const inputRef = useRef<HTMLInputElement>(null)
   const { formatDate } = useDateFormat()
 
@@ -36,8 +44,8 @@ export function EditableCell({
   }, [autoEdit])
 
   useEffect(() => {
-    setDraft(value)
-  }, [value])
+    setDraft(value || carried || '')
+  }, [value, carried])
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -105,6 +113,8 @@ export function EditableCell({
 
   // Display value: use draft for optimistic update (avoids blink), format dates
   const displayValue = type === 'date' ? formatDate(draft) : draft
+  // Nothing stored yet, but a suggestion is showing — say so visually.
+  const showingCarried = !value && !!carried
 
   if (disabled || !editing) {
     return (
@@ -112,8 +122,9 @@ export function EditableCell({
         ref={cellRef}
         data-editable-cell
         {...(disabled ? { 'data-disabled': true } : {})}
-        className={`w-full rounded border border-transparent px-2 py-1.5 ${disabled ? '' : 'cursor-pointer hover:bg-gray-100'} ${className}`}
+        className={`w-full rounded border border-transparent px-2 py-1.5 ${disabled ? '' : 'cursor-pointer hover:bg-gray-100'} ${showingCarried ? 'italic text-gray-400' : ''} ${className}`}
         onClick={disabled ? undefined : () => setEditing(true)}
+        title={showingCarried ? 'Carried from the previous reading — not saved yet' : undefined}
       >
         {displayValue || <span className="text-gray-400">—</span>}
       </div>
@@ -145,6 +156,7 @@ export function EditableCell({
       <div ref={cellRef} data-editable-cell>
         <AmountInput
           value={value}
+          carried={carried}
           onSave={(v) => {
             onSave(v)
             setEditing(false)

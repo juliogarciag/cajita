@@ -264,8 +264,12 @@ export function NetWorthTable() {
                   </td>
                 </tr>
               ) : (
-                readings.map((reading) => {
+                readings.map((reading, readingIndex) => {
                   const isNew = reading.snapshot.id === newSnapshotId
+                  // Readings are newest-first, so index 0 is the one being
+                  // filled in and index 1 supplies the drafts.
+                  const isNewest = readingIndex === 0
+                  const previousAmounts = readings[1]?.amounts ?? new Map<string, number>()
                   const locked = reading.snapshot.locked
                   return (
                     <tr
@@ -291,10 +295,22 @@ export function NetWorthTable() {
                       </td>
                       {sources.map((source, index) => {
                         const cents = reading.amounts.get(source.id)
+                        // An empty cell on the newest reading shows the previous
+                        // reading's figure as a draft to correct. It is *not*
+                        // saved: no entry exists until Tab or Enter commits it,
+                        // so completeness is unchanged and nothing is carried
+                        // forward behind your back. The muted styling is what
+                        // says "this is still last month's number".
+                        const draft =
+                          cents == null && isNewest && !locked
+                            ? previousAmounts.get(source.id)
+                            : undefined
+
                         return (
                           <td key={source.id} className="px-1 py-1">
                             <EditableCell
                               value={cents == null ? '' : formatCents(cents)}
+                              carried={draft == null ? undefined : formatCents(draft)}
                               type="amount"
                               className="text-right"
                               disabled={locked}

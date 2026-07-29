@@ -177,8 +177,10 @@ test.describe('Net worth', () => {
 
   test('the dashboard reports the latest complete reading', async () => {
     await page.goto('/dashboard')
-    await expect(page.getByText('Net worth')).toBeVisible()
-    await expect(page.getByText('$30,230.00').first()).toBeVisible({ timeout: 10000 })
+    // "Net worth" is both the card's caption and a metric button, so match the
+    // card itself rather than the text.
+    await expect(page.getByRole('group', { name: 'Metric' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('.text-3xl').first()).toHaveText('$30,230.00', { timeout: 10000 })
     await expect(page.getByText(new RegExp(BANK))).toBeVisible()
   })
 })

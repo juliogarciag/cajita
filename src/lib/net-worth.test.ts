@@ -5,6 +5,8 @@ import {
   latestComplete,
   daysSince,
   describeAge,
+  metricTotal,
+  groupSources,
 } from '#/lib/net-worth'
 import type { WealthSource } from '#/lib/wealth-sources-collection'
 import type { BalanceSnapshot } from '#/lib/balance-snapshots-collection'
@@ -199,5 +201,74 @@ describe('daysSince / describeAge', () => {
     expect(describeAge(3)).toBe('3 days ago')
     expect(describeAge(28)).toBe('4 weeks ago')
     expect(describeAge(90)).toBe('3 months ago')
+  })
+})
+
+describe('metricTotal / groupSources', () => {
+  // Julio's real shape: cash + investment + a house financed by a mortgage
+  const sources = [
+    source('bank', { kind: 'cash', name: 'Bank account' }),
+    source('deel', { kind: 'cash', name: 'Deel' }),
+    source('ibkr', { kind: 'investment', name: 'IBKR - VTI' }),
+    source('house', { kind: 'property', name: 'House' }),
+    source('mortgage', { kind: 'debt', name: 'Mortgage' }),
+  ]
+  const snapshots = [snapshot('s1', '2026-03-26')]
+  const entries = [
+    entry('s1', 'bank', 5_369_021),
+    entry('s1', 'deel', 318_000),
+    entry('s1', 'ibkr', 124_000),
+    entry('s1', 'house', 40_150_000),
+    entry('s1', 'mortgage', -30_041_139),
+  ]
+  const reading = buildReadings(snapshots, entries, sources)[0]
+
+  test('the reading is complete and its total nets the liability', () => {
+    expect(reading.complete).toBe(true)
+    expect(reading.total).toBe(5_369_021 + 318_000 + 124_000 + 40_150_000 - 30_041_139)
+  })
+
+  test('liquid and equity partition net worth exactly', () => {
+    const liquid = metricTotal(reading, sources, ['cash', 'investment'])
+    const equity = metricTotal(reading, sources, ['property', 'debt'])
+    const net = metricTotal(reading, sources, ['cash', 'investment', 'property', 'debt'])
+
+    expect(liquid).toBe(5_369_021 + 318_000 + 124_000)
+    expect(equity).toBe(40_150_000 - 30_041_139)
+    // The property that makes the three views trustworthy
+    expect(liquid + equity).toBe(net)
+    expect(net).toBe(reading.total)
+  })
+
+  test('shares are a fraction of the group, not of net worth', () => {
+    const cash = groupSources(reading, sources).find((g) => g.kind === 'cash')!
+    expect(cash.subtotal).toBe(5_369_021 + 318_000)
+    const bank = cash.sources.find((s) => s.source.id === 'bank')!
+    // 94.4% of cash — not 28.9% of a net worth the mortgage dragged down
+    expect(bank.share).toBeCloseTo(94.4, 1)
+  })
+
+  test('a group holding a liability reports no shares', () => {
+    const groups = groupSources(reading, sources)
+    const debt = groups.find((g) => g.kind === 'debt')!
+    expect(debt.sources.every((s) => s.share === null)).toBe(true)
+    // ...and the assets group is unaffected by the liability living elsewhere
+    const property = groups.find((g) => g.kind === 'property')!
+    expect(property.subtotal).toBe(40_150_000)
+  })
+
+  test('groups keep declaration order and omit empty kinds', () => {
+    const bankOnly = [source('bank', { kind: 'cash' })]
+    const groups = groupSources(
+      buildReadings([snapshot('s2', '2026-01-01')], [entry('s2', 'bank', 1000)], bankOnly)[0],
+      bankOnly,
+    )
+    expect(groups.map((g) => g.kind)).toEqual(['cash'])
+  })
+
+  test('a source with no kind counts as cash, so pre-migration rows still total', () => {
+    const legacy = [source('old', {})]
+    const r = buildReadings([snapshot('s3', '2026-01-01')], [entry('s3', 'old', 500)], legacy)[0]
+    expect(metricTotal(r, legacy, ['cash', 'investment'])).toBe(500)
   })
 })

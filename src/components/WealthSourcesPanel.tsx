@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { WealthSource } from '#/lib/wealth-sources-collection.js'
+import { sourceKind, type WealthSource } from '#/lib/wealth-sources-collection.js'
 import {
   createWealthSource,
   updateWealthSource,
@@ -9,6 +9,7 @@ import {
 } from '#/server/wealth-sources.js'
 import { DEFAULT_CATEGORY_COLOR } from '#/lib/category-colors.js'
 import { ColorPicker } from './ColorPicker.js'
+import { WEALTH_KINDS, type WealthKind } from '#/lib/wealth-kinds.js'
 import { ConfirmButton } from './ConfirmButton.js'
 
 interface WealthSourcesPanelProps {
@@ -131,6 +132,23 @@ export function WealthSourcesPanel({ sources, sourcesWithHistory }: WealthSource
                     source.archived ? 'text-gray-400 line-through' : ''
                   }`}
                 />
+                {/* Kind decides which dashboard view a source counts toward.
+                    Debt is the one that needs saying out loud: a mortgage is
+                    entered as a negative amount, not as a positive one that
+                    gets subtracted somewhere. */}
+                <select
+                  value={sourceKind(source)}
+                  aria-label={`Kind of ${source.name}`}
+                  title={WEALTH_KINDS.find((k) => k.key === sourceKind(source))?.hint}
+                  onChange={(e) => handleUpdate(source.id, { kind: e.target.value as WealthKind })}
+                  className="rounded border border-gray-200 bg-white px-1.5 py-1 text-xs text-gray-600 hover:border-gray-300 focus:outline-none"
+                >
+                  {WEALTH_KINDS.map((k) => (
+                    <option key={k.key} value={k.key}>
+                      {k.label}
+                    </option>
+                  ))}
+                </select>
                 <button
                   onClick={() => handleUpdate(source.id, { archived: !source.archived })}
                   title={

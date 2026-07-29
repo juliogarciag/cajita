@@ -3,6 +3,9 @@ import { z } from 'zod'
 import { db } from '#/db/index.js'
 import { authMiddleware } from './middleware.js'
 import { HEX_COLOR } from './color-bookmarks.js'
+import { WEALTH_KINDS } from '#/lib/wealth-kinds.js'
+
+const KIND = z.enum(WEALTH_KINDS.map((k) => k.key) as [string, ...string[]])
 
 export const createWealthSource = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
@@ -10,6 +13,7 @@ export const createWealthSource = createServerFn({ method: 'POST' })
     z.object({
       name: z.string().min(1).max(255),
       color: z.string().regex(HEX_COLOR),
+      kind: KIND.optional(),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -28,6 +32,7 @@ export const createWealthSource = createServerFn({ method: 'POST' })
           team_id: teamId,
           name: data.name,
           color: data.color,
+          kind: data.kind ?? 'cash',
           sort_order: ((maxOrder?.max_order as number) ?? 0) + 10,
         })
         .returningAll()
@@ -50,6 +55,7 @@ export const updateWealthSource = createServerFn({ method: 'POST' })
       id: z.string().uuid(),
       name: z.string().min(1).max(255).optional(),
       color: z.string().regex(HEX_COLOR).optional(),
+      kind: KIND.optional(),
       archived: z.boolean().optional(),
     }),
   )
@@ -59,6 +65,7 @@ export const updateWealthSource = createServerFn({ method: 'POST' })
     const toSet: Record<string, unknown> = { updated_at: new Date() }
     if (data.name !== undefined) toSet.name = data.name
     if (data.color !== undefined) toSet.color = data.color
+    if (data.kind !== undefined) toSet.kind = data.kind
     if (data.archived !== undefined) toSet.archived = data.archived
 
     try {

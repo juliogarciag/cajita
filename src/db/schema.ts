@@ -75,6 +75,8 @@ export interface WealthSourcesTable {
   team_id: string
   name: string
   color: string
+  /** 'cash' | 'investment' | 'property' | 'debt' — see migration 008. */
+  kind: Generated<string>
   sort_order: Generated<number>
   archived: Generated<boolean>
   created_at: Generated<Date>
