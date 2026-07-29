@@ -9,10 +9,20 @@ const UNIQUE = Date.now()
 const BANK = `Bank ${UNIQUE}`
 const BROKER = `Broker ${UNIQUE}`
 
-/** Fill the amount cell at `cellIndex` (0 = date, 1.. = sources) of a reading row. */
-async function setBalance(page: Page, rowIndex: number, cellIndex: number, value: string) {
-  const row = page.locator('tbody tr').nth(rowIndex)
-  const cell = row.locator('[data-editable-cell]').nth(cellIndex)
+/** Reading rows only — the table also carries a header row per year. */
+function rows(page: Page) {
+  return page.locator('tr[data-reading-id]')
+}
+
+function lockedRows(page: Page) {
+  return page.locator('tr[data-reading-id][data-locked="true"]')
+}
+
+/** Fill the amount cell for `sourceIndex` (0-based) of a reading row inline. */
+async function setBalance(page: Page, rowIndex: number, sourceIndex: number, value: string) {
+  const row = rows(page).nth(rowIndex)
+  // Cell 0 is the date, cell 1 the reading's name, then one per source.
+  const cell = row.locator('[data-editable-cell]').nth(sourceIndex + 2)
   await cell.click()
   const input = cell.locator('input[type="text"]')
   await expect(input).toBeVisible({ timeout: 5000 })
@@ -21,6 +31,24 @@ async function setBalance(page: Page, rowIndex: number, cellIndex: number, value
   // the row still holds an input, just a different one.
   await input.press('Enter')
   await expect(cell.locator('input')).toHaveCount(0, { timeout: 10000 })
+}
+
+/**
+ * Record a reading through the dialog. `amounts` is keyed by source name; a
+ * source left out keeps whatever the dialog prefilled, and an empty string
+ * clears it.
+ */
+async function addReading(page: Page, amounts: Record<string, string> = {}) {
+  const before = await rows(page).count()
+  await page.getByRole('button', { name: 'Add reading' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  for (const [name, value] of Object.entries(amounts)) {
+    await dialog.getByLabel(name).fill(value)
+  }
+  await dialog.getByRole('button', { name: 'Add reading' }).click()
+  await expect(dialog).toHaveCount(0, { timeout: 10000 })
+  await expect(rows(page)).toHaveCount(before + 1, { timeout: 10000 })
 }
 
 async function addSource(page: Page, name: string) {
@@ -64,26 +92,21 @@ test.describe('Net worth', () => {
   })
 
   test('a reading sums the sources filled in', async () => {
-    await page.getByRole('button', { name: 'Add reading' }).click()
-    await expect(page.locator('tbody tr')).toHaveCount(1, { timeout: 10000 })
+    await addReading(page, { [BANK]: '30000', [BROKER]: '230' })
 
-    await setBalance(page, 0, 1, '30000')
-    await setBalance(page, 0, 2, '230')
-
-    const row = page.locator('tbody tr').first()
+    const row = rows(page).first()
     await expect(row.getByText('$30,230.00')).toBeVisible({ timeout: 10000 })
     // Headline picks it up
     await expect(page.getByText('$30,230.00').first()).toBeVisible()
+    // And it is named after its month
+    await expect(row).toContainText(' reading')
   })
 
   test('a half-filled sweep is flagged and left out of the headline', async () => {
-    await page.getByRole('button', { name: 'Add reading' }).click()
-    await expect(page.locator('tbody tr')).toHaveCount(2, { timeout: 10000 })
+    // Clearing a prefilled source is what makes the sweep partial
+    await addReading(page, { [BANK]: '31500', [BROKER]: '' })
 
-    // Newest row is on top — fill only the first source
-    await setBalance(page, 0, 1, '31500')
-
-    const partial = page.locator('tbody tr').first()
+    const partial = rows(page).first()
     await expect(partial.getByText('1 of 2')).toBeVisible({ timeout: 10000 })
 
     // The headline keeps reporting the last complete reading, not the partial one
@@ -93,9 +116,9 @@ test.describe('Net worth', () => {
   })
 
   test('completing the sweep clears the flag and shows the change', async () => {
-    await setBalance(page, 0, 2, '512.30')
+    await setBalance(page, 0, 1, '512.30')
 
-    const row = page.locator('tbody tr').first()
+    const row = rows(page).first()
     await expect(row.getByText('1 of 2')).toHaveCount(0, { timeout: 10000 })
     await expect(row.getByText('$32,012.30')).toBeVisible()
     await expect(row.getByText('+$1,782.30')).toBeVisible()
@@ -119,10 +142,10 @@ test.describe('Net worth', () => {
   })
 
   test('a frozen reading refuses edits and deletion', async () => {
-    const row = page.locator('tbody tr').first()
+    const row = rows(page).first()
     await row.getByRole('button', { name: 'Freeze this reading' }).click()
 
-    const frozen = page.locator('tbody tr[data-locked="true"]')
+    const frozen = lockedRows(page)
     await expect(frozen).toHaveCount(1, { timeout: 10000 })
 
     // No delete button while frozen — unfreezing is the deliberate first step
@@ -135,13 +158,13 @@ test.describe('Net worth', () => {
   })
 
   test('a frozen reading can be unfrozen again', async () => {
-    const frozen = page.locator('tbody tr[data-locked="true"]').first()
+    const frozen = lockedRows(page).first()
     await frozen.getByRole('button', { name: 'Unfreeze this reading' }).click()
     await confirmDialog(page, 'Unfreeze')
 
-    await expect(page.locator('tbody tr[data-locked="true"]')).toHaveCount(0, { timeout: 10000 })
+    await expect(lockedRows(page)).toHaveCount(0, { timeout: 10000 })
     await expect(
-      page.locator('tbody tr').first().getByRole('button', { name: 'Delete this reading' }),
+      rows(page).first().getByRole('button', { name: 'Delete this reading' }),
     ).toBeVisible()
   })
 
@@ -149,30 +172,23 @@ test.describe('Net worth', () => {
     await page.getByRole('button', { name: 'Freeze previous' }).click()
 
     // Two readings exist, so exactly the older one freezes
-    await expect(page.locator('tbody tr[data-locked="true"]')).toHaveCount(1, { timeout: 10000 })
-    await expect(page.locator('tbody tr').first()).not.toHaveAttribute('data-locked', 'true')
+    await expect(lockedRows(page)).toHaveCount(1, { timeout: 10000 })
+    await expect(rows(page).first()).not.toHaveAttribute('data-locked', 'true')
 
     // Nothing left to freeze, so the action disappears
     await expect(page.getByRole('button', { name: 'Freeze previous' })).toHaveCount(0)
 
     // Unfreeze so the deletion test below still has an unlocked row
-    await page
-      .locator('tbody tr[data-locked="true"]')
-      .getByRole('button', { name: 'Unfreeze this reading' })
-      .click()
+    await lockedRows(page).getByRole('button', { name: 'Unfreeze this reading' }).click()
     await confirmDialog(page, 'Unfreeze')
-    await expect(page.locator('tbody tr[data-locked="true"]')).toHaveCount(0, { timeout: 10000 })
+    await expect(lockedRows(page)).toHaveCount(0, { timeout: 10000 })
   })
 
   test('a reading can be deleted', async () => {
-    await expect(page.locator('tbody tr')).toHaveCount(2)
-    await page
-      .locator('tbody tr')
-      .first()
-      .getByRole('button', { name: 'Delete this reading?' })
-      .click()
+    await expect(rows(page)).toHaveCount(2)
+    await rows(page).first().getByRole('button', { name: 'Delete this reading?' }).click()
     await confirmDialog(page, 'Delete reading')
-    await expect(page.locator('tbody tr')).toHaveCount(1, { timeout: 10000 })
+    await expect(rows(page)).toHaveCount(1, { timeout: 10000 })
   })
 
   test('the dashboard reports the latest complete reading', async () => {

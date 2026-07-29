@@ -3,20 +3,59 @@ import { z } from 'zod'
 import { sql } from 'kysely'
 import { db } from '#/db/index.js'
 import { authMiddleware } from './middleware.js'
+import { defaultReadingLabel, sameMonth } from '#/lib/reading-label.js'
 
 export const createBalanceSnapshot = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ date: z.string() }))
+  .inputValidator(
+    z.object({
+      date: z.string(),
+      label: z.string().max(120).optional(),
+      /** Amounts to record with the reading, so it can be created complete. */
+      amounts: z
+        .array(z.object({ wealth_source_id: z.string().uuid(), amount_usd_cents: z.number().int() }))
+        .optional(),
+    }),
+  )
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
+    let label = data.label?.trim()
+    if (!label) {
+      // Same helper the dialog previews with, so the placeholder is honest.
+      const existing = await db
+        .selectFrom('balance_snapshots')
+        .select(['date', 'label'])
+        .where('team_id', '=', teamId)
+        .execute()
+      label = defaultReadingLabel(
+        data.date,
+        existing.filter((e) => sameMonth(e.date, data.date)).map((e) => e.label),
+      )
+    }
 
-    const snapshot = await db
-      .insertInto('balance_snapshots')
-      .values({ team_id: teamId, date: data.date })
-      .returningAll()
-      .executeTakeFirstOrThrow()
+    return await db.transaction().execute(async (tx) => {
+      const snapshot = await tx
+        .insertInto('balance_snapshots')
+        .values({ team_id: teamId, date: data.date, label })
+        .returningAll()
+        .executeTakeFirstOrThrow()
 
-    return { snapshot }
+      if (data.amounts?.length) {
+        await tx
+          .insertInto('balance_entries')
+          .values(
+            data.amounts.map((a) => ({
+              team_id: teamId,
+              balance_snapshot_id: snapshot.id,
+              wealth_source_id: a.wealth_source_id,
+              amount_usd_cents: a.amount_usd_cents,
+            })),
+          )
+          .execute()
+      }
+
+      return { snapshot }
+    })
   })
 
 /** Loads a reading in the caller's team, refusing the write when it's frozen. */
@@ -37,14 +76,24 @@ async function requireUnlocked(id: string, teamId: string, action: string) {
 
 export const updateBalanceSnapshot = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ id: z.string().uuid(), date: z.string() }))
+  .inputValidator(
+    z.object({
+      id: z.string().uuid(),
+      date: z.string().optional(),
+      label: z.string().max(120).optional(),
+    }),
+  )
   .handler(async ({ data, context }) => {
     const teamId = context.user.teamId
-    await requireUnlocked(data.id, teamId, 'changing its date')
+    await requireUnlocked(data.id, teamId, 'changing it')
+
+    const toSet: Record<string, unknown> = { updated_at: new Date() }
+    if (data.date !== undefined) toSet.date = data.date
+    if (data.label !== undefined) toSet.label = data.label.trim()
 
     const snapshot = await db
       .updateTable('balance_snapshots')
-      .set({ date: data.date, updated_at: new Date() })
+      .set(toSet)
       .where('id', '=', data.id)
       .where('team_id', '=', teamId)
       .returningAll()

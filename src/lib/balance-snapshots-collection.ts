@@ -6,6 +6,9 @@ import { electricShapeUrl } from '#/lib/electric-url'
 const balanceSnapshotSchema = z.object({
   id: z.string(),
   date: z.string(),
+  /** Optional for the same reason as the other added columns: a shape Electric
+   *  cached before migration 009 serves rows without the key. */
+  label: z.string().optional(),
   locked: z.coerce.boolean(),
   created_at: z.string(),
   updated_at: z.string(),

@@ -87,6 +87,8 @@ export interface BalanceSnapshotsTable {
   id: Generated<string>
   team_id: string
   date: string
+  /** Human name for the reading, e.g. "March reading". See migration 009. */
+  label: Generated<string>
   /** Frozen: the reading is settled history and refuses edits or deletion. */
   locked: Generated<boolean>
   created_at: Generated<Date>

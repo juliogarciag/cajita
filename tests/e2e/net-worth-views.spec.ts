@@ -21,9 +21,18 @@ async function addSource(page: Page, name: string, kind: string) {
   await page.getByLabel(`Kind of ${name}`).selectOption(kind)
 }
 
-/** Fill one amount cell of the newest reading and commit it. */
-async function fill(page: Page, cellIndex: number, value: string) {
-  const cell = page.locator('tbody tr').first().locator('[data-editable-cell]').nth(cellIndex)
+/** Reading rows only — the table also carries a header row per year. */
+function rows(page: Page) {
+  return page.locator('tr[data-reading-id]')
+}
+
+/** Fill one amount cell of the newest reading inline and commit it. */
+async function fill(page: Page, sourceIndex: number, value: string) {
+  // Cell 0 is the date, cell 1 the reading's name, then one per source.
+  const cell = rows(page)
+    .first()
+    .locator('[data-editable-cell]')
+    .nth(sourceIndex + 2)
   await cell.click()
   const input = cell.locator('input[type="text"]')
   await expect(input).toBeVisible({ timeout: 5000 })
@@ -52,12 +61,15 @@ test.describe('Net worth views', () => {
   test('a liability is stored as a negative and subtracts from the total', async () => {
     await page.goto('/finances/net-worth')
     await page.getByRole('button', { name: 'Add reading' }).click()
-    await fill(page, 1, '10000')
-    await fill(page, 2, '400000')
-    await fill(page, 3, '-300000')
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel(CASH).fill('10000')
+    await dialog.getByLabel(HOUSE).fill('400000')
+    await dialog.getByLabel(LOAN).fill('-300000')
+    // 10,000 + 400,000 − 300,000, totalled before it is saved
+    await expect(dialog).toContainText('$110,000.00')
+    await dialog.getByRole('button', { name: 'Add reading' }).click()
 
-    // 10,000 + 400,000 − 300,000
-    await expect(page.locator('tbody tr').first()).toContainText('$110,000.00', { timeout: 10000 })
+    await expect(rows(page).first()).toContainText('$110,000.00', { timeout: 10000 })
   })
 
   test('the dashboard splits net worth into liquid and equity', async () => {
@@ -87,23 +99,65 @@ test.describe('Net worth views', () => {
     await expect(page.getByText('DEBT')).toHaveCount(0)
   })
 
-  test('a new reading is prefilled with the previous values but saves nothing', async () => {
+  test('the dialog prefills the previous reading and cancelling records nothing', async () => {
     await page.goto('/finances/net-worth')
-    await page.getByRole('button', { name: 'Add reading' }).click()
+    await expect(rows(page)).toHaveCount(1, { timeout: 10000 })
 
-    const row = page.locator('tbody tr').first()
-    // Every cell offers the previous figure...
-    await expect(row).toContainText('$400,000.00', { timeout: 10000 })
-    await expect(row).toContainText('-$300,000.00')
-    // ...but nothing is stored until each is committed, so the reading is empty
-    await expect(row).toContainText('0 of 3')
-    await expect(row).toContainText('$0.00')
+    await page.getByRole('button', { name: 'Add reading' }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByLabel(HOUSE)).toHaveValue('400000.00')
+    await expect(dialog.getByLabel(LOAN)).toHaveValue('-300000.00')
+    await expect(dialog).toContainText('3 of 3 filled')
+    // The reading's name is offered, not imposed
+    await expect(dialog.getByLabel('Name')).toHaveValue('')
+    await expect(dialog.getByLabel('Name')).toHaveAttribute('placeholder', / reading( \d+)?$/)
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(rows(page)).toHaveCount(1)
   })
 
-  test('committing a carried value stores it', async () => {
-    const row = page.locator('tbody tr').first()
-    await fill(page, 2, '400000')
-    await expect(row).toContainText('1 of 3', { timeout: 10000 })
+  test('correcting one prefilled figure records the rest unchanged', async () => {
+    await page.getByRole('button', { name: 'Add reading' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel(CASH).fill('12000')
+    await dialog.getByRole('button', { name: 'Add reading' }).click()
+    await expect(dialog).toHaveCount(0, { timeout: 10000 })
+
+    const row = rows(page).first()
+    await expect(row).toContainText('$112,000.00', { timeout: 10000 })
+    await expect(row).not.toContainText('of 3')
+  })
+
+  test('an empty cell on the newest reading carries the previous figure', async () => {
+    await page.getByRole('button', { name: 'Add reading' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel(HOUSE).fill('')
+    await dialog.getByRole('button', { name: 'Add reading' }).click()
+    await expect(dialog).toHaveCount(0, { timeout: 10000 })
+
+    const row = rows(page).first()
+    // Shown as a draft to correct, but not counted until committed
+    await expect(row).toContainText('2 of 3', { timeout: 10000 })
     await expect(row).toContainText('$400,000.00')
+
+    await fill(page, 1, '400000')
+    await expect(row).not.toContainText('of 3', { timeout: 10000 })
+  })
+
+  test('a year divider separates readings from different years', async () => {
+    const lastYear = new Date().getFullYear() - 1
+    // No divider while every reading sits in the same year
+    await expect(page.locator('[data-year-divider]')).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Add reading' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Date').fill(`${lastYear}-06-30`)
+    await dialog.getByRole('button', { name: 'Add reading' }).click()
+    await expect(dialog).toHaveCount(0, { timeout: 10000 })
+
+    const divider = page.locator(`[data-year-divider="${lastYear}"]`)
+    await expect(divider).toHaveCount(1, { timeout: 10000 })
+    await expect(divider).toContainText(String(lastYear))
   })
 })
