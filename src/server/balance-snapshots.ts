@@ -13,7 +13,9 @@ export const createBalanceSnapshot = createServerFn({ method: 'POST' })
       label: z.string().max(120).optional(),
       /** Amounts to record with the reading, so it can be created complete. */
       amounts: z
-        .array(z.object({ wealth_source_id: z.string().uuid(), amount_usd_cents: z.number().int() }))
+        .array(
+          z.object({ wealth_source_id: z.string().uuid(), amount_usd_cents: z.number().int() }),
+        )
         .optional(),
     }),
   )
@@ -31,6 +33,24 @@ export const createBalanceSnapshot = createServerFn({ method: 'POST' })
         data.date,
         existing.filter((e) => sameMonth(e.date, data.date)).map((e) => e.label),
       )
+    }
+
+    // The sources arrive as ids from the client, and nothing downstream checks
+    // them — `setBalanceEntry` verifies the same thing one row at a time, but
+    // this path writes entries directly. Without it a reading can be filed
+    // against another team's source.
+    if (data.amounts?.length) {
+      const ids = [...new Set(data.amounts.map((a) => a.wealth_source_id))]
+      const owned = await db
+        .selectFrom('wealth_sources')
+        .select('id')
+        .where('team_id', '=', teamId)
+        .where('id', 'in', ids)
+        .execute()
+
+      if (owned.length !== ids.length) {
+        throw new Error('Unknown wealth source.')
+      }
     }
 
     return await db.transaction().execute(async (tx) => {
