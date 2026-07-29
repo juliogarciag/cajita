@@ -26,15 +26,18 @@ export function kindLabel(kind: string): string {
   return WEALTH_KINDS.find((k) => k.key === kind)?.label ?? kind
 }
 
+// Ordered narrowest-first: liquid is the number that changes month to month
+// and the one worth opening the dashboard for. Property and its mortgage move
+// on their own schedule, and net worth is the sum of the two.
 export const METRICS = [
-  { key: 'net', label: 'Net worth', kinds: ['cash', 'investment', 'property', 'debt'] },
   { key: 'liquid', label: 'Liquid', kinds: ['cash', 'investment'] },
   { key: 'equity', label: 'Equity', kinds: ['property', 'debt'] },
+  { key: 'net', label: 'Net worth', kinds: ['cash', 'investment', 'property', 'debt'] },
 ] as const
 
 export type MetricKey = (typeof METRICS)[number]['key']
 
-export const DEFAULT_METRIC: MetricKey = 'net'
+export const DEFAULT_METRIC: MetricKey = 'liquid'
 
 export function metricKinds(metric: MetricKey): readonly string[] {
   return (METRICS.find((m) => m.key === metric) ?? METRICS[0]).kinds

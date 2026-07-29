@@ -70,20 +70,22 @@ test.describe('Net worth views', () => {
   test('the dashboard splits net worth into liquid and equity', async () => {
     await page.goto('/dashboard')
     const headline = page.locator('.text-3xl').first()
-    await expect(headline).toHaveText('$110,000.00', { timeout: 10000 })
-
-    await page.getByRole('button', { name: 'Liquid', exact: true }).click()
-    await expect(page).toHaveURL(/metric=liquid/)
-    await expect(headline).toHaveText('$10,000.00')
+    // Liquid is the default, so it carries no search param
+    await expect(headline).toHaveText('$10,000.00', { timeout: 10000 })
 
     await page.getByRole('button', { name: 'Equity', exact: true }).click()
     await expect(page).toHaveURL(/metric=equity/)
-    // 400,000 − 300,000 — and liquid + equity is the net worth above
+    // 400,000 − 300,000
     await expect(headline).toHaveText('$100,000.00')
 
     await page.getByRole('button', { name: 'Net worth', exact: true }).click()
-    await expect(page).toHaveURL(/^[^?]*$|(?!.*metric=)/)
+    await expect(page).toHaveURL(/metric=net/)
+    // ...and liquid + equity is exactly the net worth
     await expect(headline).toHaveText('$110,000.00')
+
+    await page.getByRole('button', { name: 'Liquid', exact: true }).click()
+    await expect(page).toHaveURL(/^[^?]*$|(?!.*metric=)/)
+    await expect(headline).toHaveText('$10,000.00')
   })
 
   test('the breakdown adds up to the metric shown', async () => {
