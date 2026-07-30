@@ -10,6 +10,7 @@ import { expenseCategoriesCollection } from '#/lib/expense-categories-collection
 import { expenseItemNotesCollection } from '#/lib/expense-item-notes-collection.js'
 import type { TeamMember } from '#/lib/team-members-collection.js'
 import { formatCents, formatSoles, toISODate } from '#/lib/format.js'
+import { expenseTotals } from '#/lib/expense-totals.js'
 import { useDateFormat } from '#/lib/date-format.js'
 import { createExpenseItem, updateExpenseItem, deleteExpenseItem } from '#/server/expense-items.js'
 import { upsertExpenseItemNote, deleteExpenseItemNote, getTeamMembers } from '#/server/notes.js'
@@ -206,17 +207,9 @@ export function ExpenseCategoryDetail() {
     )
   }
 
-  // Totals. USD is the canonical spent amount. Items with a soles amount but
-  // no USD amount are "pending" — money not yet exchanged (or paid from
-  // stray soles) — and are tracked as a separate bucket, never blended in.
-  const totalUsd = items.reduce((sum: number, i: ExpenseItem) => sum + (i.amount_usd_cents ?? 0), 0)
-  const pendingItems = items.filter(
-    (i: ExpenseItem) => i.amount_soles_cents != null && i.amount_usd_cents == null,
-  )
-  const pendingSoles = pendingItems.reduce(
-    (sum: number, i: ExpenseItem) => sum + (i.amount_soles_cents ?? 0),
-    0,
-  )
+  // The pending bucket is tracked separately from the USD total, never blended
+  // into it — see expense-totals for what counts as pending.
+  const { usd: totalUsd, pendingSoles, pendingCount } = expenseTotals(items)
 
   const handleAdd = async () => {
     setIsAdding(true)
@@ -393,10 +386,10 @@ export function ExpenseCategoryDetail() {
               >
                 {formatSoles(pendingSoles)}
               </span>
-              {pendingItems.length > 0 && (
+              {pendingCount > 0 && (
                 <span className="text-xs text-gray-400">
                   {' '}
-                  · {pendingItems.length} {pendingItems.length === 1 ? 'item' : 'items'}
+                  · {pendingCount} {pendingCount === 1 ? 'item' : 'items'}
                 </span>
               )}
             </span>

@@ -10,13 +10,12 @@ import {
 } from '#/lib/expense-categories-collection.js'
 import { expenseItemsCollection } from '#/lib/expense-items-collection.js'
 import { formatCents, formatSoles } from '#/lib/format.js'
+import { expenseTotalsByYear, emptyTotals } from '#/lib/expense-totals.js'
 import { createExpenseCategory, deleteExpenseCategory } from '#/server/expense-categories.js'
 import { DEFAULT_CATEGORY_COLOR } from '#/lib/category-colors.js'
 import { ColorPicker } from './ColorPicker.js'
 import { ConfirmButton } from './ConfirmButton.js'
 import { YearSwitcher } from './YearSwitcher.js'
-
-type CategoryTotals = { usd: number; pendingSoles: number; count: number }
 
 export function ExpenseCategoryList() {
   const [showAddForm, setShowAddForm] = useState(false)
@@ -35,22 +34,11 @@ export function ExpenseCategoryList() {
 
   const { data: items } = useLiveQuery((q) => q.from({ i: expenseItemsCollection }))
 
-  // Totals cover the selected year only. USD is the canonical total; soles on
-  // items without a USD amount are "pending" (not yet exchanged).
-  const totalsByCategory = useMemo(() => {
-    const map = new Map<string, CategoryTotals>()
-    for (const item of items) {
-      if (item.date.slice(0, 4) !== String(selectedYear)) continue
-      const totals = map.get(item.expense_category_id) ?? { usd: 0, pendingSoles: 0, count: 0 }
-      totals.usd += item.amount_usd_cents ?? 0
-      if (item.amount_usd_cents == null && item.amount_soles_cents != null) {
-        totals.pendingSoles += item.amount_soles_cents
-      }
-      totals.count += 1
-      map.set(item.expense_category_id, totals)
-    }
-    return map
-  }, [items, selectedYear])
+  // Totals cover the selected year only.
+  const totalsByCategory = useMemo(
+    () => expenseTotalsByYear(items, selectedYear),
+    [items, selectedYear],
+  )
 
   // Deletion cascades across every year, so the guard counts all items — not
   // just the ones in view.
@@ -177,11 +165,7 @@ export function ExpenseCategoryList() {
             </thead>
             <tbody>
               {categories.map((category: ExpenseCategory) => {
-                const totals = totalsByCategory.get(category.id) ?? {
-                  usd: 0,
-                  pendingSoles: 0,
-                  count: 0,
-                }
+                const totals = totalsByCategory.get(category.id) ?? emptyTotals()
                 const allTimeCount = allTimeCountByCategory.get(category.id) ?? 0
 
                 return (

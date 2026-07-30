@@ -4,6 +4,7 @@ import { Link } from '@tanstack/react-router'
 import { expenseCategoriesCollection } from '#/lib/expense-categories-collection.js'
 import { expenseItemsCollection } from '#/lib/expense-items-collection.js'
 import { formatCents, formatSoles } from '#/lib/format.js'
+import { expenseTotalsByYear, emptyTotals } from '#/lib/expense-totals.js'
 import { reorderExpenseCategories } from '#/server/expense-categories.js'
 
 /**
@@ -50,23 +51,7 @@ export function PinnedCategories() {
     void reorderExpenseCategories({ data: { ids: next.map((c) => c.id) } })
   }
 
-  const totals = useMemo(() => {
-    const byCategory = new Map<string, { usd: number; pendingSoles: number; count: number }>()
-    for (const item of items) {
-      if (!item.date.startsWith(String(year))) continue
-      const entry = byCategory.get(item.expense_category_id) ?? {
-        usd: 0,
-        pendingSoles: 0,
-        count: 0,
-      }
-      entry.count++
-      if (item.amount_usd_cents != null) entry.usd += item.amount_usd_cents
-      // Soles with no USD haven't been exchanged yet; they're pending, not zero.
-      else if (item.amount_soles_cents != null) entry.pendingSoles += item.amount_soles_cents
-      byCategory.set(item.expense_category_id, entry)
-    }
-    return byCategory
-  }, [items, year])
+  const totals = useMemo(() => expenseTotalsByYear(items, year), [items, year])
 
   if (pinned.length === 0) return null
 
@@ -80,7 +65,7 @@ export function PinnedCategories() {
         style={{ '--pinned': pinned.length } as React.CSSProperties}
       >
         {pinned.map((category) => {
-          const t = totals.get(category.id) ?? { usd: 0, pendingSoles: 0, count: 0 }
+          const t = totals.get(category.id) ?? emptyTotals()
           return (
             <Link
               key={category.id}

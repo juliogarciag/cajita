@@ -11,6 +11,7 @@ const RENAMED_NAME = `Renamed-${UNIQUE}`
 const ITEM_DESC = `TestExpense-${UNIQUE}`
 const PENDING_DESC = `Pending-${UNIQUE}`
 const REFUND_DESC = `Refund-${UNIQUE}`
+const SOLES_REFUND_DESC = `SolesRefund-${UNIQUE}`
 
 test.describe('Expense Categories', () => {
   let context: BrowserContext
@@ -83,6 +84,23 @@ test.describe('Expense Categories', () => {
 
     // 350 − 120
     await expect(page.getByText('$230.00').first()).toBeVisible({ timeout: 10000 })
+  })
+
+  test('a soles reimbursement stays out of the pending bucket', async () => {
+    await openCategory(page, CATEGORY_NAME)
+
+    await addExpense(page, SOLES_REFUND_DESC, { soles: '-300' })
+
+    const row = page.locator('div[id]', {
+      has: page.getByText(SOLES_REFUND_DESC, { exact: true }),
+    })
+    await expect(row.getByText(/-S\/\s?300\.00/)).toBeVisible({ timeout: 10000 })
+
+    // Still S/800, not S/500: soles coming back aren't soles waiting to be
+    // exchanged, so netting them here would understate what's outstanding.
+    const summary = page.getByText(/Pending exchange/)
+    await expect(summary.getByText(/S\/\s?800\.00/)).toBeVisible({ timeout: 10000 })
+    await expect(summary.getByText(/1 item/)).toBeVisible()
   })
 
   test('search palette finds the expense and deep-links to it', async () => {
@@ -164,7 +182,7 @@ test.describe('Expense Categories', () => {
 
     // Default view is the current year, where all three expenses live
     // Cells: name, expenses, pending exchange, total, actions
-    await expect(categoryRow.getByRole('cell').nth(1)).toHaveText('3', { timeout: 10000 })
+    await expect(categoryRow.getByRole('cell').nth(1)).toHaveText('4', { timeout: 10000 })
     // 350 − 120: the reimbursement is counted, not ignored
     await expect(categoryRow.getByRole('cell').nth(3)).toHaveText('$230.00')
 
@@ -222,7 +240,7 @@ test.describe('Expense Categories', () => {
   test('can delete the category once it is empty', async () => {
     // Remove the expenses that are left
     await openCategory(page, RENAMED_NAME)
-    for (const desc of [PENDING_DESC, REFUND_DESC]) {
+    for (const desc of [PENDING_DESC, REFUND_DESC, SOLES_REFUND_DESC]) {
       const row = page.locator('div[id]', {
         has: page.getByText(desc, { exact: true }),
       })
