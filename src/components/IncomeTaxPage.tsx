@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
-import { Plus, StickyNote, Trash2 } from 'lucide-react'
+import { BarChartHorizontal, Plus, StickyNote, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { incomeReceiptsCollection, type IncomeReceipt } from '#/lib/income-receipts-collection.js'
 import { taxRetentionsCollection, type TaxRetention } from '#/lib/tax-retentions-collection.js'
@@ -196,21 +196,31 @@ export function IncomeTaxPage() {
           )}
 
           <div className="flex items-baseline justify-between gap-3 border-t border-gray-200 pt-2.5">
-            <span className="text-sm font-medium text-gray-700">
-              Tax owed for {selectedYear}
+            <span className="text-sm font-medium text-gray-700">Tax owed for {selectedYear}</span>
+            <span className="flex items-center gap-2">
+              {/* The icon mirrors what it opens — the bracket ladder is bars.
+                  State lives in its colour, since a rotating chevron beside a
+                  figure reads as a control that changes the figure. */}
               {summary.tax && (
-                <button
-                  type="button"
-                  aria-expanded={bracketsOpen}
-                  onClick={() => setBracketsOpen((v) => !v)}
-                  className="ml-1.5 rounded border border-gray-200 px-1.5 py-px align-baseline text-[10.5px] font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
-                >
-                  brackets {bracketsOpen ? '⌃' : '⌄'}
-                </button>
+                <Tooltip content={bracketsOpen ? 'Hide the brackets' : 'How this is built'}>
+                  <button
+                    type="button"
+                    aria-expanded={bracketsOpen}
+                    aria-label={bracketsOpen ? 'Hide the brackets' : 'How this is built'}
+                    onClick={() => setBracketsOpen((v) => !v)}
+                    className={`rounded p-1 ${
+                      bracketsOpen
+                        ? 'bg-gray-100 text-gray-700'
+                        : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                    }`}
+                  >
+                    <BarChartHorizontal size={14} />
+                  </button>
+                </Tooltip>
               )}
-            </span>
-            <span className="text-lg font-medium tabular-nums text-gray-900">
-              {summary.tax === null ? '—' : formatSoles(summary.tax.totalTaxSoles * 100)}
+              <span className="text-lg font-medium tabular-nums text-gray-900">
+                {summary.tax === null ? '—' : formatSoles(summary.tax.totalTaxSoles * 100)}
+              </span>
             </span>
           </div>
 
