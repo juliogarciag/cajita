@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedFinancesIncomeTaxRouteImport } from './routes/_authenticated/finances/income-tax'
 import { Route as AuthenticatedFinancesNetWorthRouteImport } from './routes/_authenticated/finances/net-worth'
 import { Route as AuthenticatedToysIndexRouteImport } from './routes/_authenticated/toys/index'
 import { Route as AuthenticatedToysCreatePlaylistRouteImport } from './routes/_authenticated/toys/create-playlist'
@@ -43,6 +44,12 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedFinancesIncomeTaxRoute =
+  AuthenticatedFinancesIncomeTaxRouteImport.update({
+    id: '/finances/income-tax',
+    path: '/finances/income-tax',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedFinancesNetWorthRoute =
   AuthenticatedFinancesNetWorthRouteImport.update({
     id: '/finances/net-worth',
@@ -102,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/finances/income-tax': typeof AuthenticatedFinancesIncomeTaxRoute
   '/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
   '/toys/create-playlist': typeof AuthenticatedToysCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -117,6 +125,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/finances/income-tax': typeof AuthenticatedFinancesIncomeTaxRoute
   '/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
   '/toys/create-playlist': typeof AuthenticatedToysCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -134,6 +143,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/finances/income-tax': typeof AuthenticatedFinancesIncomeTaxRoute
   '/_authenticated/finances/net-worth': typeof AuthenticatedFinancesNetWorthRoute
   '/_authenticated/toys/create-playlist': typeof AuthenticatedToysCreatePlaylistRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/settings'
+    | '/finances/income-tax'
     | '/finances/net-worth'
     | '/toys/create-playlist'
     | '/api/auth/callback'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/settings'
+    | '/finances/income-tax'
     | '/finances/net-worth'
     | '/toys/create-playlist'
     | '/api/auth/callback'
@@ -182,6 +194,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/_authenticated/dashboard'
     | '/_authenticated/settings'
+    | '/_authenticated/finances/income-tax'
     | '/_authenticated/finances/net-worth'
     | '/_authenticated/toys/create-playlist'
     | '/api/auth/callback'
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/finances/income-tax': {
+      id: '/_authenticated/finances/income-tax'
+      path: '/finances/income-tax'
+      fullPath: '/finances/income-tax'
+      preLoaderRoute: typeof AuthenticatedFinancesIncomeTaxRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/finances/net-worth': {
@@ -310,6 +330,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedFinancesIncomeTaxRoute: typeof AuthenticatedFinancesIncomeTaxRoute
   AuthenticatedFinancesNetWorthRoute: typeof AuthenticatedFinancesNetWorthRoute
   AuthenticatedToysCreatePlaylistRoute: typeof AuthenticatedToysCreatePlaylistRoute
   AuthenticatedToysIndexRoute: typeof AuthenticatedToysIndexRoute
@@ -320,6 +341,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedFinancesIncomeTaxRoute: AuthenticatedFinancesIncomeTaxRoute,
   AuthenticatedFinancesNetWorthRoute: AuthenticatedFinancesNetWorthRoute,
   AuthenticatedToysCreatePlaylistRoute: AuthenticatedToysCreatePlaylistRoute,
   AuthenticatedToysIndexRoute: AuthenticatedToysIndexRoute,

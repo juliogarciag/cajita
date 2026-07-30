@@ -103,6 +103,47 @@ export interface BalanceEntriesTable {
   updated_at: Generated<Date>
 }
 
+export interface IncomeReceiptsTable {
+  id: Generated<string>
+  team_id: string
+  income_date: string
+  /** Its month is the SUNAT declaration month — see migration 012. */
+  receipt_date: string
+  description: string
+  company: Generated<string>
+  receipt_number: Generated<string>
+  amount_usd_cents: number
+  /** SUNAT's rate for the receipt date. Soles are derived, never stored. */
+  exchange_rate: string | number
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
+export interface TaxRetentionsTable {
+  id: Generated<string>
+  team_id: string
+  /** "YYYY-MM" — one row per declaration month. */
+  month: string
+  /** What SUNAT's portal charged. Logged as given, never derived. */
+  amount_soles_cents: number
+  /** What it cost in dollars, when recorded. Months are sometimes paid together. */
+  amount_usd_cents: number | null
+  note: Generated<string>
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
+export interface TaxYearsTable {
+  id: Generated<string>
+  team_id: string
+  year: number
+  regularization_rate: string | number | null
+  /** Stands in for a UIT SUNAT hasn't published yet. */
+  uit_override: number | null
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
 export interface ColorBookmarksTable {
   id: Generated<string>
   team_id: string
@@ -127,6 +168,9 @@ export interface Database {
   expense_categories: ExpenseCategoriesTable
   expense_items: ExpenseItemsTable
   expense_item_notes: ExpenseItemNotesTable
+  income_receipts: IncomeReceiptsTable
+  tax_retentions: TaxRetentionsTable
+  tax_years: TaxYearsTable
   color_bookmarks: ColorBookmarksTable
   wealth_sources: WealthSourcesTable
   balance_snapshots: BalanceSnapshotsTable
