@@ -120,7 +120,7 @@ export function PinnedCategories() {
                   {t.count} {t.count === 1 ? 'expense' : 'expenses'}
                 </span>
               </div>
-              {t.pendingSoles > 0 && (
+              {t.pendingSoles !== 0 && (
                 <div
                   className="mt-1 text-xs text-amber-600"
                   title="Soles on items with no USD amount yet"

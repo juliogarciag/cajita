@@ -189,7 +189,9 @@ function scoreCandidate(args: {
     }
     const numeric = parseAmountToken(token)
     if (numeric !== null) {
-      const cents = Math.round(numeric * 100)
+      // Candidates are stored unsigned here, so a reimbursement of -50 is
+      // found by searching either "50" or "-50".
+      const cents = Math.abs(Math.round(numeric * 100))
       if (args.amountsCents.some((a) => a === cents)) {
         score += 2
         amountHits.push(token)

@@ -389,7 +389,7 @@ export function ExpenseCategoryDetail() {
             >
               Pending exchange:{' '}
               <span
-                className={`font-medium ${pendingSoles > 0 ? 'text-amber-600' : 'text-gray-900'}`}
+                className={`font-medium ${pendingSoles !== 0 ? 'text-amber-600' : 'text-gray-900'}`}
               >
                 {formatSoles(pendingSoles)}
               </span>

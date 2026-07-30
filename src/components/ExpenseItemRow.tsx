@@ -55,7 +55,9 @@ export function ExpenseItemRow({
         }
         const cents = parseDollarsTocents(rawValue)
         if (cents === null) return
-        onUpdate(item.id, { [field]: Math.abs(cents) })
+        // The sign is kept: a reimbursement is a negative expense, which is how
+        // you cancel out money that came back without deleting what it was for.
+        onUpdate(item.id, { [field]: cents })
       } else if (field === 'description') {
         onUpdate(item.id, { description: rawValue })
       } else if (field === 'date') {
@@ -67,6 +69,10 @@ export function ExpenseItemRow({
 
   // Soles amount with no USD amount = money not exchanged yet
   const isPending = item.amount_soles_cents != null && item.amount_usd_cents == null
+
+  // A negative amount is money that came back — a reimbursement or a refund.
+  // Green says that without needing a separate column for it.
+  const amountTone = (cents: number | null) => (cents != null && cents < 0 ? 'text-green-600' : '')
 
   return (
     <TableRow id={id} highlight={highlight} style={style} data-row-id={item.id}>
@@ -91,7 +97,7 @@ export function ExpenseItemRow({
         <EditableCell
           value={item.amount_soles_cents != null ? formatSoles(item.amount_soles_cents) : ''}
           type="amount"
-          className="text-right text-gray-500"
+          className={`text-right whitespace-nowrap ${amountTone(item.amount_soles_cents) || 'text-gray-500'}`}
           onSave={(v) => handleFieldSave('amount_soles_cents', v)}
         />
       </div>
@@ -99,7 +105,7 @@ export function ExpenseItemRow({
         <EditableCell
           value={item.amount_usd_cents != null ? formatCents(item.amount_usd_cents) : ''}
           type="amount"
-          className="text-right"
+          className={`text-right whitespace-nowrap ${amountTone(item.amount_usd_cents)}`}
           onSave={(v) => handleFieldSave('amount_usd_cents', v)}
         />
       </div>

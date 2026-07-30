@@ -9,69 +9,50 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedToysIndexRouteImport } from './routes/_authenticated/toys/index'
-import { Route as ApiElectricTableRouteImport } from './routes/api/electric/$table'
-import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
-import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
-import { Route as ApiAuthDevLoginRouteImport } from './routes/api/auth/dev-login'
-import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
-import { Route as AuthenticatedToysCreatePlaylistRouteImport } from './routes/_authenticated/toys/create-playlist'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedFinancesNetWorthRouteImport } from './routes/_authenticated/finances/net-worth'
+import { Route as AuthenticatedToysIndexRouteImport } from './routes/_authenticated/toys/index'
+import { Route as AuthenticatedToysCreatePlaylistRouteImport } from './routes/_authenticated/toys/create-playlist'
+import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
+import { Route as ApiAuthDevLoginRouteImport } from './routes/api/auth/dev-login'
+import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
+import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
+import { Route as ApiElectricTableRouteImport } from './routes/api/electric/$table'
 import { Route as AuthenticatedFinancesExpenseCategoriesIndexRouteImport } from './routes/_authenticated/finances/expense-categories/index'
 import { Route as AuthenticatedFinancesExpenseCategoriesCategoryIdRouteImport } from './routes/_authenticated/finances/expense-categories/$categoryId'
 
-const AuthenticatedRoute = AuthenticatedRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRoute,
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedFinancesNetWorthRoute =
+  AuthenticatedFinancesNetWorthRouteImport.update({
+    id: '/finances/net-worth',
+    path: '/finances/net-worth',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedToysIndexRoute = AuthenticatedToysIndexRouteImport.update({
   id: '/toys/',
   path: '/toys/',
   getParentRoute: () => AuthenticatedRoute,
-} as any)
-const ApiElectricTableRoute = ApiElectricTableRouteImport.update({
-  id: '/api/electric/$table',
-  path: '/api/electric/$table',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
-  id: '/api/auth/logout',
-  path: '/api/auth/logout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthGoogleRoute = ApiAuthGoogleRouteImport.update({
-  id: '/api/auth/google',
-  path: '/api/auth/google',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthDevLoginRoute = ApiAuthDevLoginRouteImport.update({
-  id: '/api/auth/dev-login',
-  path: '/api/auth/dev-login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
-  id: '/api/auth/callback',
-  path: '/api/auth/callback',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedToysCreatePlaylistRoute =
   AuthenticatedToysCreatePlaylistRouteImport.update({
@@ -79,12 +60,31 @@ const AuthenticatedToysCreatePlaylistRoute =
     path: '/toys/create-playlist',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedFinancesNetWorthRoute =
-  AuthenticatedFinancesNetWorthRouteImport.update({
-    id: '/finances/net-worth',
-    path: '/finances/net-worth',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
+const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
+  id: '/api/auth/callback',
+  path: '/api/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthDevLoginRoute = ApiAuthDevLoginRouteImport.update({
+  id: '/api/auth/dev-login',
+  path: '/api/auth/dev-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthGoogleRoute = ApiAuthGoogleRouteImport.update({
+  id: '/api/auth/google',
+  path: '/api/auth/google',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
+  id: '/api/auth/logout',
+  path: '/api/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiElectricTableRoute = ApiElectricTableRouteImport.update({
+  id: '/api/electric/$table',
+  path: '/api/electric/$table',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedFinancesExpenseCategoriesIndexRoute =
   AuthenticatedFinancesExpenseCategoriesIndexRouteImport.update({
     id: '/finances/expense-categories/',
@@ -206,6 +206,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -213,12 +220,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
@@ -227,11 +234,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+    '/_authenticated/finances/net-worth': {
+      id: '/_authenticated/finances/net-worth'
+      path: '/finances/net-worth'
+      fullPath: '/finances/net-worth'
+      preLoaderRoute: typeof AuthenticatedFinancesNetWorthRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/toys/': {
@@ -241,25 +248,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedToysIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/api/electric/$table': {
-      id: '/api/electric/$table'
-      path: '/api/electric/$table'
-      fullPath: '/api/electric/$table'
-      preLoaderRoute: typeof ApiElectricTableRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/toys/create-playlist': {
+      id: '/_authenticated/toys/create-playlist'
+      path: '/toys/create-playlist'
+      fullPath: '/toys/create-playlist'
+      preLoaderRoute: typeof AuthenticatedToysCreatePlaylistRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
-    '/api/auth/logout': {
-      id: '/api/auth/logout'
-      path: '/api/auth/logout'
-      fullPath: '/api/auth/logout'
-      preLoaderRoute: typeof ApiAuthLogoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/google': {
-      id: '/api/auth/google'
-      path: '/api/auth/google'
-      fullPath: '/api/auth/google'
-      preLoaderRoute: typeof ApiAuthGoogleRouteImport
+    '/api/auth/callback': {
+      id: '/api/auth/callback'
+      path: '/api/auth/callback'
+      fullPath: '/api/auth/callback'
+      preLoaderRoute: typeof ApiAuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/dev-login': {
@@ -269,26 +269,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthDevLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/callback': {
-      id: '/api/auth/callback'
-      path: '/api/auth/callback'
-      fullPath: '/api/auth/callback'
-      preLoaderRoute: typeof ApiAuthCallbackRouteImport
+    '/api/auth/google': {
+      id: '/api/auth/google'
+      path: '/api/auth/google'
+      fullPath: '/api/auth/google'
+      preLoaderRoute: typeof ApiAuthGoogleRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/toys/create-playlist': {
-      id: '/_authenticated/toys/create-playlist'
-      path: '/toys/create-playlist'
-      fullPath: '/toys/create-playlist'
-      preLoaderRoute: typeof AuthenticatedToysCreatePlaylistRouteImport
-      parentRoute: typeof AuthenticatedRoute
+    '/api/auth/logout': {
+      id: '/api/auth/logout'
+      path: '/api/auth/logout'
+      fullPath: '/api/auth/logout'
+      preLoaderRoute: typeof ApiAuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/finances/net-worth': {
-      id: '/_authenticated/finances/net-worth'
-      path: '/finances/net-worth'
-      fullPath: '/finances/net-worth'
-      preLoaderRoute: typeof AuthenticatedFinancesNetWorthRouteImport
-      parentRoute: typeof AuthenticatedRoute
+    '/api/electric/$table': {
+      id: '/api/electric/$table'
+      path: '/api/electric/$table'
+      fullPath: '/api/electric/$table'
+      preLoaderRoute: typeof ApiElectricTableRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/finances/expense-categories/': {
       id: '/_authenticated/finances/expense-categories/'

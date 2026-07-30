@@ -10,6 +10,7 @@ const CATEGORY_NAME = `TestCategory-${UNIQUE}`
 const RENAMED_NAME = `Renamed-${UNIQUE}`
 const ITEM_DESC = `TestExpense-${UNIQUE}`
 const PENDING_DESC = `Pending-${UNIQUE}`
+const REFUND_DESC = `Refund-${UNIQUE}`
 
 test.describe('Expense Categories', () => {
   let context: BrowserContext
@@ -65,6 +66,23 @@ test.describe('Expense Categories', () => {
     await expect(summary.getByText(/S\/\s?800\.00/)).toBeVisible({ timeout: 10000 })
     await expect(summary.getByText(/1 item/)).toBeVisible()
     await expect(page.getByText('$350.00').first()).toBeVisible()
+  })
+
+  test('a reimbursement is a negative amount that subtracts from the total', async () => {
+    await openCategory(page, CATEGORY_NAME)
+
+    // The $350 expense came back — logged as a credit rather than deleted, so
+    // what it was for stays in the history.
+    await addExpense(page, REFUND_DESC, { usd: '-120' })
+
+    const row = page.locator('div[id]', {
+      has: page.getByText(REFUND_DESC, { exact: true }),
+    })
+    // The sign survives the round trip instead of being flipped on save
+    await expect(row.getByText('-$120.00')).toBeVisible({ timeout: 10000 })
+
+    // 350 − 120
+    await expect(page.getByText('$230.00').first()).toBeVisible({ timeout: 10000 })
   })
 
   test('search palette finds the expense and deep-links to it', async () => {
@@ -144,10 +162,11 @@ test.describe('Expense Categories', () => {
       has: page.getByText(CATEGORY_NAME, { exact: true }),
     })
 
-    // Default view is the current year, where both expenses live
+    // Default view is the current year, where all three expenses live
     // Cells: name, expenses, pending exchange, total, actions
-    await expect(categoryRow.getByRole('cell').nth(1)).toHaveText('2', { timeout: 10000 })
-    await expect(categoryRow.getByRole('cell').nth(3)).toHaveText('$350.00')
+    await expect(categoryRow.getByRole('cell').nth(1)).toHaveText('3', { timeout: 10000 })
+    // 350 − 120: the reimbursement is counted, not ignored
+    await expect(categoryRow.getByRole('cell').nth(3)).toHaveText('$230.00')
 
     // A past year has none of them
     await page.goto(`/finances/expense-categories?year=${currentYear - 1}`)
@@ -201,17 +220,17 @@ test.describe('Expense Categories', () => {
   })
 
   test('can delete the category once it is empty', async () => {
-    // Remove the last expense
+    // Remove the expenses that are left
     await openCategory(page, RENAMED_NAME)
-    const row = page.locator('div[id]', {
-      has: page.getByText(PENDING_DESC, { exact: true }),
-    })
-    await expect(row).toBeVisible({ timeout: 10000 })
-    await row.getByRole('button', { name: 'Delete expense?' }).click({ force: true })
-    await confirmDialog(page, 'Delete expense')
-    await expect(page.getByText(PENDING_DESC, { exact: true })).not.toBeVisible({
-      timeout: 10000,
-    })
+    for (const desc of [PENDING_DESC, REFUND_DESC]) {
+      const row = page.locator('div[id]', {
+        has: page.getByText(desc, { exact: true }),
+      })
+      await expect(row).toBeVisible({ timeout: 10000 })
+      await row.getByRole('button', { name: 'Delete expense?' }).click({ force: true })
+      await confirmDialog(page, 'Delete expense')
+      await expect(page.getByText(desc, { exact: true })).not.toBeVisible({ timeout: 10000 })
+    }
 
     await page.goto('/finances/expense-categories')
     const categoryRow = page.locator('[data-category-row]', {

@@ -208,7 +208,7 @@ export function ExpenseCategoryList() {
                       {totals.count}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {totals.pendingSoles > 0 ? (
+                      {totals.pendingSoles !== 0 ? (
                         <span
                           className="text-amber-600"
                           title="Soles on items with no USD amount yet — not exchanged"
