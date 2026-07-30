@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, StickyNote, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { incomeReceiptsCollection, type IncomeReceipt } from '#/lib/income-receipts-collection.js'
 import { taxRetentionsCollection, type TaxRetention } from '#/lib/tax-retentions-collection.js'
@@ -21,6 +21,7 @@ import { useDateFormat } from '#/lib/date-format.js'
 import { deleteIncomeReceipt, deleteTaxRetention, setTaxYearSettings } from '#/server/income-tax.js'
 import { YearSwitcher } from './YearSwitcher.js'
 import { ConfirmButton } from './ConfirmButton.js'
+import { Tooltip } from './Tooltip.js'
 import { ReceiptDialog } from './ReceiptDialog.js'
 import { RetentionDialog } from './RetentionDialog.js'
 
@@ -356,17 +357,14 @@ export function IncomeTaxPage() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] border-collapse text-sm">
+            <table className="w-full min-w-[600px] border-collapse text-sm">
               <thead>
                 <tr className="bg-gray-50 text-[10px] font-medium uppercase tracking-wider text-gray-500">
                   <th className="w-5" />
                   <th className="px-3 py-2 text-left">Description</th>
-                  <th className="w-[110px] px-3 py-2 text-left">Income date</th>
-                  <th className="w-[110px] px-3 py-2 text-left">Receipt date</th>
-                  <th className="w-[80px] px-3 py-2 text-right">Rate</th>
+                  <th className="w-[150px] px-3 py-2 text-left">Receipt date</th>
                   <th className="w-[120px] px-3 py-2 text-right">USD</th>
-                  <th className="w-[130px] px-3 py-2 text-right">Soles</th>
-                  <th className="w-[120px] px-3 py-2 text-left">Retention</th>
+                  <th className="w-[140px] px-3 py-2 text-right">Soles</th>
                   <th className="w-[50px]" />
                 </tr>
               </thead>
@@ -377,8 +375,15 @@ export function IncomeTaxPage() {
                   return (
                     <tr key={receipt.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="pl-2.5">
+                        {/* The dot carries the whole coverage signal now: the
+                            month it would name is the receipt date's month, so
+                            a column for it only restated the date. */}
                         <span
-                          title={covered ? undefined : 'Not covered by a retention yet'}
+                          title={
+                            covered
+                              ? `Covered by the ${formatMonth(month)} retention`
+                              : 'Not covered by a retention yet'
+                          }
                           className={`block h-1.5 w-1.5 rounded-full ${
                             covered ? 'bg-gray-300' : 'bg-amber-400'
                           }`}
@@ -398,26 +403,23 @@ export function IncomeTaxPage() {
                           </span>
                         </button>
                       </td>
-                      <td className="px-3 py-2 text-gray-600">{formatDate(receipt.income_date)}</td>
-                      <td className="px-3 py-2 text-gray-600">
+                      <td className="whitespace-nowrap px-3 py-2 text-gray-600">
                         {formatDate(receipt.receipt_date)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-gray-600">
-                        {receipt.exchange_rate.toFixed(4)}
+                        {/* Only when the two dates disagree, which is about one
+                            row in five — a column each was mostly repetition. */}
+                        {receipt.income_date !== receipt.receipt_date && (
+                          <span className="block text-xs text-gray-400">
+                            income {formatDate(receipt.income_date)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-gray-900">
                         {formatCents(receipt.amount_usd_cents)}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-gray-400">
                         {formatSoles(receiptSolesCents(receipt))}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={`inline-block rounded px-1.5 py-0.5 text-xs ${
-                            covered ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-700'
-                          }`}
-                        >
-                          {covered ? formatMonth(month) : 'none yet'}
+                        <span className="block text-xs text-gray-300">
+                          at {receipt.exchange_rate.toFixed(4)}
                         </span>
                       </td>
                       <td className="px-2 text-right">
@@ -448,14 +450,14 @@ export function IncomeTaxPage() {
                   <td className="px-3 py-2.5 text-[11px] uppercase tracking-wider text-gray-500">
                     {summary.receiptCount} {summary.receiptCount === 1 ? 'receipt' : 'receipts'}
                   </td>
-                  <td colSpan={3} />
+                  <td />
                   <td className="px-3 py-2.5 text-right tabular-nums">
                     {formatCents(summary.grossUsdCents)}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums">
                     {formatSoles(Math.round(summary.grossSolesExact * 100))}
                   </td>
-                  <td colSpan={2} />
+                  <td />
                 </tr>
               </tfoot>
             </table>
@@ -478,17 +480,15 @@ export function IncomeTaxPage() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] border-collapse text-sm">
+            <table className="w-full min-w-[620px] border-collapse text-sm">
               <thead>
                 <tr className="bg-gray-50 text-[10px] font-medium uppercase tracking-wider text-gray-500">
-                  <th className="px-3 py-2 text-left">Month</th>
+                  <th className="w-[140px] px-3 py-2 text-left">Month</th>
                   <th className="px-3 py-2 text-left">Covers</th>
                   <th className="w-[130px] px-3 py-2 text-right">Soles charged</th>
                   <th className="w-[110px] px-3 py-2 text-right">USD paid</th>
-                  <th className="w-[140px] px-3 py-2 text-right">Income covered</th>
-                  <th className="w-[80px] px-3 py-2 text-right">Implied</th>
-                  <th className="px-3 py-2 text-left">Note</th>
-                  <th className="w-[50px]" />
+                  <th className="w-[150px] px-3 py-2 text-right">Implied</th>
+                  <th className="w-[70px]" />
                 </tr>
               </thead>
               <tbody>
@@ -527,18 +527,32 @@ export function IncomeTaxPage() {
                           ? '—'
                           : formatCents(entry.retention.amount_usd_cents)}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-gray-400">
-                        {formatSoles(Math.round(entry.incomeSolesExact * 100))}
-                      </td>
+                      {/* The rate and the income it's a share of, together — a
+                          column each meant showing a ratio beside its own
+                          denominator. */}
                       <td className="px-3 py-2 text-right tabular-nums text-gray-400">
                         {entry.impliedRate === null
                           ? '—'
                           : `${(entry.impliedRate * 100).toFixed(2)}%`}
+                        <span className="block text-xs text-gray-300">
+                          of {formatSoles(Math.round(entry.incomeSolesExact * 100))}
+                        </span>
                       </td>
-                      <td className="px-3 py-2 text-xs text-gray-500">
-                        {entry.retention.note || <span className="text-gray-300">—</span>}
-                      </td>
-                      <td className="px-2 text-right">
+                      <td className="px-2 text-right whitespace-nowrap">
+                        {entry.retention.note && (
+                          <Tooltip content={entry.retention.note}>
+                            <button
+                              type="button"
+                              aria-label={`Note: ${entry.retention.note}`}
+                              onClick={() =>
+                                setRetentionDialog({ open: true, retention: entry.retention })
+                              }
+                              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                            >
+                              <StickyNote size={12} />
+                            </button>
+                          </Tooltip>
+                        )}
                         <ConfirmButton
                           onConfirm={() => removeRetention(entry.retention.id)}
                           title="Delete retention?"
@@ -575,7 +589,7 @@ export function IncomeTaxPage() {
                   <td className="px-3 py-2.5 text-right tabular-nums">
                     {formatCents(summary.retainedUsdCents)}
                   </td>
-                  <td colSpan={4} />
+                  <td colSpan={2} />
                 </tr>
               </tfoot>
             </table>
