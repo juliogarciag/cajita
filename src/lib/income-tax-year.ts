@@ -320,6 +320,17 @@ export function taxYearSummary(
 }
 
 /**
+ * Whether a year's regularization can have been paid yet.
+ *
+ * SUNAT settles a year with an annual filing the *following* year, so the
+ * current year's figure is a running estimate — more receipts are still coming.
+ * Marking it paid would be claiming something that can't have happened.
+ */
+export function canSettleYear(year: number, currentYear: number): boolean {
+  return year < currentYear
+}
+
+/**
  * Orders receipt numbers by their trailing digits, not as text.
  *
  * "E001-99" sorts above "E001-141" under a plain string compare, because '9'

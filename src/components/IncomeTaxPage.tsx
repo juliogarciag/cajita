@@ -6,6 +6,7 @@ import { incomeReceiptsCollection, type IncomeReceipt } from '#/lib/income-recei
 import { taxRetentionsCollection, type TaxRetention } from '#/lib/tax-retentions-collection.js'
 import { taxYearsCollection } from '#/lib/tax-years-collection.js'
 import {
+  canSettleYear,
   compareReceiptNumbers,
   formatMonth,
   nextReceiptNumber,
@@ -97,6 +98,8 @@ export function IncomeTaxPage() {
   )
 
   const headroom = summary.tax ? headroomInCurrentBracket(summary.tax) : null
+  // A year is filed the following March, so the current one can't be settled yet.
+  const settleable = canSettleYear(selectedYear, currentYear)
   // How much of the year's tax the retentions already cover. Clamped, because a
   // year can be over-retained and a bar past 100% is just a broken bar.
   const retainedShare =
@@ -218,7 +221,7 @@ export function IncomeTaxPage() {
           figure: formatSoles(s.paidSolesCents ?? s.computedSolesCents),
           detail: (
             <>
-              Paid on {formatDate(s.paidOn)}
+              Regularization paid on {formatDate(s.paidOn)}
               {s.differsFromComputed && (
                 <span className="text-gray-400">
                   {' '}
@@ -323,16 +326,23 @@ export function IncomeTaxPage() {
             </span>
             <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
               {settleTone.detail}
-              {/* Only offered when there's something to settle. A refund year
-                  owes nothing, and a square year already balanced. */}
-              {(summary.settlement.kind === 'owes' || summary.settlement.kind === 'settled') && (
-                <button
-                  type="button"
-                  onClick={() => setRegularizationOpen(true)}
-                  className="rounded border border-gray-200 px-1.5 py-0.5 text-[11px] font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
-                >
-                  {summary.settlement.kind === 'settled' ? 'Edit payment' : 'Mark as paid'}
-                </button>
+              {/* Only offered when there's something to settle, and only once the
+                  year has ended — a refund year owes nothing, a square year
+                  already balanced, and the current year files next March. */}
+              {settleable &&
+                (summary.settlement.kind === 'owes' || summary.settlement.kind === 'settled') && (
+                  <button
+                    type="button"
+                    onClick={() => setRegularizationOpen(true)}
+                    className="rounded border border-gray-200 px-1.5 py-0.5 text-[11px] font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+                  >
+                    {summary.settlement.kind === 'settled'
+                      ? 'Edit regularization'
+                      : 'Record regularization'}
+                  </button>
+                )}
+              {!settleable && summary.tax !== null && (
+                <span className="text-gray-400">· files in March {selectedYear + 1}</span>
               )}
             </span>
           </div>

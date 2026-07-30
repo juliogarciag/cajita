@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canSettleYear,
   compareReceiptNumbers,
   declarationMonth,
   formatMonth,
@@ -402,6 +403,21 @@ describe('taxYearSummary — settlement', () => {
   it('asserts nothing on an empty year', () => {
     // No income, no tax, nothing retained — square, not owing.
     expect(taxYearSummary([], [], 2026).settlement).toEqual({ kind: 'square' })
+  })
+})
+
+describe('canSettleYear', () => {
+  it('allows a year that has ended', () => {
+    expect(canSettleYear(2025, 2026)).toBe(true)
+    expect(canSettleYear(2022, 2026)).toBe(true)
+  })
+
+  it('refuses the current year — its filing happens next March', () => {
+    expect(canSettleYear(2026, 2026)).toBe(false)
+  })
+
+  it('refuses a year that hasn’t happened', () => {
+    expect(canSettleYear(2027, 2026)).toBe(false)
   })
 })
 

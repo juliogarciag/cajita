@@ -104,14 +104,15 @@ export function RegularizationDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/30" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white shadow-2xl ring-1 ring-black/5 outline-none">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white shadow-2xl ring-1 ring-black/5 outline-none">
           <div className="border-b border-gray-200 px-5 py-3">
             <Dialog.Title className="text-sm font-medium text-gray-900">
-              {settled ? `Edit the ${year} payment` : `Settle ${year}`}
+              {settled ? `Edit the ${year} regularization` : `Record the ${year} regularization`}
             </Dialog.Title>
             <Dialog.Description className="mt-0.5 text-xs text-gray-500">
-              Record what you actually paid. Leave the amounts alone if the figures below are what
-              the portal charged.
+              SUNAT&rsquo;s final settlement for the year, paid after the annual filing. Record what
+              you actually paid — leave the amounts as they are if the figures below are what the
+              portal charged.
             </Dialog.Description>
           </div>
 
@@ -162,7 +163,9 @@ export function RegularizationDialog({
 
             {computedSolesCents !== null && (
               <div className="flex items-baseline justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <span className="text-xs text-gray-500">Worked out from your receipts</span>
+                <span className="text-xs whitespace-nowrap text-gray-500">
+                  Computed regularization
+                </span>
                 <span className="text-sm font-medium tabular-nums text-gray-900">
                   {formatSoles(computedSolesCents)}
                   {computedUsdCents !== null && (
@@ -197,7 +200,7 @@ export function RegularizationDialog({
                 disabled={saving}
                 className="rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-red-600 disabled:opacity-40"
               >
-                Mark as unpaid
+                Clear the payment
               </button>
             ) : (
               <span />
@@ -213,7 +216,7 @@ export function RegularizationDialog({
                 disabled={saving || !canSave}
                 className="rounded-lg bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {saving ? 'Saving…' : settled ? 'Save changes' : 'Mark as paid'}
+                {saving ? 'Saving…' : settled ? 'Save changes' : 'Record payment'}
               </button>
             </div>
           </div>
