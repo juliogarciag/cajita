@@ -203,6 +203,11 @@ export const setTaxYearSettings = createServerFn({ method: 'POST' })
       year: z.number().int().min(2000).max(2100),
       regularization_rate: z.number().positive().max(100).nullable().optional(),
       uit_override: z.number().int().positive().nullable().optional(),
+      // Clearing the date is how a year goes back to unsettled, so null is a
+      // meaningful value here rather than "leave alone" — that's `undefined`.
+      regularization_paid_on: isoDate.nullable().optional(),
+      regularization_paid_soles_cents: z.number().int().nullable().optional(),
+      regularization_paid_usd_cents: z.number().int().nullable().optional(),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -235,6 +240,9 @@ export const setTaxYearSettings = createServerFn({ method: 'POST' })
             year,
             regularization_rate: updates.regularization_rate ?? null,
             uit_override: updates.uit_override ?? null,
+            regularization_paid_on: updates.regularization_paid_on ?? null,
+            regularization_paid_soles_cents: updates.regularization_paid_soles_cents ?? null,
+            regularization_paid_usd_cents: updates.regularization_paid_usd_cents ?? null,
           })
           .returningAll()
           .executeTakeFirstOrThrow()

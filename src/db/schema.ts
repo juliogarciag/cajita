@@ -140,6 +140,11 @@ export interface TaxYearsTable {
   regularization_rate: string | number | null
   /** Stands in for a UIT SUNAT hasn't published yet. */
   uit_override: number | null
+  /** Set once the regularization is settled; its presence marks the year paid. */
+  regularization_paid_on: string | null
+  /** What was actually paid, which can differ from the computed figure. */
+  regularization_paid_soles_cents: number | null
+  regularization_paid_usd_cents: number | null
   created_at: Generated<Date>
   updated_at: Generated<Date>
 }

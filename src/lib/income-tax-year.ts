@@ -105,6 +105,35 @@ export interface MonthCoverage {
   impliedRate: number | null
 }
 
+/**
+ * What the year's headline is allowed to assert.
+ *
+ * The summary leads with one confident number, so it has to know which number.
+ * "Still to pay" is wrong for a year settled two Marches ago, and it's nonsense
+ * for a year where the retentions overshot the tax — that comes back as a
+ * negative regularization, and there's a test pinning it.
+ */
+export type Settlement =
+  /** No UIT published and no override, so there's no honest figure at all. */
+  | { kind: 'unknown' }
+  /** Owes, not settled. */
+  | { kind: 'owes'; solesCents: number; usdCents: number | null }
+  /** Retained exactly what was owed. */
+  | { kind: 'square' }
+  /** Retained more than owed — SUNAT owes a refund. Magnitude is positive. */
+  | { kind: 'refund'; solesCents: number; usdCents: number | null }
+  /** Settled. The paid figures are what was actually handed over. */
+  | {
+      kind: 'settled'
+      paidOn: string
+      paidSolesCents: number | null
+      paidUsdCents: number | null
+      /** The computed figure, kept so a discrepancy can be shown, not hidden. */
+      computedSolesCents: number
+      /** True when what was paid differs from what was computed. */
+      differsFromComputed: boolean
+    }
+
 export interface TaxYearSummary {
   year: number
   /** Null when SUNAT hasn't published the UIT and no override is set. */
@@ -120,8 +149,16 @@ export interface TaxYearSummary {
   tax: IncomeTaxBreakdown | null
   /** Tax minus what was retained. Negative means SUNAT owes a refund. */
   regularizationSolesCents: number | null
-  /** The rate used to put the regularization in dollars, if one is set. */
+  /** The rate used to put the regularization in dollars — the year's own, or inherited. */
   regularizationRate: number | null
+  /**
+   * The receipt this year's rate was borrowed from, or null when the rate is the
+   * year's own. A borrowed rate is a reasonable default, not a confirmed fact
+   * about the filing, so the UI has to be able to say which it is.
+   */
+  rateInheritedFrom: string | null
+  /** What the headline is allowed to claim. */
+  settlement: Settlement
   regularizationUsdCents: number | null
   /** Regularization plus what was already retained in dollars. */
   trueCostUsdCents: number | null
@@ -134,10 +171,20 @@ export interface TaxYearSummary {
 }
 
 export interface TaxYearOptions {
-  /** Hand-entered rate for converting the regularization to dollars. */
+  /**
+   * The year's own hand-entered rate. When absent, the last receipt of the year
+   * lends its rate — a real SUNAT rate looked up recently, rather than a stale
+   * settlement rate from some previous March. Kept per year deliberately: the
+   * rate a closed year settled at is a fact about that filing, and one shared
+   * value would rewrite every closed year's dollar figures on the next edit.
+   */
   regularizationRate?: number | null
   /** Stands in for a UIT SUNAT hasn't published yet. */
   uitOverride?: number | null
+  /** Set once the regularization is settled. */
+  paidOn?: string | null
+  paidSolesCents?: number | null
+  paidUsdCents?: number | null
 }
 
 export function taxYearSummary(
@@ -146,8 +193,21 @@ export function taxYearSummary(
   year: number,
   options: TaxYearOptions = {},
 ): TaxYearSummary {
-  const regularizationRate = options.regularizationRate ?? null
   const uit = options.uitOverride ?? uitForYear(year)
+
+  // A year with no rate of its own borrows one from its last receipt, so the
+  // dollar column isn't blank every January. Marked as borrowed, never passed
+  // off as the year's own.
+  const ownRate = options.regularizationRate ?? null
+  const lastReceipt = [...receipts].sort(
+    (a, b) =>
+      a.receipt_date.localeCompare(b.receipt_date) ||
+      compareReceiptNumbers(a.receipt_number, b.receipt_number),
+  )[receipts.length - 1]
+  const inherited =
+    ownRate === null && lastReceipt && lastReceipt.exchange_rate > 0 ? lastReceipt : null
+  const regularizationRate = ownRate ?? inherited?.exchange_rate ?? null
+  const rateInheritedFrom = inherited ? inherited.receipt_number || inherited.id : null
 
   const grossSolesExact = receipts.reduce((total, r) => total + receiptSolesExact(r), 0)
   const grossUsdCents = receipts.reduce((total, r) => total + r.amount_usd_cents, 0)
@@ -170,6 +230,36 @@ export function taxYearSummary(
 
   const effectiveUsdRate =
     trueCostUsdCents === null || grossUsdCents === 0 ? null : trueCostUsdCents / grossUsdCents
+
+  // --- What the headline may claim. A recorded payment wins over the computed
+  // sign: if it's been settled, that's the fact, whatever the arithmetic says.
+  const paidOn = options.paidOn ?? null
+  const settlement: Settlement =
+    regularizationSolesCents === null
+      ? { kind: 'unknown' }
+      : paidOn !== null
+        ? {
+            kind: 'settled',
+            paidOn,
+            paidSolesCents: options.paidSolesCents ?? null,
+            paidUsdCents: options.paidUsdCents ?? null,
+            computedSolesCents: regularizationSolesCents,
+            differsFromComputed:
+              options.paidSolesCents != null && options.paidSolesCents !== regularizationSolesCents,
+          }
+        : regularizationSolesCents > 0
+          ? {
+              kind: 'owes',
+              solesCents: regularizationSolesCents,
+              usdCents: regularizationUsdCents,
+            }
+          : regularizationSolesCents < 0
+            ? {
+                kind: 'refund',
+                solesCents: -regularizationSolesCents,
+                usdCents: regularizationUsdCents === null ? null : -regularizationUsdCents,
+              }
+            : { kind: 'square' }
 
   // --- Coverage, keyed by month. A retention with no receipts still appears:
   // its amount counts toward the year either way, and hiding it would make the
@@ -217,6 +307,8 @@ export function taxYearSummary(
     tax,
     regularizationSolesCents,
     regularizationRate,
+    rateInheritedFrom,
+    settlement,
     regularizationUsdCents,
     trueCostUsdCents,
     effectiveUsdRate,

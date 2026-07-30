@@ -242,11 +242,29 @@ describe('taxYearSummary — edges', () => {
     expect(summary.tax?.totalTaxSoles).toBeGreaterThan(0)
   })
 
-  it('leaves the dollar figures out until a rate is set', () => {
+  it('borrows the last receipt’s rate when the year has none of its own', () => {
+    // E001-134, the December receipt, at 3.357 — a real SUNAT rate, so the
+    // dollar column isn't blank until someone remembers to fill it in.
     const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025)
-    expect(summary.regularizationSolesCents).toBe(3542200)
+    expect(summary.regularizationRate).toBe(3.357)
+    expect(summary.rateInheritedFrom).toBe('E001-134')
+    expect(summary.regularizationUsdCents).toBe(Math.round(3542200 / 3.357))
+  })
+
+  it('prefers the year’s own rate and stops calling it borrowed', () => {
+    const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025, {
+      regularizationRate: 3.48,
+    })
+    expect(summary.regularizationRate).toBe(3.48)
+    expect(summary.rateInheritedFrom).toBeNull()
+    expect(summary.regularizationUsdCents).toBe(1017874)
+  })
+
+  it('has nothing to borrow when the year has no receipts', () => {
+    const summary = taxYearSummary([], RETENTIONS_2025, 2025)
+    expect(summary.regularizationRate).toBeNull()
+    expect(summary.rateInheritedFrom).toBeNull()
     expect(summary.regularizationUsdCents).toBeNull()
-    expect(summary.trueCostUsdCents).toBeNull()
   })
 
   it('ignores a nonsense rate rather than dividing by zero', () => {
@@ -277,6 +295,113 @@ describe('taxYearSummary — edges', () => {
     expect(summary.coverage).toEqual([])
     expect(summary.uncoveredMonths).toEqual([])
     expect(summary.effectiveUsdRate).toBeNull()
+  })
+})
+
+describe('taxYearSummary — settlement', () => {
+  it('says a year owes when nothing has been paid', () => {
+    const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025, {
+      regularizationRate: 3.48,
+    })
+    expect(summary.settlement).toEqual({
+      kind: 'owes',
+      solesCents: 3542200,
+      usdCents: 1017874,
+    })
+  })
+
+  it('says settled once a payment is recorded', () => {
+    const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025, {
+      paidOn: '2026-03-25',
+      paidSolesCents: 3542200,
+      paidUsdCents: 1017874,
+    })
+    expect(summary.settlement).toMatchObject({
+      kind: 'settled',
+      paidOn: '2026-03-25',
+      paidSolesCents: 3542200,
+      differsFromComputed: false,
+    })
+  })
+
+  it('flags a payment that differs from the computed figure, without judging it', () => {
+    // What the portal charges at filing time can carry late interest.
+    const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025, {
+      paidOn: '2026-03-25',
+      paidSolesCents: 3600000,
+    })
+    expect(summary.settlement).toMatchObject({
+      kind: 'settled',
+      differsFromComputed: true,
+      computedSolesCents: 3542200,
+    })
+  })
+
+  it('does not call it a discrepancy when only the date was recorded', () => {
+    const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025, {
+      paidOn: '2026-03-25',
+    })
+    expect(summary.settlement).toMatchObject({ kind: 'settled', differsFromComputed: false })
+  })
+
+  it('reports a refund rather than a negative amount to pay', () => {
+    // This is the case the old headline rendered as "Still to pay −S/ 4,578".
+    const over: RetentionLike[] = [
+      {
+        id: 'a',
+        month: '2025-01',
+        amount_soles_cents: 9_000_000,
+        amount_usd_cents: null,
+        note: '',
+      },
+    ]
+    const summary = taxYearSummary(RECEIPTS_2025, over, 2025, { regularizationRate: 3.48 })
+    expect(summary.regularizationSolesCents).toBeLessThan(0)
+    expect(summary.settlement.kind).toBe('refund')
+    if (summary.settlement.kind === 'refund') {
+      expect(summary.settlement.solesCents).toBe(9_000_000 - 77599 * 100)
+      expect(summary.settlement.solesCents).toBeGreaterThan(0)
+      expect(summary.settlement.usdCents).toBeGreaterThan(0)
+    }
+  })
+
+  it('a recorded payment wins over the computed sign', () => {
+    const over: RetentionLike[] = [
+      {
+        id: 'a',
+        month: '2025-01',
+        amount_soles_cents: 9_000_000,
+        amount_usd_cents: null,
+        note: '',
+      },
+    ]
+    const summary = taxYearSummary(RECEIPTS_2025, over, 2025, { paidOn: '2026-03-25' })
+    expect(summary.settlement.kind).toBe('settled')
+  })
+
+  it('says square when the retentions matched the tax exactly', () => {
+    const exact: RetentionLike[] = [
+      {
+        id: 'a',
+        month: '2025-01',
+        amount_soles_cents: 77599 * 100,
+        amount_usd_cents: null,
+        note: '',
+      },
+    ]
+    const summary = taxYearSummary(RECEIPTS_2025, exact, 2025)
+    expect(summary.regularizationSolesCents).toBe(0)
+    expect(summary.settlement).toEqual({ kind: 'square' })
+  })
+
+  it('asserts nothing when the UIT is unpublished', () => {
+    const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2027)
+    expect(summary.settlement).toEqual({ kind: 'unknown' })
+  })
+
+  it('asserts nothing on an empty year', () => {
+    // No income, no tax, nothing retained — square, not owing.
+    expect(taxYearSummary([], [], 2026).settlement).toEqual({ kind: 'square' })
   })
 })
 

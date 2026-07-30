@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useLiveQuery } from '@tanstack/react-db'
-import { BarChartHorizontal, Plus, StickyNote, Trash2 } from 'lucide-react'
+import { AlertCircle, BarChartHorizontal, Plus, StickyNote, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { incomeReceiptsCollection, type IncomeReceipt } from '#/lib/income-receipts-collection.js'
 import { taxRetentionsCollection, type TaxRetention } from '#/lib/tax-retentions-collection.js'
@@ -23,6 +23,7 @@ import { YearSwitcher } from './YearSwitcher.js'
 import { ConfirmButton } from './ConfirmButton.js'
 import { Tooltip } from './Tooltip.js'
 import { ReceiptDialog } from './ReceiptDialog.js'
+import { RegularizationDialog } from './RegularizationDialog.js'
 import { RetentionDialog } from './RetentionDialog.js'
 
 export function IncomeTaxPage() {
@@ -38,6 +39,7 @@ export function IncomeTaxPage() {
     retention: TaxRetention | null
   }>({ open: false, retention: null })
   const [bracketsOpen, setBracketsOpen] = useState(false)
+  const [regularizationOpen, setRegularizationOpen] = useState(false)
   const [rateDraft, setRateDraft] = useState<string | null>(null)
 
   const { data: syncedReceipts } = useLiveQuery((q) =>
@@ -87,11 +89,151 @@ export function IncomeTaxPage() {
       taxYearSummary(receipts, retentions, selectedYear, {
         regularizationRate,
         uitOverride: yearSettings?.uit_override ?? null,
+        paidOn: yearSettings?.regularization_paid_on ?? null,
+        paidSolesCents: yearSettings?.regularization_paid_soles_cents ?? null,
+        paidUsdCents: yearSettings?.regularization_paid_usd_cents ?? null,
       }),
     [receipts, retentions, selectedYear, regularizationRate, yearSettings],
   )
 
   const headroom = summary.tax ? headroomInCurrentBracket(summary.tax) : null
+  // How much of the year's tax the retentions already cover. Clamped, because a
+  // year can be over-retained and a bar past 100% is just a broken bar.
+  const retainedShare =
+    summary.tax === null || summary.tax.totalTaxSoles <= 0
+      ? 0
+      : Math.min(
+          100,
+          Math.max(0, (summary.retainedSolesCents / (summary.tax.totalTaxSoles * 100)) * 100),
+        )
+
+  // The rate lives with the figure it converts. A borrowed rate says so, since
+  // it's a sensible default rather than a fact about how the year settled.
+  const rateField = (
+    <span className="inline-flex items-baseline gap-1.5">
+      <input
+        type="text"
+        inputMode="decimal"
+        aria-label="Exchange rate for the regularization"
+        // Shows the rate actually used, borrowed or not, so the field can't read
+        // empty while the conversion beside it quietly used something else.
+        value={rateDraft ?? summary.regularizationRate ?? ''}
+        onChange={(e) => setRateDraft(e.target.value)}
+        // Only a real edit commits. Otherwise tabbing through would silently
+        // adopt a borrowed rate as this year's own.
+        onBlur={(e) => {
+          if (rateDraft !== null) void saveRate(e.target.value)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+          if (e.key === 'Escape') setRateDraft(null)
+        }}
+        placeholder="3.4800"
+        className="w-16 rounded border border-gray-200 px-1.5 py-0.5 text-right text-xs tabular-nums text-gray-900 focus:border-gray-400 focus:outline-none"
+      />
+      {summary.rateInheritedFrom !== null && (
+        <Tooltip
+          content={`Borrowed from ${summary.rateInheritedFrom}. Type a rate to make it ${selectedYear}'s own.`}
+        >
+          <span className="cursor-default text-[11px] text-gray-400">
+            from {summary.rateInheritedFrom}
+          </span>
+        </Tooltip>
+      )}
+    </span>
+  )
+
+  const inDollars = (cents: number | null) =>
+    cents === null ? (
+      <>Add a rate to see this in dollars {rateField}</>
+    ) : (
+      <>
+        {formatCents(cents)} at {rateField}
+      </>
+    )
+
+  // What the headline is allowed to say, and in what colour. Every branch of
+  // Settlement is spelled out so a new one can't quietly fall through to
+  // "still to pay", which is the bug this whole state machine exists to stop.
+  const settleTone: {
+    label: string
+    eyebrow: string
+    figure: string
+    detail: ReactNode
+    bar: string
+    dot: string
+    remainder: string
+    remainderLabel: string
+  } = (() => {
+    const s = summary.settlement
+    switch (s.kind) {
+      case 'unknown':
+        return {
+          label: `Tax for ${selectedYear}`,
+          eyebrow: 'text-gray-400',
+          figure: '—',
+          detail: <>SUNAT hasn&rsquo;t published the {selectedYear} UIT yet.</>,
+          bar: 'bg-gray-200',
+          dot: 'bg-gray-300',
+          remainder: '—',
+          remainderLabel: 'unknown',
+        }
+      case 'owes':
+        return {
+          label: `Still to pay for ${selectedYear}`,
+          eyebrow: 'text-amber-700',
+          figure: formatSoles(s.solesCents),
+          detail: inDollars(s.usdCents),
+          bar: 'bg-amber-500',
+          dot: 'bg-amber-500',
+          remainder: formatSoles(s.solesCents),
+          remainderLabel: 'still to pay',
+        }
+      case 'square':
+        return {
+          label: `Nothing left to pay for ${selectedYear}`,
+          eyebrow: 'text-green-700',
+          figure: formatSoles(0),
+          detail: <>The retentions covered the year exactly.</>,
+          bar: 'bg-green-600',
+          dot: 'bg-green-600',
+          remainder: formatSoles(0),
+          remainderLabel: 'outstanding',
+        }
+      case 'refund':
+        return {
+          label: `Refund due for ${selectedYear}`,
+          eyebrow: 'text-green-700',
+          figure: formatSoles(s.solesCents),
+          detail: <>Retained more than the year owed. {inDollars(s.usdCents)}</>,
+          bar: 'bg-green-600',
+          dot: 'bg-green-600',
+          remainder: formatSoles(s.solesCents),
+          remainderLabel: 'over-retained',
+        }
+      case 'settled':
+        return {
+          label: `Settled for ${selectedYear}`,
+          eyebrow: 'text-green-700',
+          figure: formatSoles(s.paidSolesCents ?? s.computedSolesCents),
+          detail: (
+            <>
+              Paid on {formatDate(s.paidOn)}
+              {s.differsFromComputed && (
+                <span className="text-gray-400">
+                  {' '}
+                  · worked out to {formatSoles(s.computedSolesCents)}
+                </span>
+              )}
+            </>
+          ),
+          bar: 'bg-green-600',
+          dot: 'bg-green-600',
+          remainder: formatSoles(s.paidSolesCents ?? s.computedSolesCents),
+          remainderLabel: 'paid to settle',
+        }
+    }
+  })()
   const coveredMonths = retentions.map((t) => t.month)
   // Prefills come from the highest-numbered receipt, not the latest-dated one:
   // a back-dated correction shouldn't decide what the next number is.
@@ -165,42 +307,112 @@ export function IncomeTaxPage() {
           </button>
         </div>
       </div>
-
-      {/* Summary: what SUNAT sees, and what it costs */}
-      <div className="grid grid-cols-1 rounded-lg border border-gray-200 bg-white md:grid-cols-[1.15fr_1fr]">
-        <div className="flex flex-col gap-2.5 border-b border-gray-200 p-4 md:border-b-0 md:border-r">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-gray-400">
-              What SUNAT sees · soles
+      {/* Summary — leads with the year's settlement, because that's the question
+          this page exists to answer. Income and the tax itself are context for
+          it, not the headline. */}
+      <div className="rounded-lg border border-gray-200 bg-white">
+        <div className="flex flex-wrap items-start justify-between gap-5 p-5 pb-4">
+          <div className="flex flex-col gap-1">
+            <span
+              className={`text-[10.5px] font-semibold uppercase tracking-wider ${settleTone.eyebrow}`}
+            >
+              {settleTone.label}
             </span>
-            <span className="text-xs text-gray-400">
-              {summary.uit === null
-                ? `UIT ${selectedYear} not published`
-                : `UIT ${selectedYear} · ${formatSoles(summary.uit * 100)}`}
+            <span className="text-[32px] font-medium leading-none tracking-tight tabular-nums text-gray-900">
+              {settleTone.figure}
+            </span>
+            <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+              {settleTone.detail}
+              {/* Only offered when there's something to settle. A refund year
+                  owes nothing, and a square year already balanced. */}
+              {(summary.settlement.kind === 'owes' || summary.settlement.kind === 'settled') && (
+                <button
+                  type="button"
+                  onClick={() => setRegularizationOpen(true)}
+                  className="rounded border border-gray-200 px-1.5 py-0.5 text-[11px] font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+                >
+                  {summary.settlement.kind === 'settled' ? 'Edit payment' : 'Mark as paid'}
+                </button>
+              )}
             </span>
           </div>
 
-          <Line
-            label="Income received"
-            value={formatSoles(Math.round(summary.grossSolesExact * 100))}
-          />
-          <Line label="Retained through the year" value={formatSoles(summary.retainedSolesCents)} />
-          {summary.tax && (
-            <Line
-              muted
-              label="Deductions applied (20%, then 7 UIT)"
-              value={`−${formatSoles(
-                (summary.tax.firstDeductionSoles + summary.tax.secondDeductionSoles) * 100,
-              )}`}
-            />
+          {summary.trueCostUsdCents !== null && (
+            <div className="flex flex-col gap-1 text-right">
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-gray-400">
+                True cost of {selectedYear}
+              </span>
+              <span className="text-lg font-medium tabular-nums text-gray-900">
+                {formatCents(summary.trueCostUsdCents)}
+              </span>
+              {summary.effectiveUsdRate !== null && (
+                <span className="text-xs tabular-nums text-gray-400">
+                  {(summary.effectiveUsdRate * 100).toFixed(2)}% of income
+                </span>
+              )}
+            </div>
           )}
+        </div>
 
-          <div className="flex items-baseline justify-between gap-3 border-t border-gray-200 pt-2.5">
-            <span className="text-sm font-medium text-gray-700">Tax owed for {selectedYear}</span>
-            <span className="flex items-center gap-2">
-              {/* The icon mirrors what it opens — the bracket ladder is bars.
-                  State lives in its colour, since a rotating chevron beside a
-                  figure reads as a control that changes the figure. */}
+        {/* How much of the year's tax is already covered. Two rows of numbers
+            never said this; the bar is the whole point of leading with it. */}
+        {summary.tax !== null && summary.tax.totalTaxSoles > 0 && (
+          <div className="flex flex-col gap-2 px-5 pb-4">
+            <div className="flex h-2.5 overflow-hidden rounded-full bg-gray-100">
+              <span
+                className="block h-full bg-slate-600"
+                style={{ width: `${retainedShare}%` }}
+                aria-hidden="true"
+              />
+              <span
+                className={`block h-full ${settleTone.bar}`}
+                style={{ width: `${100 - retainedShare}%` }}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs">
+              <span className="flex items-center gap-1.5 text-gray-500">
+                <span className="block h-1.5 w-1.5 shrink-0 rounded-sm bg-slate-600" />
+                <span className="font-medium tabular-nums text-gray-900">
+                  {formatSoles(summary.retainedSolesCents)}
+                </span>
+                retained through the year
+              </span>
+              <span className="flex items-center gap-1.5 text-gray-500">
+                <span className={`block h-1.5 w-1.5 shrink-0 rounded-sm ${settleTone.dot}`} />
+                <span className="font-medium tabular-nums text-gray-900">
+                  {settleTone.remainder}
+                </span>
+                {settleTone.remainderLabel}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {summary.uncoveredMonths.length > 0 && (
+          <div className="px-5 pb-4">
+            <p className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+              <AlertCircle size={12} />
+              {summary.uncoveredMonths.map(formatMonth).join(', ')} — no retention logged yet
+            </p>
+          </div>
+        )}
+
+        {/* Context strip: what the settlement above was worked out from. */}
+        <div className="grid grid-cols-1 border-t border-gray-200 sm:grid-cols-3">
+          <div className="flex flex-col gap-0.5 border-b border-gray-200 p-4 sm:border-b-0 sm:border-r">
+            <span className="text-xs text-gray-500">Income received</span>
+            <span className="text-[15px] font-medium tabular-nums text-gray-900">
+              {formatSoles(Math.round(summary.grossSolesExact * 100))}
+            </span>
+            <span className="text-xs tabular-nums text-gray-400">
+              {formatCents(summary.grossUsdCents)}
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-0.5 border-b border-gray-200 p-4 sm:border-b-0 sm:border-r">
+            <span className="flex items-center gap-1 text-xs text-gray-500">
+              Tax owed for {selectedYear}
               {summary.tax && (
                 <Tooltip content={bracketsOpen ? 'Hide the brackets' : 'How this is built'}>
                   <button
@@ -208,150 +420,92 @@ export function IncomeTaxPage() {
                     aria-expanded={bracketsOpen}
                     aria-label={bracketsOpen ? 'Hide the brackets' : 'How this is built'}
                     onClick={() => setBracketsOpen((v) => !v)}
-                    className={`rounded p-1 ${
+                    className={`rounded p-0.5 ${
                       bracketsOpen
                         ? 'bg-gray-100 text-gray-700'
                         : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
                     }`}
                   >
-                    <BarChartHorizontal size={14} />
+                    <BarChartHorizontal size={13} />
                   </button>
                 </Tooltip>
               )}
-              <span className="text-lg font-medium tabular-nums text-gray-900">
-                {summary.tax === null ? '—' : formatSoles(summary.tax.totalTaxSoles * 100)}
-              </span>
+            </span>
+            <span className="text-[15px] font-medium tabular-nums text-gray-900">
+              {summary.tax === null ? '—' : formatSoles(summary.tax.totalTaxSoles * 100)}
+            </span>
+            <span className="text-xs tabular-nums text-gray-400">
+              {summary.tax === null
+                ? `UIT ${selectedYear} not published`
+                : `${(summary.tax.effectiveRate * 100).toFixed(2)}% of income`}
             </span>
           </div>
 
-          {bracketsOpen && summary.tax && (
-            <div className="flex flex-col rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5">
-              <span className="pb-1.5 text-[10.5px] tabular-nums text-gray-400">
-                Taxable base {formatSoles(Math.round(summary.tax.taxableBaseSoles * 100))} after
-                deductions
-              </span>
-              {summary.tax.brackets.map((bracket, index) => {
-                const filled =
-                  bracket.widthSoles === null
-                    ? bracket.taxableSoles > 0
-                      ? 1
-                      : 0
-                    : bracket.taxableSoles / bracket.widthSoles
-                return (
-                  <div
-                    key={bracket.ratePercent}
-                    className={`grid grid-cols-[34px_minmax(50px,1fr)_82px] items-center gap-2.5 py-1 text-xs ${
-                      index > 0 ? 'border-t border-gray-200' : ''
-                    }`}
-                  >
-                    <span className="font-medium tabular-nums text-gray-700">
-                      {bracket.ratePercent}%
-                    </span>
-                    <span className="block h-1.5 overflow-hidden rounded-full bg-gray-200">
-                      <span
-                        className={`block h-full rounded-full ${
-                          bracket.widthSoles === null ? 'bg-gray-900' : 'bg-slate-600'
-                        }`}
-                        style={{ width: `${Math.round(filled * 100)}%` }}
-                      />
-                    </span>
-                    <span className="text-right font-medium tabular-nums text-gray-900">
-                      {bracket.taxSoles === 0 ? '—' : formatSoles(bracket.taxSoles * 100)}
-                    </span>
-                  </div>
-                )
-              })}
-              {headroom && (
-                <p className="mt-2 rounded border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800">
-                  <span className="font-medium tabular-nums">
-                    {formatSoles(Math.round(headroom.headroomSoles * 100))}
-                  </span>{' '}
-                  of headroom left in the {headroom.ratePercent}% bracket — income past that is
-                  taxed at {headroom.nextRatePercent}%.
-                </p>
-              )}
-            </div>
-          )}
-
-          <Line
-            label="Regularization"
-            value={
-              summary.regularizationSolesCents === null
+          <div className="flex flex-col gap-0.5 p-4">
+            <span className="text-xs text-gray-500">Deductions applied</span>
+            <span className="text-[15px] font-medium tabular-nums text-gray-900">
+              {summary.tax === null
                 ? '—'
-                : formatSoles(summary.regularizationSolesCents)
-            }
-          />
-          {summary.tax && (
-            <Line
-              muted
-              label="Tax as a share of income"
-              value={`${(summary.tax.effectiveRate * 100).toFixed(2)}%`}
-            />
-          )}
+                : `−${formatSoles(
+                    (summary.tax.firstDeductionSoles + summary.tax.secondDeductionSoles) * 100,
+                  )}`}
+            </span>
+            <span className="text-xs tabular-nums text-gray-400">
+              20%, then 7 UIT
+              {summary.uit !== null && ` · UIT ${formatSoles(summary.uit * 100)}`}
+            </span>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2.5 p-4">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-gray-400">
-              What it cost you · dollars
+        {bracketsOpen && summary.tax && (
+          <div className="flex flex-col border-t border-gray-200 bg-gray-50 px-5 py-3">
+            <span className="pb-1.5 text-[10.5px] tabular-nums text-gray-400">
+              Taxable base {formatSoles(Math.round(summary.tax.taxableBaseSoles * 100))} after
+              deductions
             </span>
-            <label className="flex items-center gap-1.5 text-xs text-gray-400">
-              rate
-              <input
-                type="text"
-                inputMode="decimal"
-                aria-label="Exchange rate for the regularization"
-                value={rateDraft ?? regularizationRate ?? ''}
-                onChange={(e) => setRateDraft(e.target.value)}
-                onBlur={(e) => void saveRate(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-                  if (e.key === 'Escape') setRateDraft(null)
-                }}
-                placeholder="3.4800"
-                className="w-16 rounded border border-gray-200 px-1.5 py-0.5 text-right text-xs tabular-nums text-gray-900 focus:border-gray-400 focus:outline-none"
-              />
-            </label>
+            {summary.tax.brackets.map((bracket, index) => {
+              const filled =
+                bracket.widthSoles === null
+                  ? bracket.taxableSoles > 0
+                    ? 1
+                    : 0
+                  : bracket.taxableSoles / bracket.widthSoles
+              return (
+                <div
+                  key={bracket.ratePercent}
+                  className={`grid grid-cols-[34px_minmax(50px,1fr)_100px] items-center gap-2.5 py-1 text-xs ${
+                    index > 0 ? 'border-t border-gray-200' : ''
+                  }`}
+                >
+                  <span className="font-medium tabular-nums text-gray-700">
+                    {bracket.ratePercent}%
+                  </span>
+                  <span className="block h-1.5 overflow-hidden rounded-full bg-gray-200">
+                    <span
+                      className={`block h-full rounded-full ${
+                        bracket.widthSoles === null ? 'bg-gray-900' : 'bg-slate-600'
+                      }`}
+                      style={{ width: `${Math.round(filled * 100)}%` }}
+                    />
+                  </span>
+                  <span className="text-right font-medium tabular-nums text-gray-900">
+                    {bracket.taxSoles === 0 ? '—' : formatSoles(bracket.taxSoles * 100)}
+                  </span>
+                </div>
+              )
+            })}
+            {headroom && (
+              <p className="mt-2 rounded border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800">
+                <span className="font-medium tabular-nums">
+                  {formatSoles(Math.round(headroom.headroomSoles * 100))}
+                </span>{' '}
+                of headroom left in the {headroom.ratePercent}% bracket — income past that is taxed
+                at {headroom.nextRatePercent}%.
+              </p>
+            )}
           </div>
-
-          <Line label="Income received" value={formatCents(summary.grossUsdCents)} />
-          <Line label="Already retained" value={formatCents(summary.retainedUsdCents)} />
-          <Line
-            label="Regularization"
-            value={
-              summary.regularizationUsdCents === null
-                ? '—'
-                : formatCents(summary.regularizationUsdCents)
-            }
-          />
-
-          <div className="flex items-baseline justify-between gap-3 border-t border-gray-200 pt-2.5">
-            <span className="text-sm font-medium text-gray-700">True cost of {selectedYear}</span>
-            <span className="text-lg font-medium tabular-nums text-gray-900">
-              {summary.trueCostUsdCents === null ? '—' : formatCents(summary.trueCostUsdCents)}
-            </span>
-          </div>
-          <Line
-            label="Effective rate"
-            value={
-              summary.effectiveUsdRate === null
-                ? '—'
-                : `${(summary.effectiveUsdRate * 100).toFixed(2)}%`
-            }
-          />
-          {summary.regularizationRate === null && summary.regularizationSolesCents !== null && (
-            <p className="text-xs text-gray-400">
-              Set a rate to see the regularization in dollars.
-            </p>
-          )}
-          {summary.uncoveredMonths.length > 0 && (
-            <p className="self-start rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-              {summary.uncoveredMonths.map(formatMonth).join(', ')} — no retention logged yet
-            </p>
-          )}
-        </div>
+        )}
       </div>
-
       {/* Receipts */}
       <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <header className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
@@ -474,7 +628,6 @@ export function IncomeTaxPage() {
           </div>
         )}
       </section>
-
       {/* Retentions */}
       <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <header className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
@@ -606,7 +759,6 @@ export function IncomeTaxPage() {
           </div>
         )}
       </section>
-
       <ReceiptDialog
         open={receiptDialog.open}
         onOpenChange={(open) => setReceiptDialog((s) => ({ ...s, open }))}
@@ -616,6 +768,16 @@ export function IncomeTaxPage() {
         suggestedUsdCents={lastReceipt?.amount_usd_cents ?? null}
         coveredMonths={coveredMonths}
         year={selectedYear}
+      />
+      <RegularizationDialog
+        open={regularizationOpen}
+        onOpenChange={setRegularizationOpen}
+        year={selectedYear}
+        paidOn={yearSettings?.regularization_paid_on ?? null}
+        paidSolesCents={yearSettings?.regularization_paid_soles_cents ?? null}
+        paidUsdCents={yearSettings?.regularization_paid_usd_cents ?? null}
+        computedSolesCents={summary.regularizationSolesCents}
+        computedUsdCents={summary.regularizationUsdCents}
       />
       <RetentionDialog
         open={retentionDialog.open}
@@ -632,22 +794,5 @@ function countUncoveredReceipts(coverage: MonthCoverage[]): number {
   return coverage.reduce(
     (n, entry) => n + (entry.retention === null ? entry.receipts.length : 0),
     0,
-  )
-}
-
-function Line({ label, value, muted = false }: { label: string; value: string; muted?: boolean }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className={muted ? 'text-xs text-gray-400' : 'text-sm text-gray-500'}>{label}</span>
-      <span
-        className={
-          muted
-            ? 'text-xs tabular-nums text-gray-400'
-            : 'text-sm font-medium tabular-nums text-gray-900'
-        }
-      >
-        {value}
-      </span>
-    </div>
   )
 }

@@ -9,6 +9,9 @@ const taxYearSchema = z.object({
   // `numeric` arrives as a string; see normalizeRate in income-tax-year.
   regularization_rate: z.union([z.string(), z.number()]).nullable(),
   uit_override: z.coerce.number().nullable(),
+  regularization_paid_on: z.string().nullable(),
+  regularization_paid_soles_cents: z.coerce.number().nullable(),
+  regularization_paid_usd_cents: z.coerce.number().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 })
