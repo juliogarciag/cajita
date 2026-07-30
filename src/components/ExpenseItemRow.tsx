@@ -4,6 +4,7 @@ import type { ExpenseItem } from '#/lib/expense-items-collection.js'
 import type { ExpenseItemNote } from '#/lib/expense-item-notes-collection.js'
 import type { TeamMember } from '#/lib/team-members-collection.js'
 import { formatCents, formatSoles, parseDollarsTocents } from '#/lib/format.js'
+import { isPendingExchange } from '#/lib/expense-totals.js'
 import { EditableCell } from './EditableCell.js'
 import { ConfirmButton } from './ConfirmButton.js'
 import { TableRow } from './TableRow.js'
@@ -67,8 +68,7 @@ export function ExpenseItemRow({
     [item.id, onUpdate],
   )
 
-  // Soles amount with no USD amount = money not exchanged yet
-  const isPending = item.amount_soles_cents != null && item.amount_usd_cents == null
+  const isPending = isPendingExchange(item)
 
   // A negative amount is money that came back — a reimbursement or a refund.
   // Green says that without needing a separate column for it.

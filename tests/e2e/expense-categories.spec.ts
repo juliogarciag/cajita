@@ -95,6 +95,8 @@ test.describe('Expense Categories', () => {
       has: page.getByText(SOLES_REFUND_DESC, { exact: true }),
     })
     await expect(row.getByText(/-S\/\s?300\.00/)).toBeVisible({ timeout: 10000 })
+    // ...and it isn't flagged as pending either
+    await expect(row.getByTitle('Pending — no USD amount yet')).toHaveCount(0)
 
     // Still S/800, not S/500: soles coming back aren't soles waiting to be
     // exchanged, so netting them here would understate what's outstanding.
