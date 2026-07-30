@@ -116,19 +116,21 @@ export function RegularizationDialog({
             </Dialog.Description>
           </div>
 
+          {/* Fields are sized to what goes in them. Stretched across the dialog,
+              an eight-digit amount sat in a 400px box with the caret marooned at
+              one end — the width promised an input that wasn't coming. */}
           <div className="flex flex-col gap-3 px-5 py-4">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-gray-500">Paid on</span>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
-              />
-            </label>
-
-            <div className="flex gap-3">
-              <label className="flex flex-1 flex-col gap-1">
+            <div className="flex flex-wrap gap-3">
+              <label className="flex w-36 flex-col gap-1">
+                <span className="text-xs text-gray-500">Paid on</span>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
+                />
+              </label>
+              <label className="flex w-28 flex-col gap-1">
                 <span className="text-xs text-gray-500">Soles paid</span>
                 <input
                   type="text"
@@ -143,9 +145,9 @@ export function RegularizationDialog({
                   className="rounded border border-gray-300 px-2 py-1.5 text-right text-sm tabular-nums focus:border-gray-500 focus:outline-none"
                 />
               </label>
-              <label className="flex flex-1 flex-col gap-1">
-                <span className="text-xs text-gray-500">
-                  USD paid <span className="text-gray-400">optional</span>
+              <label className="flex w-28 flex-col gap-1">
+                <span className="flex items-baseline gap-1 text-xs text-gray-500">
+                  USD paid <span className="text-[10px] text-gray-400">optional</span>
                 </span>
                 <input
                   type="text"

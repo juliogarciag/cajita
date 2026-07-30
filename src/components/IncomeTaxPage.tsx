@@ -402,8 +402,12 @@ export function IncomeTaxPage() {
         {summary.uncoveredMonths.length > 0 && (
           <div className="px-5 pb-4">
             <p className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-              <AlertCircle size={12} />
-              {summary.uncoveredMonths.map(formatMonth).join(', ')} — no retention logged yet
+              <AlertCircle size={12} className="shrink-0" />
+              {/* Naming them only helps while there are few. A year with nothing
+                  logged listed all twelve and became a two-line banner. */}
+              {summary.uncoveredMonths.length > 3
+                ? `${summary.uncoveredMonths.length} months have no retention logged yet`
+                : `${summary.uncoveredMonths.map(formatMonth).join(', ')} — no retention logged yet`}
             </p>
           </div>
         )}
