@@ -299,6 +299,56 @@ describe('taxYearSummary — edges', () => {
   })
 })
 
+describe('taxYearSummary — true cost', () => {
+  it('converts the computed regularization while the year is unpaid', () => {
+    const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025, {
+      regularizationRate: 3.48,
+    })
+    // $10,178.74 regularization + $12,252.48 retained
+    expect(summary.regularizationUsdCents).toBe(1017874)
+    expect(summary.trueCostUsdCents).toBe(2243122)
+  })
+
+  it('prefers the dollars actually paid once the year is settled', () => {
+    // Paid at a worse rate than the estimate assumed, so it really cost more.
+    const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025, {
+      regularizationRate: 3.48,
+      paidOn: '2026-03-25',
+      paidSolesCents: 3542200,
+      paidUsdCents: 1100000, // $11,000.00
+    })
+    expect(summary.trueCostUsdCents).toBe(1100000 + 1225248)
+    // The computed conversion is still reported; it just no longer drives cost.
+    expect(summary.regularizationUsdCents).toBe(1017874)
+  })
+
+  it('carries the paid figure through to the effective rate', () => {
+    const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025, {
+      regularizationRate: 3.48,
+      paidOn: '2026-03-25',
+      paidUsdCents: 1100000,
+    })
+    expect(summary.effectiveUsdRate).toBeCloseTo((1100000 + 1225248) / 14401200, 10)
+  })
+
+  it('falls back to the conversion when the payment recorded no dollars', () => {
+    const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025, {
+      regularizationRate: 3.48,
+      paidOn: '2026-03-25',
+      paidSolesCents: 3542200,
+    })
+    expect(summary.trueCostUsdCents).toBe(2243122)
+  })
+
+  it('ignores a stray paid amount when nothing marks the year settled', () => {
+    const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025, {
+      regularizationRate: 3.48,
+      paidUsdCents: 1100000,
+    })
+    expect(summary.trueCostUsdCents).toBe(2243122)
+  })
+})
+
 describe('taxYearSummary — settlement', () => {
   it('says a year owes when nothing has been paid', () => {
     const summary = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025, 2025, {

@@ -319,18 +319,18 @@ describe('mergeCloseReadings', () => {
     expect(mergeCloseReadings(readings, 620).map((r) => r.snapshot.id)).toEqual(['a', 'd', 'e'])
   })
 
-  test('a next-day pair merges when a year is squeezed into the width', () => {
+  test('a pair a couple of days apart merges when a year is squeezed into the width', () => {
     const readings = [
       at('a', '2025-08-30'),
       at('b', '2026-02-27'),
-      at('c', '2026-07-31'),
+      at('c', '2026-07-30'),
       at('d', '2026-08-01'),
     ]
-    // A day is under two units across this span, so c and d would draw as one.
+    // Two days is under four units across this span, so c and d draw as one.
     expect(mergeCloseReadings(readings, 620).map((r) => r.snapshot.id)).toEqual(['a', 'b', 'd'])
   })
 
-  test('a next-day pair survives when the window is short enough to show both', () => {
+  test('a close pair survives when the window is short enough to show both', () => {
     const readings = [
       at('a', '2026-01-01'),
       at('b', '2026-01-15'),
@@ -341,7 +341,7 @@ describe('mergeCloseReadings', () => {
     expect(dates(mergeCloseReadings(readings, 620))).toEqual(dates(readings))
   })
 
-  test('never merges readings further apart than a day, however tight the scale', () => {
+  test('never merges readings further apart than a few days, however tight the scale', () => {
     const readings = [
       at('a', '2016-01-01'),
       at('b', '2025-12-01'),
@@ -350,6 +350,18 @@ describe('mergeCloseReadings', () => {
     ]
     // A decade across the width puts these monthly readings five units apart —
     // inside the overlap threshold, but they are movement, not corrections.
+    expect(dates(mergeCloseReadings(readings, 620))).toEqual(dates(readings))
+  })
+
+  test('a week apart is movement even when it draws as one dot', () => {
+    const readings = [
+      at('a', '2023-08-01'),
+      at('b', '2025-02-27'),
+      at('c', '2026-07-25'),
+      at('d', '2026-08-01'),
+    ]
+    // Three years across the width: a week is four units, inside the overlap
+    // threshold but well past a single sitting. The cap is what holds it.
     expect(dates(mergeCloseReadings(readings, 620))).toEqual(dates(readings))
   })
 

@@ -221,6 +221,9 @@ export function IncomeTaxPage() {
           figure: formatSoles(s.paidSolesCents ?? s.computedSolesCents),
           detail: (
             <>
+              {/* The dollars paid are shown because they now drive the true cost
+                  beside them — otherwise that figure has no visible source. */}
+              {s.paidUsdCents !== null && `${formatCents(s.paidUsdCents)} · `}
               Regularization paid on {formatDate(s.paidOn)}
               {s.differsFromComputed && (
                 <span className="text-gray-400">

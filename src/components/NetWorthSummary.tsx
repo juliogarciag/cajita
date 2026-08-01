@@ -26,9 +26,11 @@ const CHART_HEIGHT = 120
 
 // One dot diameter. Closer than this and two readings draw as a single blob.
 const MERGE_GAP = 6
-// Beyond a day apart it's movement, not a correction — however tight the range
-// draws it. Without this cap, "All" over a decade would merge whole months.
-const MERGE_MAX_DAYS = 1
+// A few days is one sitting — a sweep finished over a weekend, or a figure
+// corrected once the statement landed. Past that it's movement, however tight
+// the range draws it: without a cap, "All" over a decade would merge months.
+// At 1Y the gap above is already ~3.3 days, so this only bites on wider ranges.
+const MERGE_MAX_DAYS = 3
 
 // Windows in years, not counts of readings: "the last 12 readings" only means a
 // year while sweeps stay monthly.

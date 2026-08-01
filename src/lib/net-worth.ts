@@ -192,10 +192,10 @@ export function dateMs(date: string): number {
  * The readings a time-scaled chart should actually draw, given how many
  * horizontal units it has to draw them in.
  *
- * On a time axis, readings taken within a day of each other land on top of
- * each other — at a year's span a day is barely two pixels. Two readings on
- * one date are one sitting recorded twice, so only the later stands; a
- * next-day pair merges too, but only when it would otherwise overlap. The
+ * On a time axis, readings taken within a few days of each other land on top
+ * of each other — at a year's span a day is barely two pixels. Two readings on
+ * one date are one sitting recorded twice, so only the later stands; a pair a
+ * few days apart merges too, but only when it would otherwise overlap. The
  * later reading always wins: a balance is a state, not an event, so the newer
  * figure is simply the truer one.
  *
@@ -209,7 +209,7 @@ export function dateMs(date: string): number {
 export function mergeCloseReadings(
   readings: readonly Reading[],
   chartUnits: number,
-  { minGap = 6, maxDays = 1 }: { minGap?: number; maxDays?: number } = {},
+  { minGap = 6, maxDays = 3 }: { minGap?: number; maxDays?: number } = {},
 ): Reading[] {
   if (readings.length < 3) return readings.slice()
 

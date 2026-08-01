@@ -225,8 +225,15 @@ export function taxYearSummary(
       ? null
       : Math.round(regularizationSolesCents / regularizationRate)
 
+  // What the regularization actually cost in dollars, preferring the figure
+  // recorded when it was paid over a conversion of the computed one. Once the
+  // money has moved, the amount that left the account is the fact; the
+  // conversion was only ever an estimate standing in for it.
+  const paidUsdCents = options.paidOn != null ? (options.paidUsdCents ?? null) : null
+  const regularizationCostUsdCents = paidUsdCents ?? regularizationUsdCents
+
   const trueCostUsdCents =
-    regularizationUsdCents === null ? null : regularizationUsdCents + retainedUsdCents
+    regularizationCostUsdCents === null ? null : regularizationCostUsdCents + retainedUsdCents
 
   const effectiveUsdRate =
     trueCostUsdCents === null || grossUsdCents === 0 ? null : trueCostUsdCents / grossUsdCents
