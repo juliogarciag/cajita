@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, redirect, useRouterState } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { authMiddleware } from '#/server/middleware.js'
 import { DateFormatProvider } from '#/lib/date-format.js'
@@ -28,9 +28,19 @@ export const Route = createFileRoute('/_authenticated')({
 const navLinkClass =
   'text-sm font-medium text-gray-500 hover:text-gray-900 [&.active]:text-gray-900'
 
+/** Expenses matches its child routes too, so a category page keeps it lit. */
+const FINANCE_LINKS = [
+  { to: '/finances/net-worth', label: 'Balances', exact: true },
+  { to: '/finances/expense-categories', label: 'Expenses', exact: false },
+  { to: '/finances/income-tax', label: 'Income tax', exact: true },
+] as const
+
 function AuthenticatedLayout() {
   const { user } = Route.useRouteContext()
   const [searchOpen, setSearchOpen] = useState(false)
+  const financesActive = useRouterState({
+    select: (state) => state.location.pathname.startsWith('/finances'),
+  })
 
   // Global Cmd+K / Ctrl+K toggle for the search palette.
   useEffect(() => {
@@ -53,20 +63,47 @@ function AuthenticatedLayout() {
               Cajita
             </Link>
             <div className="flex items-center gap-4">
-              {/* Paths still say /finances — only the navigation moved up a level */}
-              <Link to="/finances/net-worth" className={navLinkClass}>
-                Balances
-              </Link>
-              <Link
-                to="/finances/expense-categories"
-                className={navLinkClass}
-                activeOptions={{ exact: false }}
-              >
-                Expenses
-              </Link>
-              <Link to="/finances/income-tax" className={navLinkClass}>
-                Income tax
-              </Link>
+              {/* The three money pages live under /finances already, so the nav
+                  now says so too. The trigger reads as active for any of them,
+                  which a Link's own .active class can't do for a group. */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger
+                  className={`flex items-center gap-1 outline-none ${navLinkClass} ${
+                    financesActive ? 'text-gray-900' : ''
+                  } data-[state=open]:text-gray-900`}
+                >
+                  Finances
+                  <svg
+                    viewBox="0 0 12 12"
+                    className="h-3 w-3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  >
+                    <path d="M3 4.5 6 7.5 9 4.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    align="start"
+                    sideOffset={8}
+                    className="z-50 min-w-[170px] rounded-lg border border-gray-200 bg-white p-1 shadow-lg"
+                  >
+                    {FINANCE_LINKS.map(({ to, label, exact }) => (
+                      <DropdownMenu.Item key={to} asChild>
+                        <Link
+                          to={to}
+                          activeOptions={{ exact }}
+                          className="flex cursor-pointer rounded-md px-3 py-1.5 text-sm text-gray-700 outline-none select-none hover:bg-gray-50 data-[highlighted]:bg-gray-50 [&.active]:font-medium [&.active]:text-gray-900"
+                        >
+                          {label}
+                        </Link>
+                      </DropdownMenu.Item>
+                    ))}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
               <Link to="/toys" className={navLinkClass}>
                 Toys
               </Link>
