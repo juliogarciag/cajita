@@ -35,6 +35,11 @@ export type ChartRangeKey = (typeof CHART_RANGES)[number]['key']
 
 type Hover = { index: number; left: number; top: number }
 
+/** Midnight UTC for a YYYY-MM-DD, so gaps between readings measure in days. */
+function dateMs(date: string): number {
+  return Date.parse(`${date}T00:00:00Z`)
+}
+
 /** Axis ticks want to be readable in a narrow gutter, not exact: "$53.7k". */
 function compactUsd(cents: number): string {
   const dollars = cents / 100
@@ -116,16 +121,34 @@ export function NetWorthSummary() {
     return { min: Math.min(...totals), max: Math.max(...totals) }
   }, [points, valueOf])
 
+  // The horizontal axis is time, not reading number: two sweeps a week apart
+  // sit a week apart, and a three-month gap reads as a three-month gap.
   const path = useMemo(() => {
     if (!bounds || points.length < 2) return null
     const span = bounds.max - bounds.min || 1
-    const step = CHART_WIDTH / (points.length - 1)
+    const first = dateMs(points[0].snapshot.date)
+    const elapsed = dateMs(points[points.length - 1].snapshot.date) - first
     return points.map((p, i) => {
-      const x = Math.round(i * step)
+      // Every reading on one day has no time to spread across; space them
+      // evenly rather than stacking them all on the left edge.
+      const x =
+        elapsed === 0
+          ? Math.round((i / (points.length - 1)) * CHART_WIDTH)
+          : Math.round(((dateMs(p.snapshot.date) - first) / elapsed) * CHART_WIDTH)
       const y = Math.round(CHART_HEIGHT - ((valueOf(p) - bounds.min) / span) * CHART_HEIGHT)
       return { x, y, reading: p }
     })
   }, [points, bounds, valueOf])
+
+  // Halfway along the axis in time. Kept in UTC — these are calendar dates
+  // anchored at midnight UTC, and a local reading of the midpoint would land a
+  // day off west of Greenwich.
+  const midpointDate = useMemo(() => {
+    if (points.length < 2) return ''
+    const middle =
+      (dateMs(points[0].snapshot.date) + dateMs(points[points.length - 1].snapshot.date)) / 2
+    return new Date(middle).toISOString().slice(0, 10)
+  }, [points])
 
   // Change across the visible window rather than since the previous reading —
   // the number sits beside the range buttons, so it should answer the question
@@ -401,14 +424,12 @@ export function NetWorthSummary() {
               )}
 
               {/* Date axis. A midpoint tick gives the horizontal span a scale;
-                  with 60 monthly readings the two ends alone don't. */}
+                  with 60 monthly readings the two ends alone don't. It's the
+                  halfway *date* — the tick sits at the centre of the axis, and
+                  on a time axis no reading need fall there. */}
               <div className="mt-1 flex justify-between text-xs text-gray-400 tabular-nums">
                 <span>{formatDate(points[0].snapshot.date)}</span>
-                {points.length > 2 && (
-                  <span>
-                    {formatDate(points[Math.floor((points.length - 1) / 2)].snapshot.date)}
-                  </span>
-                )}
+                {points.length > 2 && <span>{formatDate(midpointDate)}</span>}
                 <span>{formatDate(points[points.length - 1].snapshot.date)}</span>
               </div>
             </div>
