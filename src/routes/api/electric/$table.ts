@@ -12,6 +12,9 @@ const ALLOWED_TABLES = [
   'wealth_sources',
   'balance_snapshots',
   'balance_entries',
+  'income_receipts',
+  'tax_retentions',
+  'tax_years',
   'team_members',
 ]
 const TEAM_SCOPED_TABLES = [
@@ -22,6 +25,9 @@ const TEAM_SCOPED_TABLES = [
   'wealth_sources',
   'balance_snapshots',
   'balance_entries',
+  'income_receipts',
+  'tax_retentions',
+  'tax_years',
 ]
 
 // Electric protocol query params to forward. `where` is deliberately absent:

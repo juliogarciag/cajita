@@ -64,6 +64,9 @@ function AuthenticatedLayout() {
               >
                 Expenses
               </Link>
+              <Link to="/finances/income-tax" className={navLinkClass}>
+                Income tax
+              </Link>
               <Link to="/toys" className={navLinkClass}>
                 Toys
               </Link>
