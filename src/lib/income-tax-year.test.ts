@@ -188,7 +188,6 @@ describe('taxYearSummary — coverage', () => {
 
   it('lands one retention on each month, covering every receipt', () => {
     expect(summary.coverage.every((c) => c.retention !== null)).toBe(true)
-    expect(summary.uncoveredMonths).toEqual([])
     const covered = summary.coverage.reduce((n, c) => n + c.receipts.length, 0)
     expect(covered).toBe(12)
   })
@@ -205,9 +204,13 @@ describe('taxYearSummary — coverage', () => {
     expect(june?.incomeSolesExact).toBeCloseTo(85680.765, 4)
   })
 
-  it('flags a month whose receipts have no retention yet', () => {
+  it('leaves a month without a retention visible in the coverage', () => {
+    // Nothing warns about this any more — SUNAT allows paying the month after
+    // the receipt, so "no retention yet" is normal rather than a problem. The
+    // month picker still needs to find these to offer them.
     const partial = taxYearSummary(RECEIPTS_2025, RETENTIONS_2025.slice(0, 8), 2025)
-    expect(partial.uncoveredMonths).toEqual(['2025-12'])
+    const open = partial.coverage.filter((c) => c.receipts.length > 0 && c.retention === null)
+    expect(open.map((c) => c.month)).toEqual(['2025-12'])
   })
 
   it('keeps a retention that covers no receipts, so the total still adds up', () => {
@@ -294,7 +297,6 @@ describe('taxYearSummary — edges', () => {
     expect(summary.grossSolesExact).toBe(0)
     expect(summary.tax?.totalTaxSoles).toBe(0)
     expect(summary.coverage).toEqual([])
-    expect(summary.uncoveredMonths).toEqual([])
     expect(summary.effectiveUsdRate).toBeNull()
   })
 })

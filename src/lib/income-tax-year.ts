@@ -166,8 +166,6 @@ export interface TaxYearSummary {
   effectiveUsdRate: number | null
   /** Every month with a receipt or a retention, oldest first. */
   coverage: MonthCoverage[]
-  /** Months holding receipts with nothing logged against them yet. */
-  uncoveredMonths: string[]
 }
 
 export interface TaxYearOptions {
@@ -320,9 +318,6 @@ export function taxYearSummary(
     trueCostUsdCents,
     effectiveUsdRate,
     coverage,
-    uncoveredMonths: coverage
-      .filter((entry) => entry.receipts.length > 0 && entry.retention === null)
-      .map((entry) => entry.month),
   }
 }
 
