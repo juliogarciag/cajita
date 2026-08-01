@@ -12,6 +12,8 @@ import {
   describeAge,
   metricTotal,
   groupSources,
+  mergeCloseReadings,
+  dateMs,
   type Reading,
 } from '#/lib/net-worth.js'
 import { METRICS, DEFAULT_METRIC, metricKinds, type MetricKey } from '#/lib/wealth-kinds.js'
@@ -21,6 +23,12 @@ import { useDateFormat } from '#/lib/date-format.js'
 
 const CHART_WIDTH = 620
 const CHART_HEIGHT = 120
+
+// One dot diameter. Closer than this and two readings draw as a single blob.
+const MERGE_GAP = 6
+// Beyond a day apart it's movement, not a correction — however tight the range
+// draws it. Without this cap, "All" over a decade would merge whole months.
+const MERGE_MAX_DAYS = 1
 
 // Windows in years, not counts of readings: "the last 12 readings" only means a
 // year while sweeps stay monthly.
@@ -34,11 +42,6 @@ export const CHART_RANGES = [
 export type ChartRangeKey = (typeof CHART_RANGES)[number]['key']
 
 type Hover = { index: number; left: number; top: number }
-
-/** Midnight UTC for a YYYY-MM-DD, so gaps between readings measure in days. */
-function dateMs(date: string): number {
-  return Date.parse(`${date}T00:00:00Z`)
-}
 
 /** Axis ticks want to be readable in a narrow gutter, not exact: "$53.7k". */
 function compactUsd(cents: number): string {
@@ -115,46 +118,54 @@ export function NetWorthSummary() {
     })
   }
 
+  // Readings within a day of each other draw on top of each other at this
+  // scale, so the chart plots one of them — see mergeCloseReadings.
+  const plotted = useMemo(
+    () => mergeCloseReadings(points, CHART_WIDTH, { minGap: MERGE_GAP, maxDays: MERGE_MAX_DAYS }),
+    [points],
+  )
+
   const bounds = useMemo(() => {
-    if (points.length < 2) return null
-    const totals = points.map(valueOf)
+    if (plotted.length < 2) return null
+    const totals = plotted.map(valueOf)
     return { min: Math.min(...totals), max: Math.max(...totals) }
-  }, [points, valueOf])
+  }, [plotted, valueOf])
 
   // The horizontal axis is time, not reading number: two sweeps a week apart
   // sit a week apart, and a three-month gap reads as a three-month gap.
   const path = useMemo(() => {
-    if (!bounds || points.length < 2) return null
+    if (!bounds || plotted.length < 2) return null
     const span = bounds.max - bounds.min || 1
-    const first = dateMs(points[0].snapshot.date)
-    const elapsed = dateMs(points[points.length - 1].snapshot.date) - first
-    return points.map((p, i) => {
-      // Every reading on one day has no time to spread across; space them
-      // evenly rather than stacking them all on the left edge.
+    const first = dateMs(plotted[0].snapshot.date)
+    const elapsed = dateMs(plotted[plotted.length - 1].snapshot.date) - first
+    return plotted.map((p, i) => {
+      // Two readings on one date survive merging only at the very start, where
+      // the first is pinned. They have no time to spread across, so space them
+      // evenly rather than stacking them on the left edge.
       const x =
         elapsed === 0
-          ? Math.round((i / (points.length - 1)) * CHART_WIDTH)
+          ? Math.round((i / (plotted.length - 1)) * CHART_WIDTH)
           : Math.round(((dateMs(p.snapshot.date) - first) / elapsed) * CHART_WIDTH)
       const y = Math.round(CHART_HEIGHT - ((valueOf(p) - bounds.min) / span) * CHART_HEIGHT)
       return { x, y, reading: p }
     })
-  }, [points, bounds, valueOf])
+  }, [plotted, bounds, valueOf])
 
   // Halfway along the axis in time. Kept in UTC — these are calendar dates
   // anchored at midnight UTC, and a local reading of the midpoint would land a
   // day off west of Greenwich.
   const midpointDate = useMemo(() => {
-    if (points.length < 2) return ''
+    if (plotted.length < 2) return ''
     const middle =
-      (dateMs(points[0].snapshot.date) + dateMs(points[points.length - 1].snapshot.date)) / 2
+      (dateMs(plotted[0].snapshot.date) + dateMs(plotted[plotted.length - 1].snapshot.date)) / 2
     return new Date(middle).toISOString().slice(0, 10)
-  }, [points])
+  }, [plotted])
 
   // Change across the visible window rather than since the previous reading —
   // the number sits beside the range buttons, so it should answer the question
   // those buttons ask. "All" has no window to measure from, so it shows nothing.
-  const baseline = selectedRange.years !== null && points.length >= 2 ? points[0] : null
-  const periodDelta = baseline ? valueOf(points[points.length - 1]) - valueOf(baseline) : null
+  const baseline = selectedRange.years !== null && plotted.length >= 2 ? plotted[0] : null
+  const periodDelta = baseline ? valueOf(plotted[plotted.length - 1]) - valueOf(baseline) : null
 
   // Snap to the nearest reading anywhere in the chart — the dots themselves are
   // a 4px target, which is not something to ask anyone to hit.
@@ -186,8 +197,8 @@ export function NetWorthSummary() {
   // Against the previous plotted point rather than the reading's own delta,
   // which is computed on the raw total and would disagree with the metric.
   const hoveredDelta =
-    hover && hover.index > 0 && points[hover.index] && points[hover.index - 1]
-      ? valueOf(points[hover.index]) - valueOf(points[hover.index - 1])
+    hover && hover.index > 0 && plotted[hover.index] && plotted[hover.index - 1]
+      ? valueOf(plotted[hover.index]) - valueOf(plotted[hover.index - 1])
       : null
 
   if (!headline) {
@@ -317,7 +328,7 @@ export function NetWorthSummary() {
                 className="w-full"
                 style={{ overflow: 'visible' }}
                 role="img"
-                aria-label={`Net worth across ${points.length} complete readings, ${formatDate(points[0].snapshot.date)} to ${formatDate(points[points.length - 1].snapshot.date)}.`}
+                aria-label={`Net worth across ${plotted.length} complete readings, ${formatDate(plotted[0].snapshot.date)} to ${formatDate(plotted[plotted.length - 1].snapshot.date)}.`}
                 onMouseMove={handleMove}
                 onMouseLeave={() => setHover(null)}
               >
@@ -428,9 +439,9 @@ export function NetWorthSummary() {
                   halfway *date* — the tick sits at the centre of the axis, and
                   on a time axis no reading need fall there. */}
               <div className="mt-1 flex justify-between text-xs text-gray-400 tabular-nums">
-                <span>{formatDate(points[0].snapshot.date)}</span>
-                {points.length > 2 && <span>{formatDate(midpointDate)}</span>}
-                <span>{formatDate(points[points.length - 1].snapshot.date)}</span>
+                <span>{formatDate(plotted[0].snapshot.date)}</span>
+                {plotted.length > 2 && <span>{formatDate(midpointDate)}</span>}
+                <span>{formatDate(plotted[plotted.length - 1].snapshot.date)}</span>
               </div>
             </div>
           </div>

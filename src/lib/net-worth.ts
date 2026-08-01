@@ -181,6 +181,54 @@ export function groupSources(reading: Reading, sources: readonly WealthSource[])
   }).filter((g) => g.sources.length > 0)
 }
 
+const DAY_MS = 86_400_000
+
+/** Midnight UTC for a YYYY-MM-DD, so gaps between readings measure in days. */
+export function dateMs(date: string): number {
+  return Date.parse(`${date}T00:00:00Z`)
+}
+
+/**
+ * The readings a time-scaled chart should actually draw, given how many
+ * horizontal units it has to draw them in.
+ *
+ * On a time axis, readings taken within a day of each other land on top of
+ * each other — at a year's span a day is barely two pixels. Two readings on
+ * one date are one sitting recorded twice, so only the later stands; a
+ * next-day pair merges too, but only when it would otherwise overlap. The
+ * later reading always wins: a balance is a state, not an event, so the newer
+ * figure is simply the truer one.
+ *
+ * Two rules keep it from lying. Nothing more than `maxDays` apart ever merges,
+ * however tight the scale draws it — otherwise a decade-long window would
+ * swallow whole months. And the first reading is never merged away: it is the
+ * baseline every delta on the card is measured from, so a close pair at the
+ * very start is left to overlap rather than move it. The newest always
+ * survives.
+ */
+export function mergeCloseReadings(
+  readings: readonly Reading[],
+  chartUnits: number,
+  { minGap = 6, maxDays = 1 }: { minGap?: number; maxDays?: number } = {},
+): Reading[] {
+  if (readings.length < 3) return readings.slice()
+
+  const elapsedDays =
+    (dateMs(readings[readings.length - 1].snapshot.date) - dateMs(readings[0].snapshot.date)) /
+    DAY_MS
+  const unitsPerDay = elapsedDays > 0 ? chartUnits / elapsedDays : 0
+
+  const kept: Reading[] = [readings[0]]
+  for (const reading of readings.slice(1)) {
+    const gapDays =
+      (dateMs(reading.snapshot.date) - dateMs(kept[kept.length - 1].snapshot.date)) / DAY_MS
+    const merges = gapDays === 0 || (gapDays <= maxDays && gapDays * unitsPerDay < minGap)
+    if (merges && kept.length > 1) kept[kept.length - 1] = reading
+    else kept.push(reading)
+  }
+  return kept
+}
+
 export function daysSince(date: string, today: Date): number {
   const then = Date.parse(`${date}T00:00:00Z`)
   // Local calendar date, not UTC — otherwise a reading taken today reads as

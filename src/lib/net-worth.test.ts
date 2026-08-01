@@ -7,6 +7,8 @@ import {
   describeAge,
   metricTotal,
   groupSources,
+  mergeCloseReadings,
+  type Reading,
 } from '#/lib/net-worth'
 import type { WealthSource } from '#/lib/wealth-sources-collection'
 import type { BalanceSnapshot } from '#/lib/balance-snapshots-collection'
@@ -269,5 +271,105 @@ describe('metricTotal / groupSources', () => {
     const legacy = [source('old', {})]
     const r = buildReadings([snapshot('s3', '2026-01-01')], [entry('s3', 'old', 500)], legacy)[0]
     expect(metricTotal(r, legacy, ['cash', 'investment'])).toBe(500)
+  })
+})
+
+describe('mergeCloseReadings', () => {
+  // Only the date matters here; the rest is filler.
+  const at = (id: string, date: string): Reading => ({
+    snapshot: snapshot(id, date),
+    amounts: new Map(),
+    total: 0,
+    filled: 1,
+    expected: 1,
+    complete: true,
+    delta: null,
+  })
+
+  const dates = (readings: readonly Reading[]) => readings.map((r) => r.snapshot.date)
+
+  test('leaves readings that have room to themselves alone', () => {
+    const readings = [
+      at('a', '2025-08-30'),
+      at('b', '2025-12-30'),
+      at('c', '2026-04-30'),
+      at('d', '2026-08-01'),
+    ]
+    expect(dates(mergeCloseReadings(readings, 620))).toEqual(dates(readings))
+  })
+
+  test('a same-day pair keeps only the later reading', () => {
+    const readings = [
+      at('a', '2026-01-01'),
+      at('b', '2026-06-01'),
+      at('c', '2026-06-01'),
+      at('d', '2026-12-01'),
+    ]
+    expect(mergeCloseReadings(readings, 620).map((r) => r.snapshot.id)).toEqual(['a', 'c', 'd'])
+  })
+
+  test('a run of same-day readings collapses to the last of them', () => {
+    const readings = [
+      at('a', '2026-01-01'),
+      at('b', '2026-06-01'),
+      at('c', '2026-06-01'),
+      at('d', '2026-06-01'),
+      at('e', '2026-12-01'),
+    ]
+    expect(mergeCloseReadings(readings, 620).map((r) => r.snapshot.id)).toEqual(['a', 'd', 'e'])
+  })
+
+  test('a next-day pair merges when a year is squeezed into the width', () => {
+    const readings = [
+      at('a', '2025-08-30'),
+      at('b', '2026-02-27'),
+      at('c', '2026-07-31'),
+      at('d', '2026-08-01'),
+    ]
+    // A day is under two units across this span, so c and d would draw as one.
+    expect(mergeCloseReadings(readings, 620).map((r) => r.snapshot.id)).toEqual(['a', 'b', 'd'])
+  })
+
+  test('a next-day pair survives when the window is short enough to show both', () => {
+    const readings = [
+      at('a', '2026-01-01'),
+      at('b', '2026-01-15'),
+      at('c', '2026-01-16'),
+      at('d', '2026-02-10'),
+    ]
+    // Forty days across the width: a day is 15 units, so both dots have room.
+    expect(dates(mergeCloseReadings(readings, 620))).toEqual(dates(readings))
+  })
+
+  test('never merges readings further apart than a day, however tight the scale', () => {
+    const readings = [
+      at('a', '2016-01-01'),
+      at('b', '2025-12-01'),
+      at('c', '2025-12-31'),
+      at('d', '2026-01-30'),
+    ]
+    // A decade across the width puts these monthly readings five units apart —
+    // inside the overlap threshold, but they are movement, not corrections.
+    expect(dates(mergeCloseReadings(readings, 620))).toEqual(dates(readings))
+  })
+
+  test('keeps the first reading, which every delta on the card measures from', () => {
+    const readings = [
+      at('a', '2026-01-01'),
+      at('b', '2026-01-02'),
+      at('c', '2026-06-01'),
+      at('d', '2026-11-28'),
+    ]
+    expect(mergeCloseReadings(readings, 620).map((r) => r.snapshot.id)).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+    ])
+  })
+
+  test('leaves a pair untouched — there is no middle to merge', () => {
+    const readings = [at('a', '2026-08-01'), at('b', '2026-08-02')]
+    expect(dates(mergeCloseReadings(readings, 620))).toEqual(dates(readings))
   })
 })
