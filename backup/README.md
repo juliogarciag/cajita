@@ -12,8 +12,9 @@ and the app never reads these variables — that's why they aren't in
 ## Setup
 
 **Cloudflare:** create an R2 bucket and an API token scoped to it with
-Object Read & Write. Add a lifecycle rule expiring objects after 90 days,
-so retention is R2's job rather than the script's.
+Object Read & Write. Then add **one** lifecycle rule, scoped to the
+`daily/` prefix, expiring objects after 35 days. See Retention below — the
+prefix scope is load-bearing.
 
 **Railway:** new service from this repo, then in Settings:
 
@@ -36,10 +37,34 @@ The service shows as stopped/crashed after each run. That's correct — a
 cron service is supposed to exit when it's done. Check the logs for the
 `uploaded cajita/…` line instead of the service status.
 
+## Retention
+
+Every run uploads the same dump under two keys:
+
+```
+daily/2026-08-02.sql.gz     expire after 35 days
+weekly/2026-W31.sql.gz      keep forever
+```
+
+Daily granularity is what you want for undoing a recent mistake; a year
+out, only "roughly then" matters. So the dailies expire and the weeklies
+accumulate — 52 objects a year, about 4 MB, against a 10 GB free tier.
+
+The weekly key is written on *every* run rather than once a week. Because
+it's keyed by ISO week, each day overwrites it until the week rolls over,
+leaving that week's last successful backup. This means a missed or failed
+day costs nothing, where a "only upload on Sundays" rule would lose that
+week's archive permanently if Sunday happened to fail.
+
+Nothing in the script deletes anything — expiry is entirely R2's job.
+That's deliberate: pruning logic is how you lose backups you meant to
+keep. **The lifecycle rule must be scoped to the `daily/` prefix.** An
+unscoped rule will quietly eat the weekly archive too, and you won't find
+out until you go looking for a backup from two years ago.
+
 ## Restoring
 
-Objects are keyed `cajita/YYYY-MM-DD.sql.gz`, so a rerun on the same day
-overwrites rather than piling up.
+Both tiers hold identical dumps; pick whichever date you want.
 
 ```bash
 gunzip -c cajita-2026-08-01.sql.gz | psql "$DATABASE_URL"
