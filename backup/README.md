@@ -39,6 +39,10 @@ cron service is supposed to exit when it's done. Check the logs for the
 
 ## Retention
 
+Objects are named in `America/Lima` (set as `TZ` in the Dockerfile), so a
+backup's date is the date it was for you, not in UTC. Note that Railway
+reads the **cron schedule in UTC** regardless — `0 9 * * *` is 4am here.
+
 Every run uploads the same dump under two keys:
 
 ```

@@ -39,8 +39,8 @@ upload() {
 # by ISO week, so each day overwrites it until the week rolls over. That
 # makes the archive self-healing — the weekly copy is whatever the last
 # successful run of that week produced, and a missed day costs nothing.
-upload "daily/$(date -u +%Y-%m-%d).sql.gz"
-upload "weekly/$(date -u "+%G-W%V").sql.gz"
+upload "daily/$(date +%Y-%m-%d).sql.gz"
+upload "weekly/$(date "+%G-W%V").sql.gz"
 
 # Dead man's switch: only pinged on success, so a job that stops running or
 # starts failing surfaces as an alert instead of silence.
